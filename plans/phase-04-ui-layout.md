@@ -1014,42 +1014,42 @@ func main() {
 
 ### Manual Testing
 
-- [ ] Login and see dashboard with sidebar navigation
-- [ ] Sidebar displays all navigation links (Dashboard, Projects, All DCs, Serial Search)
-- [ ] Active link highlighted correctly on dashboard
-- [ ] Top bar shows user's full name and initials
-- [ ] Sign out button works and redirects to login
-- [ ] Mobile: sidebar hidden by default
-- [ ] Mobile: toggle button opens sidebar
-- [ ] Mobile: overlay appears when sidebar open
-- [ ] Mobile: clicking overlay closes sidebar
-- [ ] Mobile: close button in sidebar works
-- [ ] Desktop: sidebar always visible, toggle button hidden
-- [ ] Breadcrumb displays "Dashboard" on home page
-- [ ] Flash messages from login appear as toasts
-- [ ] Toast auto-dismisses after 5 seconds
-- [ ] Toast manual dismiss button works
-- [ ] Multiple toasts stack vertically
-- [ ] HTMX navigation with hx-boost (when implemented in future routes)
-- [ ] Loading indicator during HTMX requests
-- [ ] User initials extracted correctly (first + last name)
-- [ ] All stat cards show "0" (placeholder data)
-- [ ] Quick action buttons styled correctly
-- [ ] Responsive layout works on mobile, tablet, desktop
+- [x] Login and see dashboard with sidebar navigation
+- [x] Sidebar displays all navigation links (Dashboard, Projects, All DCs, Serial Search)
+- [x] Active link highlighted correctly on dashboard
+- [x] Top bar shows user's full name and initials
+- [x] Sign out button works and redirects to login
+- [x] Mobile: sidebar hidden by default
+- [x] Mobile: toggle button opens sidebar
+- [x] Mobile: overlay appears when sidebar open
+- [ ] Mobile: clicking overlay closes sidebar (not tested via playwright)
+- [x] Mobile: close button in sidebar works
+- [x] Desktop: sidebar always visible, toggle button hidden
+- [x] Breadcrumb displays "Dashboard" on home page
+- [x] Flash messages from login appear as toasts
+- [ ] Toast auto-dismisses after 5 seconds (visual, not automated)
+- [ ] Toast manual dismiss button works (visual, not automated)
+- [ ] Multiple toasts stack vertically (visual, not automated)
+- [ ] HTMX navigation with hx-boost (deferred to future phases)
+- [x] Loading indicator during HTMX requests (CSS configured)
+- [x] User initials extracted correctly (first + last name) — "AU" for Admin User
+- [x] All stat cards show "0" (placeholder data)
+- [x] Quick action buttons styled correctly
+- [x] Responsive layout works on mobile, tablet, desktop
 
 ### Cross-Browser Testing
 
-- [ ] Chrome: all features work
-- [ ] Firefox: all features work
-- [ ] Safari: all features work
-- [ ] Edge: all features work
+- [x] Chrome: all features work (tested via Playwright headless Chrome)
+- [ ] Firefox: all features work (not tested)
+- [ ] Safari: all features work (not tested)
+- [ ] Edge: all features work (not tested)
 
 ### Accessibility Testing
 
-- [ ] Sidebar navigation keyboard accessible
-- [ ] Sign out button keyboard accessible
-- [ ] Toast notifications have proper ARIA labels
-- [ ] Color contrast meets WCAG AA standards
+- [x] Sidebar navigation keyboard accessible (standard links)
+- [x] Sign out button keyboard accessible (standard link)
+- [x] Toast notifications have proper ARIA labels (close button has aria-label)
+- [ ] Color contrast meets WCAG AA standards (not audited)
 - [ ] Focus indicators visible on interactive elements
 
 ## Acceptance Criteria
@@ -1096,6 +1096,45 @@ func main() {
 - Sidebar collapse/expand state persistence
 - Advanced toast options (progress bar, actions)
 - Dropdown menu for user info (profile, settings)
+
+## Implementation Summary
+
+**Completed: 2026-02-16**
+
+### Key Implementation Decisions
+
+1. **Custom Template Renderer**: Instead of Gin's `LoadHTMLGlob`, implemented a custom `TemplateRenderer` (`internal/helpers/templates.go`) that supports Go template composition. Page templates (in `templates/pages/`) are composed with base + layout + partials at parse time. Standalone templates (login, health in `templates/standalone/`) are parsed independently.
+
+2. **Template Directory Structure**:
+   - `templates/base.html` — HTML skeleton with Tailwind, HTMX, toast container
+   - `templates/layouts/main.html` — Sidebar + topbar + content area layout
+   - `templates/partials/` — sidebar.html, topbar.html, breadcrumb.html
+   - `templates/pages/` — Page-specific templates (dashboard.html)
+   - `templates/standalone/` — Self-contained pages (login.html, health.html)
+
+3. **No Alpine.js**: Used vanilla JavaScript for sidebar toggle (static/js/sidebar.js) to keep dependencies minimal.
+
+4. **CSS without Tailwind @apply**: Since Tailwind CDN doesn't support @apply directives, all custom component styles (.nav-link, .card, .btn) use standard CSS properties in static/css/custom.css.
+
+### Files Created
+- `internal/helpers/template.go` — Template functions (userInitials, hasPrefix, formatDate) and Breadcrumb types
+- `internal/helpers/templates.go` — Custom TemplateRenderer for Gin with template composition
+- `internal/handlers/dashboard.go` — Dashboard handler with breadcrumbs and flash messages
+- `templates/base.html` — Base HTML template
+- `templates/layouts/main.html` — Main layout with sidebar/topbar
+- `templates/partials/sidebar.html` — Sidebar navigation
+- `templates/partials/topbar.html` — Top bar with user info
+- `templates/partials/breadcrumb.html` — Breadcrumb component
+- `templates/pages/dashboard.html` — Dashboard page content
+- `static/css/toast.css` — Toast notification animations and styles
+- `static/js/toast.js` — Toast notification system
+- `static/js/sidebar.js` — Mobile sidebar toggle
+
+### Files Modified
+- `cmd/server/main.go` — Custom template renderer, dashboard route, helpers import
+- `static/css/custom.css` — Added nav-link, card, btn component styles, print styles
+- `templates/standalone/login.html` — Moved from templates/ (unchanged)
+- `templates/standalone/health.html` — Made fully standalone (no base template dependency)
 
 ## Next Steps
 

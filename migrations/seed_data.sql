@@ -3,9 +3,9 @@
 -- Insert test users (password: "password123" for all)
 -- bcrypt hash of "password123"
 INSERT INTO users (username, password_hash, full_name, email) VALUES
-('admin', '$2a$10$rqiKzWzN9YJKZqXqF2F0VeFJKHKJHKJHKJHKJHKJHKJHKJHKJHKJH', 'Admin User', 'admin@example.com'),
-('john', '$2a$10$rqiKzWzN9YJKZqXqF2F0VeFJKHKJHKJHKJHKJHKJHKJHKJHKJHKJH', 'John Doe', 'john@example.com'),
-('jane', '$2a$10$rqiKzWzN9YJKZqXqF2F0VeFJKHKJHKJHKJHKJHKJHKJHKJHKJHKJH', 'Jane Smith', 'jane@example.com');
+('admin', '$2a$10$I/nbAST4L/brwicvbf.vMO04XSxUwUDVW2JdX3iVztgMR9J84dSFq', 'Admin User', 'admin@example.com'),
+('john', '$2a$10$I/nbAST4L/brwicvbf.vMO04XSxUwUDVW2JdX3iVztgMR9J84dSFq', 'John Doe', 'john@example.com'),
+('jane', '$2a$10$I/nbAST4L/brwicvbf.vMO04XSxUwUDVW2JdX3iVztgMR9J84dSFq', 'Jane Smith', 'jane@example.com');
 
 -- Insert sample projects
 INSERT INTO projects (name, description, dc_prefix, tender_ref_number, tender_ref_details, po_reference, po_date, bill_from_address, company_gstin, created_by) VALUES

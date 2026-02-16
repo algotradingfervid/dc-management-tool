@@ -36,7 +36,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 7. Run migrations and verify all tables created with `sqlite3 data/dc_management.db ".tables"`
 8. Run seed data and verify with sample queries
 9. Test foreign key constraints, unique constraints, and cascade deletes
-Make sure you check if everything is done and do all the tests and update the phase 02 document appropriately with summary. Use chrome extension for browser checks.
+Make sure you check if everything is done and do all the tests and update the phase 02 document appropriately with summary. Use playwright-cli for browser-based tests.
 ```
 
 ---
@@ -56,7 +56,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 9. Test login with seed data users, verify session persistence
 10. Test protected routes redirect to login, test logout clears session
 11. Test CSRF token validation on forms
-Make sure you check if everything is done and do all the tests and update the phase 03 document appropriately with summary. Use chrome extension for browser checks (login page rendering, form submission, redirect behavior).
+Make sure you check if everything is done and do all the tests and update the phase 03 document appropriately with summary. Use playwright-cli for browser-based tests (login page rendering, form submission, redirect behavior).
 ```
 
 ---
@@ -75,7 +75,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 8. Create consistent form styling components
 9. Test responsive layout at different screen sizes
 10. Verify HTMX navigation works without full page reloads
-Make sure you check if everything is done and do all the tests and update the phase 04 document appropriately with summary. Use chrome extension for browser checks (layout rendering, responsive behavior, sidebar toggle, HTMX navigation).
+Make sure you check if everything is done and do all the tests and update the phase 04 document appropriately with summary. Use playwright-cli for browser-based tests (layout rendering, responsive behavior, sidebar toggle, HTMX navigation).
 ```
 
 ---
@@ -94,7 +94,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 8. Add HTMX-powered search and filtering
 9. Wire up all routes (GET /projects, GET /projects/new, POST /projects, GET /projects/:id, etc.)
 10. Test all CRUD operations, verify form validation, test image upload
-Make sure you check if everything is done and do all the tests and update the phase 05 document appropriately with summary. Use chrome extension for browser checks (project list, create form, edit form, detail view with tabs, image upload).
+Make sure you check if everything is done and do all the tests and update the phase 05 document appropriately with summary. Use playwright-cli for browser-based tests (project list, create form, edit form, detail view with tabs, image upload).
 ```
 
 ---
@@ -111,7 +111,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 6. Implement bulk product import via CSV if specified in plan
 7. Wire up routes nested under projects (GET /projects/:id/products, POST, PUT, DELETE)
 8. Test CRUD operations, GST calculation preview, validation
-Make sure you check if everything is done and do all the tests and update the phase 06 document appropriately with summary. Use chrome extension for browser checks (product list within project, add/edit forms, delete confirmation).
+Make sure you check if everything is done and do all the tests and update the phase 06 document appropriately with summary. Use playwright-cli for browser-based tests (product list within project, add/edit forms, delete confirmation).
 ```
 
 ---
@@ -129,7 +129,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 7. Add address search and filtering
 8. Wire up routes under projects (GET /projects/:id/bill-to-addresses, POST config, CRUD addresses)
 9. Test dynamic column definition, address CRUD, CSV import, JSON storage/retrieval
-Make sure you check if everything is done and do all the tests and update the phase 07 document appropriately with summary. Use chrome extension for browser checks (dynamic column config, address list, add/edit forms, CSV upload).
+Make sure you check if everything is done and do all the tests and update the phase 07 document appropriately with summary. Use playwright-cli for browser-based tests (dynamic column config, address list, add/edit forms, CSV upload).
 ```
 
 ---
@@ -146,7 +146,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 6. Add search, filtering, and pagination
 7. Wire up routes (GET /projects/:id/ship-to-addresses, POST config, CRUD addresses)
 8. Test address CRUD, view switching, search, CSV import
-Make sure you check if everything is done and do all the tests and update the phase 08 document appropriately with summary. Use chrome extension for browser checks (ship-to address list, table/card views, search, forms).
+Make sure you check if everything is done and do all the tests and update the phase 08 document appropriately with summary. Use playwright-cli for browser-based tests (ship-to address list, table/card views, search, forms).
 ```
 
 ---
@@ -163,7 +163,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 6. Build template edit and delete functionality
 7. Wire up routes (GET /projects/:id/templates, POST, PUT, DELETE)
 8. Test template CRUD, product association, default quantities
-Make sure you check if everything is done and do all the tests and update the phase 09 document appropriately with summary. Use chrome extension for browser checks (template list, create/edit forms, product selection).
+Make sure you check if everything is done and do all the tests and update the phase 09 document appropriately with summary. Use playwright-cli for browser-based tests (template list, create/edit forms, product selection).
 ```
 
 ---
@@ -199,7 +199,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 8. Implement serial number entry per line item
 9. Wire up routes (GET /projects/:id/dcs/new?type=transit, POST)
 10. Test DC creation with template, manual product addition, calculations, serial numbers
-Make sure you check if everything is done and do all the tests and update the phase 11 document appropriately with summary. Use chrome extension for browser checks (DC creation form, template selection, line items editor, calculations).
+Make sure you check if everything is done and do all the tests and update the phase 11 document appropriately with summary. Use playwright-cli for browser-based tests (DC creation form, template selection, line items editor, calculations).
 ```
 
 ---
@@ -215,7 +215,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 5. Implement template selection for auto-populating products
 6. Wire up routes (GET /projects/:id/dcs/new?type=official, POST)
 7. Test DC creation, address selection, line items without pricing
-Make sure you check if everything is done and do all the tests and update the phase 12 document appropriately with summary. Use chrome extension for browser checks (official DC form, address selectors, line items editor).
+Make sure you check if everything is done and do all the tests and update the phase 12 document appropriately with summary. Use playwright-cli for browser-based tests (official DC form, address selectors, line items editor).
 ```
 
 ---
@@ -232,7 +232,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 6. Create serial number edit/delete on draft DCs
 7. Wire up HTMX validation endpoints (POST /api/serial-numbers/validate)
 8. Test uniqueness constraints, bulk import, validation feedback
-Make sure you check if everything is done and do all the tests and update the phase 13 document appropriately with summary. Use chrome extension for browser checks (serial number entry, duplicate detection, validation messages).
+Make sure you check if everything is done and do all the tests and update the phase 13 document appropriately with summary. Use playwright-cli for browser-based tests (serial number entry, duplicate detection, validation messages).
 ```
 
 ---
@@ -250,7 +250,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 7. Update DC list views to show status badges
 8. Wire up routes (POST /dcs/:id/issue, PUT /dcs/:id, DELETE /dcs/:id)
 9. Test issue flow, validation errors, field locking, edit/delete restrictions
-Make sure you check if everything is done and do all the tests and update the phase 14 document appropriately with summary. Use chrome extension for browser checks (issue button, validation errors, locked fields, status badges).
+Make sure you check if everything is done and do all the tests and update the phase 14 document appropriately with summary. Use playwright-cli for browser-based tests (issue button, validation errors, locked fields, status badges).
 ```
 
 ---
@@ -269,7 +269,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 8. Create print CSS for clean A4 printing
 9. Add "Print" button triggering browser print dialog
 10. Test print preview layout, page breaks, alignment
-Make sure you check if everything is done and do all the tests and update the phase 15 document appropriately with summary. Use chrome extension for browser checks (DC view layout, print preview, table formatting, totals).
+Make sure you check if everything is done and do all the tests and update the phase 15 document appropriately with summary. Use playwright-cli for browser-based tests (DC view layout, print preview, table formatting, totals).
 ```
 
 ---
@@ -288,7 +288,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 8. Create print CSS for A4 layout
 9. Add "Print" button
 10. Test print preview, layout differences from transit DC
-Make sure you check if everything is done and do all the tests and update the phase 16 document appropriately with summary. Use chrome extension for browser checks (official DC view, print layout, dual signatures, no pricing columns).
+Make sure you check if everything is done and do all the tests and update the phase 16 document appropriately with summary. Use playwright-cli for browser-based tests (official DC view, print layout, dual signatures, no pricing columns).
 ```
 
 ---
@@ -306,7 +306,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 7. Add download buttons to DC view pages
 8. Wire up routes (GET /dcs/:id/export/pdf, GET /dcs/:id/export/excel)
 9. Test PDF output matches print layout, Excel has correct data and formatting
-Make sure you check if everything is done and do all the tests and update the phase 17 document appropriately with summary. Use chrome extension for browser checks (download buttons, verify PDF opens correctly).
+Make sure you check if everything is done and do all the tests and update the phase 17 document appropriately with summary. Use playwright-cli for browser-based tests (download buttons, verify PDF opens correctly).
 ```
 
 ---
@@ -323,7 +323,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 6. Implement dashboard as the authenticated home page (GET /)
 7. Add HTMX-powered refresh for statistics
 8. Test dashboard data accuracy with seed data
-Make sure you check if everything is done and do all the tests and update the phase 18 document appropriately with summary. Use chrome extension for browser checks (dashboard layout, statistics cards, recent activity, quick actions).
+Make sure you check if everything is done and do all the tests and update the phase 18 document appropriately with summary. Use playwright-cli for browser-based tests (dashboard layout, statistics cards, recent activity, quick actions).
 ```
 
 ---
@@ -341,7 +341,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 7. Create filter persistence (remember last applied filters)
 8. Wire up routes (GET /delivery-challans with query params)
 9. Test filtering, sorting, pagination, search across multiple projects
-Make sure you check if everything is done and do all the tests and update the phase 19 document appropriately with summary. Use chrome extension for browser checks (DC listing, filters, sorting, pagination, search).
+Make sure you check if everything is done and do all the tests and update the phase 19 document appropriately with summary. Use playwright-cli for browser-based tests (DC listing, filters, sorting, pagination, search).
 ```
 
 ---
@@ -359,7 +359,7 @@ Make sure you check if everything is done and do all the tests and update the ph
 7. Implement HTMX-powered live search
 8. Wire up routes (GET /serial-search, POST /serial-search)
 9. Test single search, bulk search, not-found handling, cross-project results
-Make sure you check if everything is done and do all the tests and update the phase 20 document appropriately with summary. Use chrome extension for browser checks (search page, results display, bulk search, links to DCs).
+Make sure you check if everything is done and do all the tests and update the phase 20 document appropriately with summary. Use playwright-cli for browser-based tests (search page, results display, bulk search, links to DCs).
 ```
 
 ---
