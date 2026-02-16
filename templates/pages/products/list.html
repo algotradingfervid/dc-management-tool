@@ -1,0 +1,186 @@
+{{ define "title" }}Products - {{ .project.Name }}{{ end }}
+
+{{ define "content" }}
+<div class="space-y-6">
+    <!-- Flash Messages -->
+    {{ if .flashType }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            showToast('{{ .flashMessage }}', '{{ .flashType }}');
+        });
+    </script>
+    {{ end }}
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Products</h1>
+            <p class="text-sm text-gray-500 mt-1">Manage products for {{ .project.Name }}</p>
+        </div>
+        <button onclick="openProductSlideOver()"
+            class="btn btn-primary text-sm inline-flex items-center">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Add Product
+        </button>
+    </div>
+
+    <!-- Products Table -->
+    <div class="card overflow-hidden">
+        <div id="products-table-container"
+             hx-get="/projects/{{ .project.ID }}/products"
+             hx-trigger="productChanged from:body"
+             hx-select="#products-table-container"
+             hx-swap="outerHTML">
+            {{ if .products }}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">HSN Code</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UoM</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand/Model</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">GST %</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {{ range .products }}
+                        <tr class="hover:bg-gray-50" id="product-row-{{ .ID }}">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">{{ .ItemName }}</div>
+                                {{ if .ItemDescription }}
+                                <div class="text-xs text-gray-500 truncate max-w-xs">{{ .ItemDescription }}</div>
+                                {{ end }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ if .HSNCode }}{{ .HSNCode }}{{ else }}<span class="text-gray-400">-</span>{{ end }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ .UoM }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ .BrandModel }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">{{ printf "%.2f" .PerUnitPrice }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-right">{{ printf "%.0f" .GSTPercentage }}%</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                                <button onclick="editProduct({{ .ProjectID }}, {{ .ID }})"
+                                    class="text-brand-600 hover:text-brand-900 mr-3" title="Edit">
+                                    <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </button>
+                                <button onclick="confirmDeleteProduct({{ .ProjectID }}, {{ .ID }}, '{{ .ItemName }}')"
+                                    class="text-red-600 hover:text-red-900" title="Delete">
+                                    <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            </div>
+            {{ else }}
+            <div class="text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No products</h3>
+                <p class="mt-1 text-sm text-gray-500">Get started by adding a product to this project.</p>
+                <div class="mt-4">
+                    <button onclick="openProductSlideOver()" class="btn btn-primary text-sm">
+                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Add Product
+                    </button>
+                </div>
+            </div>
+            {{ end }}
+        </div>
+    </div>
+</div>
+
+<!-- Slide-over Panel -->
+<div id="product-slideover" class="hidden fixed inset-0 z-50">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-gray-600 bg-opacity-50 transition-opacity" onclick="closeProductSlideOver()"></div>
+    <!-- Panel -->
+    <div class="absolute inset-y-0 right-0 max-w-md w-full bg-white shadow-xl transform transition-transform duration-300 translate-x-0">
+        <div id="product-form-container" class="h-full overflow-y-auto">
+            <!-- Form loaded here via HTMX -->
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="product-delete-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-2">Delete Product</h3>
+        <p class="text-sm text-gray-600 mb-4">Are you sure you want to delete <strong id="delete-product-name"></strong>? This action cannot be undone.</p>
+        <div class="flex justify-end gap-3">
+            <button onclick="closeDeleteProductModal()" class="btn btn-secondary">Cancel</button>
+            <button id="confirm-delete-product-btn" class="btn btn-danger">Delete</button>
+        </div>
+    </div>
+</div>
+
+<script>
+var csrfToken = '{{ .csrfToken }}';
+
+function openProductSlideOver() {
+    var el = document.getElementById('product-slideover');
+    el.classList.remove('hidden');
+    // Load add form
+    htmx.ajax('GET', '/projects/{{ .project.ID }}/products/new', {target: '#product-form-container', swap: 'innerHTML'});
+}
+
+function editProduct(projectID, productID) {
+    var el = document.getElementById('product-slideover');
+    el.classList.remove('hidden');
+    htmx.ajax('GET', '/projects/' + projectID + '/products/' + productID + '/edit', {target: '#product-form-container', swap: 'innerHTML'});
+}
+
+function closeProductSlideOver() {
+    document.getElementById('product-slideover').classList.add('hidden');
+}
+
+function confirmDeleteProduct(projectID, productID, name) {
+    document.getElementById('delete-product-name').textContent = name;
+    document.getElementById('product-delete-modal').classList.remove('hidden');
+    document.getElementById('confirm-delete-product-btn').onclick = function() {
+        fetch('/projects/' + projectID + '/products/' + productID, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-Token': csrfToken,
+                'Content-Type': 'application/json'
+            }
+        }).then(function(resp) {
+            if (resp.ok) {
+                closeDeleteProductModal();
+                showToast('Product deleted successfully', 'success');
+                // Trigger refresh
+                htmx.trigger(document.body, 'productChanged');
+            } else {
+                return resp.json().then(function(data) {
+                    closeDeleteProductModal();
+                    showToast(data.error || 'Failed to delete product', 'error');
+                });
+            }
+        }).catch(function() {
+            closeDeleteProductModal();
+            showToast('Failed to delete product', 'error');
+        });
+    };
+}
+
+function closeDeleteProductModal() {
+    document.getElementById('product-delete-modal').classList.add('hidden');
+}
+
+// Listen for productChanged to close slide-over and show toast
+document.body.addEventListener('productChanged', function() {
+    closeProductSlideOver();
+});
+</script>
+{{ end }}

@@ -68,7 +68,7 @@
                     class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm {{ if eq .activeTab "overview" }}border-brand-500 text-brand-600{{ else }}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{{ end }}">
                     Overview
                 </a>
-                <a href="/projects/{{ .project.ID }}?tab=products"
+                <a href="/projects/{{ .project.ID }}/products"
                     class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm {{ if eq .activeTab "products" }}border-brand-500 text-brand-600{{ else }}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{{ end }}">
                     Products ({{ .project.ProductCount }})
                 </a>
@@ -138,7 +138,7 @@
 
             {{ else if eq .activeTab "products" }}
             <div class="text-center py-8 text-gray-500">
-                <p>Product management will be available in Phase 6.</p>
+                <p>Redirecting to products page...</p>
             </div>
 
             {{ else if eq .activeTab "templates" }}
@@ -147,8 +147,36 @@
             </div>
 
             {{ else if eq .activeTab "addresses" }}
-            <div class="text-center py-8 text-gray-500">
-                <p>Address management will be available in Phases 7-8.</p>
+            <div class="space-y-4">
+                <p class="text-sm text-gray-600">Manage billing and shipping address lists for this project.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <a href="/projects/{{ .project.ID }}/bill-to" class="block p-6 bg-white border border-gray-200 rounded-lg hover:border-brand-300 hover:shadow-sm transition-all">
+                        <div class="flex items-center gap-3">
+                            <div class="flex-shrink-0 w-10 h-10 bg-brand-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900">Bill To Addresses</h3>
+                                <p class="text-xs text-gray-500">Manage billing addresses for delivery challans</p>
+                            </div>
+                        </div>
+                    </a>
+                    <div class="block p-6 bg-gray-50 border border-gray-200 rounded-lg opacity-60">
+                        <div class="flex items-center gap-3">
+                            <div class="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-500">Ship To Addresses</h3>
+                                <p class="text-xs text-gray-400">Coming in Phase 8</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {{ else if eq .activeTab "dcs" }}

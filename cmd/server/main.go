@@ -67,6 +67,24 @@ func main() {
 		protected.GET("/projects/:id/edit", handlers.ShowEditProjectForm)
 		protected.POST("/projects/:id", handlers.UpdateProject)
 		protected.DELETE("/projects/:id", handlers.DeleteProject)
+
+		// Product routes
+		protected.GET("/projects/:id/products", handlers.ListProducts)
+		protected.GET("/projects/:id/products/new", handlers.ShowAddProductForm)
+		protected.POST("/projects/:id/products", handlers.CreateProductHandler)
+		protected.GET("/projects/:id/products/:pid/edit", handlers.ShowEditProductForm)
+		protected.POST("/projects/:id/products/:pid", handlers.UpdateProductHandler)
+		protected.DELETE("/projects/:id/products/:pid", handlers.DeleteProductHandler)
+
+		// Bill-to address routes
+		protected.GET("/projects/:id/bill-to", handlers.ShowBillToPage)
+		protected.POST("/projects/:id/bill-to/config", handlers.UpdateColumnConfig)
+		protected.POST("/projects/:id/bill-to/upload", handlers.UploadAddresses)
+		protected.POST("/projects/:id/bill-to/addresses", handlers.CreateAddressHandler)
+		protected.POST("/projects/:id/bill-to/addresses/:aid", handlers.UpdateAddressHandler)
+		protected.DELETE("/projects/:id/bill-to/addresses/:aid", handlers.DeleteAddressHandler)
+		protected.DELETE("/projects/:id/bill-to/addresses", handlers.DeleteAllAddressesHandler)
+		protected.GET("/projects/:id/bill-to/addresses/:aid", handlers.GetAddressJSON)
 	}
 
 	// Wrap with SCS session middleware + CSRF middleware

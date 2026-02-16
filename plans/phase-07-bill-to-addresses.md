@@ -718,3 +718,54 @@ ORDER BY created_at DESC;
 38. Recent uploads history
 39. Upload scheduling (future feature)
 40. Data quality reports
+
+## Implementation Summary (Completed)
+
+### Date: 2026-02-16
+
+### Files Created
+- `internal/models/address_config.go` - AddressListConfig, ColumnDefinition structs with JSON parsing, validation
+- `internal/models/address.go` - Address struct with flexible JSON data, AddressPage, UploadResult, UploadError types
+- `internal/database/addresses.go` - Full CRUD: GetOrCreateAddressConfig, UpdateAddressConfig, BulkInsertAddresses, ListAddresses (with pagination/search), CreateAddress, GetAddress, UpdateAddress, DeleteAddress, DeleteAllAddresses, ValidateAddressData
+- `internal/handlers/bill_to_addresses.go` - All handlers: ShowBillToPage, UpdateColumnConfig, UploadAddresses (CSV/Excel), CreateAddressHandler, UpdateAddressHandler, DeleteAddressHandler, DeleteAllAddressesHandler, GetAddressJSON. Includes CSV parser, Excel parser (excelize).
+- `templates/pages/addresses/bill-to.html` - Full-featured bill-to page with column config display, upload form, dynamic table, pagination, search, add/edit/delete modals
+
+### Files Modified
+- `cmd/server/main.go` - Added 8 bill-to address routes
+- `internal/helpers/template.go` - Added template functions: sub, mul, seq, sanitizeField, mapGet, toJSON
+- `templates/pages/projects/detail.html` - Replaced addresses tab placeholder with Bill To / Ship To cards
+
+### Dependencies Added
+- `github.com/xuri/excelize/v2` v2.10.0 - Excel file parsing
+
+### Features Implemented
+1. Dynamic column configuration (define/edit column names, required flags) stored as JSON
+2. Address CRUD with flexible JSON data storage matching column config
+3. CSV file upload with header validation and data validation
+4. Excel (.xlsx) file upload with header validation
+5. Replace and Append upload modes
+6. Search across all address fields (JSON LIKE query)
+7. Pagination (50 per page)
+8. Add address modal with dynamically generated fields from column config
+9. Edit address modal (pre-populated from existing data)
+10. Delete single address with confirmation modal (AJAX)
+11. Delete all addresses
+12. File size limit (10MB) and row limit (10,000)
+13. Column config modal with add/remove columns and required checkboxes
+14. Breadcrumb navigation
+15. Project detail addresses tab with Bill To / Ship To cards
+
+### Browser Test Results (Playwright)
+- [x] Page loads with heading, column config, upload form, address table
+- [x] Column configuration modal opens/closes, shows correct columns with required flags
+- [x] Add Address modal generates dynamic fields from column config
+- [x] Adding address via form creates record and shows in table
+- [x] CSV upload (Replace mode) correctly replaces all addresses with CSV data
+- [x] Search filters addresses (searched "Mumbai", returned 1 result)
+- [x] Delete confirmation modal appears, delete removes row from table
+- [x] Project detail Addresses tab shows Bill To and Ship To cards
+
+### Acceptance Criteria Met
+- Must Have: Items 1-16 all implemented
+- Should Have: Items 17 (partial - validation structure exists), 19-20 (file/row limits), 21 (search), 27 (via flash messages), 29 (empty state)
+- Nice to Have: Item 31 (edit individual addresses) implemented

@@ -116,5 +116,36 @@ func NewTemplateRenderer(templatesDir string, funcMap template.FuncMap) (*Templa
 		entryNames[name] = name
 	}
 
+	// Parse HTMX partial templates (rendered without layout)
+	htmxDirs, _ := filepath.Glob(filepath.Join(templatesDir, "htmx", "*"))
+	for _, htmxDir := range htmxDirs {
+		info, err := os.Stat(htmxDir)
+		if err != nil || !info.IsDir() {
+			// It's a file directly in htmx/
+			name := "htmx/" + filepath.Base(htmxDir)
+			t, err := template.New("").Funcs(funcMap).ParseFiles(htmxDir)
+			if err != nil {
+				return nil, err
+			}
+			templates[name] = t
+			entryNames[name] = filepath.Base(htmxDir)
+			continue
+		}
+		htmxFiles, err := filepath.Glob(filepath.Join(htmxDir, "*.html"))
+		if err != nil {
+			continue
+		}
+		dirName := filepath.Base(htmxDir)
+		for _, htmxFile := range htmxFiles {
+			name := "htmx/" + dirName + "/" + filepath.Base(htmxFile)
+			t, err := template.New("").Funcs(funcMap).ParseFiles(htmxFile)
+			if err != nil {
+				return nil, err
+			}
+			templates[name] = t
+			entryNames[name] = filepath.Base(htmxFile)
+		}
+	}
+
 	return &TemplateRenderer{templates: templates, entryNames: entryNames}, nil
 }

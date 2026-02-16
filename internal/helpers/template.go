@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"encoding/json"
 	"html/template"
 	"strings"
 )
@@ -13,6 +14,25 @@ func TemplateFuncs() template.FuncMap {
 		"formatDate":   FormatDate,
 		"derefStr":     DerefStr,
 		"add":          func(a, b int) int { return a + b },
+		"sub":          func(a, b int) int { return a - b },
+		"mul":          func(a, b int) int { return a * b },
+		"seq": func(start, end int) []int {
+			var s []int
+			for i := start; i <= end; i++ {
+				s = append(s, i)
+			}
+			return s
+		},
+		"sanitizeField": func(name string) string {
+			return strings.ToLower(strings.ReplaceAll(name, " ", "_"))
+		},
+		"mapGet": func(m map[string]string, key string) string {
+			return m[key]
+		},
+		"toJSON": func(v interface{}) string {
+			b, _ := json.Marshal(v)
+			return string(b)
+		},
 	}
 }
 
