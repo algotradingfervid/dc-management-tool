@@ -2,7 +2,9 @@ package helpers
 
 import (
 	"encoding/json"
+	"fmt"
 	"html/template"
+	"math"
 	"strings"
 )
 
@@ -29,9 +31,60 @@ func TemplateFuncs() template.FuncMap {
 		"mapGet": func(m map[string]string, key string) string {
 			return m[key]
 		},
-		"toJSON": func(v interface{}) string {
+		"addressLabel": func(data map[string]string, columns []string) string {
+			// Build a label from the first 2 column values
+			var parts []string
+			for _, col := range columns {
+				v := strings.TrimSpace(data[col])
+				if v != "" {
+					parts = append(parts, v)
+					if len(parts) >= 2 {
+						break
+					}
+				}
+			}
+			if len(parts) == 0 {
+				return "(unnamed)"
+			}
+			return strings.Join(parts, " - ")
+		},
+		"toJSON": func(v interface{}) template.JS {
 			b, _ := json.Marshal(v)
-			return string(b)
+			return template.JS(b)
+		},
+		"join": func(strs []string, sep string) string {
+			return strings.Join(strs, sep)
+		},
+		"formatINR": func(amount float64) string {
+			// Format number with Indian comma grouping (e.g., 1,23,456.00)
+			isNeg := amount < 0
+			amount = math.Abs(amount)
+			whole := int64(amount)
+			decimal := int64(math.Round((amount - float64(whole)) * 100))
+
+			s := fmt.Sprintf("%d", whole)
+			// Indian grouping: last 3 digits, then groups of 2
+			if len(s) > 3 {
+				result := s[len(s)-3:]
+				s = s[:len(s)-3]
+				for len(s) > 2 {
+					result = s[len(s)-2:] + "," + result
+					s = s[:len(s)-2]
+				}
+				if len(s) > 0 {
+					result = s + "," + result
+				}
+				s = result
+			}
+
+			prefix := ""
+			if isNeg {
+				prefix = "-"
+			}
+			return fmt.Sprintf("%s%s.%02d", prefix, s, decimal)
+		},
+		"numberToWords": func(amount float64) string {
+			return NumberToIndianWords(amount)
 		},
 	}
 }

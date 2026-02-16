@@ -1059,6 +1059,36 @@ ORDER BY created_at DESC;
 - **Phase 13:** Serial number management (for freeing serials)
 - **Database:** status and issued_at columns in delivery_challans table
 
+## Implementation Summary (Completed 2026-02-16)
+
+### Files Modified
+1. **internal/database/delivery_challans.go** - Added `IssueDC(dcID, userID)` function that atomically transitions draft→issued, sets `issued_at` and `issued_by`
+2. **internal/handlers/serial_validation.go** - Added `IssueDCHandler` with validation (line items exist, serial counts match quantities). Updated `DeleteDCHandler` to allow deletion of both draft and issued DCs
+3. **cmd/server/main.go** - Added `POST /projects/:id/dcs/:dcid/issue` route
+4. **templates/pages/delivery_challans/detail.html** - Added Issue DC / Delete buttons (status-dependent), delete confirmation modal, issued_at display
+5. **templates/pages/delivery_challans/official_detail.html** - Same UI additions as transit detail
+6. **static/js/dc_lifecycle.js** - New file: `issueDC()`, `deleteDC()` with modal, `confirmDelete()`, keyboard/click handlers
+
+### Test Results (Playwright Browser Tests)
+- [x] Draft DC shows DRAFT badge, Issue DC button, and Delete button
+- [x] Clicking Issue DC triggers confirmation dialog, then POST /issue endpoint
+- [x] After issuing: status changes to ISSUED, Issue DC button removed, Delete remains
+- [x] `issued_at` and `issued_by` correctly recorded in database
+- [x] Delete modal shows different messages for draft vs issued DCs
+- [x] Draft DC deletion works: DC and serial numbers removed, redirect to project
+- [x] Issued DC delete modal appears with warning text and Cancel/Confirm buttons
+- [x] Cancel button closes modal without deleting
+- [x] Both Transit and Official DCs support full lifecycle
+- [x] DC numbers are NOT reused after deletion
+
+### Screenshots
+- `dc-draft-detail.png` - Transit DC in DRAFT status with Issue/Delete buttons
+- `dc-issued-detail.png` - Transit DC after issuing (ISSUED badge, no Issue button)
+- `dc-delete-modal-issued.png` - Delete confirmation modal for issued DC
+- `dc-delete-modal-draft.png` - Delete confirmation modal for draft DC
+- `official-dc-draft.png` - Official DC in DRAFT status
+- `official-dc-issued.png` - Official DC after issuing
+
 ## Next Steps
 
 After Phase 14 completion:

@@ -100,9 +100,9 @@
                 <a href="/projects/{{ .project.ID }}/dcs/transit/new?template_id={{ .template.ID }}" class="btn btn-primary text-sm">
                     Issue Transit DC
                 </a>
-                <button class="btn btn-secondary text-sm" disabled title="Available after DC issuance is implemented">
+                <a href="/projects/{{ .project.ID }}/dcs/official/new?template_id={{ .template.ID }}" class="btn btn-secondary text-sm bg-green-600 text-white hover:bg-green-700 border-green-600">
                     Issue Official DC
-                </button>
+                </a>
             </div>
         </div>
 

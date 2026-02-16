@@ -62,10 +62,10 @@ func ShowCreateTransitDC(c *gin.Context) {
 		templates = []*models.DCTemplate{}
 	}
 
-	// Generate DC number
-	dcNumber, err := services.GenerateDCNumber(database.DB, projectID, services.DCTypeTransit)
+	// Peek at next DC number without incrementing (only increment on actual creation)
+	dcNumber, err := services.PeekNextDCNumber(database.DB, projectID, services.DCTypeTransit)
 	if err != nil {
-		log.Printf("Error generating DC number: %v", err)
+		log.Printf("Error peeking DC number: %v", err)
 		dcNumber = "Error generating number"
 	}
 
@@ -105,6 +105,8 @@ func ShowCreateTransitDC(c *gin.Context) {
 		"products":        products,
 		"shipToAddresses": shipToAddresses,
 		"billToAddresses": billToAddresses,
+		"billToColumns":   getColumnNames(billToConfig),
+		"shipToColumns":   getColumnNames(shipToConfig),
 		"dcNumber":        dcNumber,
 		"challanDate":     today,
 		"purpose":         purpose,
@@ -141,7 +143,6 @@ func CreateTransitDC(c *gin.Context) {
 	ewayBillNumber := strings.TrimSpace(c.PostForm("eway_bill_number"))
 	notes := strings.TrimSpace(c.PostForm("notes"))
 	taxType := c.PostForm("tax_type")
-	dcNumber := strings.TrimSpace(c.PostForm("dc_number"))
 	purpose := strings.TrimSpace(c.PostForm("purpose"))
 	templateIDStr := c.PostForm("template_id")
 
@@ -232,8 +233,18 @@ func CreateTransitDC(c *gin.Context) {
 	}
 
 	if len(errors) > 0 {
-		// Re-render form with errors
-		renderCreateFormWithErrors(c, project, templateID, dcNumber, challanDate, errors)
+		peekNum, _ := services.PeekNextDCNumber(database.DB, projectID, services.DCTypeTransit)
+		renderCreateFormWithErrors(c, project, templateID, peekNum, challanDate, errors)
+		return
+	}
+
+	// Generate the real DC number (increments sequence) only at actual creation time
+	dcNumber, err := services.GenerateDCNumber(database.DB, projectID, services.DCTypeTransit)
+	if err != nil {
+		log.Printf("Error generating DC number: %v", err)
+		errors["general"] = "Failed to generate DC number"
+		peekNum, _ := services.PeekNextDCNumber(database.DB, projectID, services.DCTypeTransit)
+		renderCreateFormWithErrors(c, project, templateID, peekNum, challanDate, errors)
 		return
 	}
 
@@ -267,7 +278,8 @@ func CreateTransitDC(c *gin.Context) {
 		} else {
 			errors["general"] = "Failed to create Transit DC: " + err.Error()
 		}
-		renderCreateFormWithErrors(c, project, templateID, dcNumber, challanDate, errors)
+		peekNum, _ := services.PeekNextDCNumber(database.DB, projectID, services.DCTypeTransit)
+		renderCreateFormWithErrors(c, project, templateID, peekNum, challanDate, errors)
 		return
 	}
 
@@ -275,8 +287,32 @@ func CreateTransitDC(c *gin.Context) {
 	c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/dcs/%d", projectID, dc.ID))
 }
 
-// ShowTransitDCDetail shows a Transit DC's details.
-func ShowTransitDCDetail(c *gin.Context) {
+// ShowDCDetail dispatches to the correct detail view based on dc_type.
+func ShowDCDetail(c *gin.Context) {
+	dcID, err := strconv.Atoi(c.Param("dcid"))
+	if err != nil {
+		projectID, _ := strconv.Atoi(c.Param("id"))
+		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
+		return
+	}
+
+	dc, err := database.GetDeliveryChallanByID(dcID)
+	if err != nil {
+		projectID, _ := strconv.Atoi(c.Param("id"))
+		auth.SetFlash(c.Request, "error", "DC not found")
+		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
+		return
+	}
+
+	if dc.DCType == "official" {
+		ShowOfficialDCDetail(c)
+		return
+	}
+	showTransitDCDetail(c)
+}
+
+// showTransitDCDetail shows a Transit DC's details.
+func showTransitDCDetail(c *gin.Context) {
 	user := auth.GetCurrentUser(c)
 
 	projectID, err := strconv.Atoi(c.Param("id"))
@@ -438,6 +474,8 @@ func renderCreateFormWithErrors(c *gin.Context, project *models.Project, templat
 		"products":        products,
 		"shipToAddresses": shipToAddresses,
 		"billToAddresses": billToAddresses,
+		"billToColumns":   getColumnNames(billToConfig),
+		"shipToColumns":   getColumnNames(shipToConfig),
 		"dcNumber":        dcNumber,
 		"challanDate":     challanDate,
 		"purpose":         purpose,
@@ -445,6 +483,119 @@ func renderCreateFormWithErrors(c *gin.Context, project *models.Project, templat
 		"errors":          errors,
 		"csrfToken":       csrf.Token(c.Request),
 		"csrfField":       csrf.TemplateField(c.Request),
+	})
+}
+
+// getColumnNames extracts column names from an address config for use in dropdown labels.
+func getColumnNames(config *models.AddressListConfig) []string {
+	if config == nil {
+		return nil
+	}
+	var names []string
+	for _, col := range config.ColumnDefinitions {
+		names = append(names, col.Name)
+	}
+	return names
+}
+
+// ShowTransitDCPrintView renders a print-ready view for a Transit DC.
+func ShowTransitDCPrintView(c *gin.Context) {
+	user := auth.GetCurrentUser(c)
+
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.Redirect(http.StatusFound, "/projects")
+		return
+	}
+
+	dcID, err := strconv.Atoi(c.Param("dcid"))
+	if err != nil {
+		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
+		return
+	}
+
+	project, err := database.GetProjectByID(projectID)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/projects")
+		return
+	}
+
+	dc, err := database.GetDeliveryChallanByID(dcID)
+	if err != nil || dc.ProjectID != projectID {
+		auth.SetFlash(c.Request, "error", "DC not found")
+		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
+		return
+	}
+
+	transitDetails, _ := database.GetTransitDetailsByDCID(dcID)
+	lineItems, _ := database.GetLineItemsByDCID(dcID)
+
+	// Load serial numbers for each line item
+	for i := range lineItems {
+		serials, _ := database.GetSerialNumbersByLineItemID(lineItems[i].ID)
+		lineItems[i].SerialNumbers = serials
+	}
+
+	// Calculate totals
+	var totalTaxable, totalTax, grandTotal float64
+	var totalQty int
+	for _, li := range lineItems {
+		totalTaxable += li.TaxableAmount
+		totalTax += li.TaxAmount
+		grandTotal += li.TotalAmount
+		totalQty += li.Quantity
+	}
+	roundedTotal := math.Round(grandTotal)
+	roundOff := roundedTotal - grandTotal
+
+	// Determine tax split (CGST/SGST vs IGST)
+	// For now we assume CGST/SGST (same state), can be enhanced later
+	halfTax := totalTax / 2.0
+
+	// Get addresses
+	var shipToAddress *models.Address
+	if dc.ShipToAddressID > 0 {
+		shipToAddress, _ = database.GetAddress(dc.ShipToAddressID)
+	}
+	var billToAddress *models.Address
+	if dc.BillToAddressID != nil && *dc.BillToAddressID > 0 {
+		billToAddress, _ = database.GetAddress(*dc.BillToAddressID)
+	}
+
+	// Get company settings
+	company, _ := database.GetCompanySettings()
+
+	// Amount in words
+	amountInWords := helpers.NumberToIndianWords(roundedTotal)
+
+	breadcrumbs := helpers.BuildBreadcrumbs(
+		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
+		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
+		helpers.Breadcrumb{Title: dc.DCNumber, URL: fmt.Sprintf("/projects/%d/dcs/%d", projectID, dcID)},
+		helpers.Breadcrumb{Title: "Print View", URL: ""},
+	)
+
+	c.HTML(http.StatusOK, "delivery_challans/transit_print.html", gin.H{
+		"user":           user,
+		"currentPath":    c.Request.URL.Path,
+		"breadcrumbs":    breadcrumbs,
+		"project":        project,
+		"dc":             dc,
+		"transitDetails": transitDetails,
+		"lineItems":      lineItems,
+		"totalTaxable":   totalTaxable,
+		"totalTax":       totalTax,
+		"grandTotal":     grandTotal,
+		"roundedTotal":   roundedTotal,
+		"roundOff":       roundOff,
+		"totalQty":       totalQty,
+		"cgst":           math.Round(halfTax*100) / 100,
+		"sgst":           math.Round(halfTax*100) / 100,
+		"shipToAddress":  shipToAddress,
+		"billToAddress":  billToAddress,
+		"company":        company,
+		"amountInWords":  amountInWords,
+		"activeTab":      "templates",
 	})
 }
 

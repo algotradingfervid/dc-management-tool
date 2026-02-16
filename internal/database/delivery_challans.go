@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
@@ -219,6 +220,94 @@ func GetSerialNumbersByLineItemID(lineItemID int) ([]string, error) {
 	return serials, nil
 }
 
+// SerialConflict represents a serial number that conflicts with an existing one in the project.
+type SerialConflict struct {
+	SerialNumber string
+	ExistingDCID int
+	DCNumber     string
+	DCStatus     string
+	ProductName  string
+}
+
+// CheckSerialsInProject checks which serial numbers already exist in a project.
+// Returns conflicts with DC info. Optionally excludes a specific DC (for edit mode).
+func CheckSerialsInProject(projectID int, serials []string, excludeDCID *int) ([]SerialConflict, error) {
+	if len(serials) == 0 {
+		return nil, nil
+	}
+
+	placeholders := make([]string, len(serials))
+	args := make([]interface{}, 0, len(serials)+2)
+	args = append(args, projectID)
+	for i, s := range serials {
+		placeholders[i] = "?"
+		args = append(args, s)
+	}
+
+	query := `
+		SELECT sn.serial_number, sn.line_item_id, dc.id, dc.dc_number, dc.status, p.item_name
+		FROM serial_numbers sn
+		INNER JOIN dc_line_items li ON sn.line_item_id = li.id
+		INNER JOIN delivery_challans dc ON li.dc_id = dc.id
+		INNER JOIN products p ON li.product_id = p.id
+		WHERE sn.project_id = ?
+		  AND sn.serial_number IN (` + strings.Join(placeholders, ",") + `)`
+
+	if excludeDCID != nil {
+		query += " AND dc.id != ?"
+		args = append(args, *excludeDCID)
+	}
+
+	rows, err := DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var conflicts []SerialConflict
+	for rows.Next() {
+		var c SerialConflict
+		var lineItemID int
+		if err := rows.Scan(&c.SerialNumber, &lineItemID, &c.ExistingDCID, &c.DCNumber, &c.DCStatus, &c.ProductName); err != nil {
+			return nil, err
+		}
+		conflicts = append(conflicts, c)
+	}
+	return conflicts, nil
+}
+
+// DeleteDC deletes a DC and all associated line items and serial numbers in a transaction.
+func DeleteDC(dcID int) error {
+	tx, err := DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Delete serial numbers (via line_item_id)
+	_, err = tx.Exec(`DELETE FROM serial_numbers WHERE line_item_id IN (SELECT id FROM dc_line_items WHERE dc_id = ?)`, dcID)
+	if err != nil {
+		return fmt.Errorf("failed to delete serial numbers: %w", err)
+	}
+
+	// Delete line items
+	_, err = tx.Exec(`DELETE FROM dc_line_items WHERE dc_id = ?`, dcID)
+	if err != nil {
+		return fmt.Errorf("failed to delete line items: %w", err)
+	}
+
+	// Delete transit details (may not exist for official DCs)
+	_, _ = tx.Exec(`DELETE FROM dc_transit_details WHERE dc_id = ?`, dcID)
+
+	// Delete DC
+	_, err = tx.Exec(`DELETE FROM delivery_challans WHERE id = ?`, dcID)
+	if err != nil {
+		return fmt.Errorf("failed to delete DC: %w", err)
+	}
+
+	return tx.Commit()
+}
+
 // GetDCsByProjectID fetches all DCs for a project.
 func GetDCsByProjectID(projectID int, dcType string) ([]*models.DeliveryChallan, error) {
 	query := `
@@ -260,6 +349,23 @@ func GetDCsByProjectID(projectID int, dcType string) ([]*models.DeliveryChallan,
 	}
 
 	return dcs, nil
+}
+
+// IssueDC transitions a DC from draft to issued status.
+func IssueDC(dcID int, userID int) error {
+	now := time.Now()
+	result, err := DB.Exec(
+		`UPDATE delivery_challans SET status = 'issued', issued_at = ?, issued_by = ?, updated_at = ? WHERE id = ? AND status = 'draft'`,
+		now, userID, now, dcID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to issue DC: %w", err)
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("DC not found or already issued")
+	}
+	return nil
 }
 
 // GetAllAddressesByConfigID returns all addresses for a config (no pagination, for dropdowns).

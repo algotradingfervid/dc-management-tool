@@ -17,7 +17,6 @@
 
     <form method="POST" action="/projects/{{ .project.ID }}/dcs/transit" id="transitDCForm">
         {{ .csrfField }}
-        <input type="hidden" name="dc_number" value="{{ .dcNumber }}">
 
         <!-- Section 1: Template Selection -->
         <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-6 mb-6">
@@ -26,7 +25,7 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1.5">Template <span class="text-red-500">*</span></label>
                     <select name="template_id" id="templateSelect"
-                            hx-get="" hx-trigger="change" hx-target="#productLines"
+                            onchange="changeTemplate(this)"
                             class="w-full h-10 px-3 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg">
                         <option value="">Select a template...</option>
                         {{ range .templates }}
@@ -80,7 +79,7 @@
                         <option value="">None (optional)</option>
                         {{ range .billToAddresses }}
                         <option value="{{ .ID }}" data-address='{{ toJSON .Data }}'>
-                            {{ mapGet .Data "Company Name" }} - {{ mapGet .Data "City" }}
+                            {{ addressLabel .Data $.billToColumns }}
                         </option>
                         {{ end }}
                     </select>
@@ -93,7 +92,7 @@
                         <option value="">Select ship-to address...</option>
                         {{ range .shipToAddresses }}
                         <option value="{{ .ID }}" data-address='{{ toJSON .Data }}'>
-                            {{ mapGet .Data "District" }} - {{ mapGet .Data "Secretariat Name" }}
+                            {{ addressLabel .Data $.shipToColumns }}
                         </option>
                         {{ end }}
                     </select>
@@ -293,6 +292,16 @@
 </style>
 
 <script>
+function changeTemplate(selectEl) {
+    var templateId = selectEl.value;
+    var projectId = {{ .project.ID }};
+    var url = '/projects/' + projectId + '/dcs/transit/new';
+    if (templateId) {
+        url += '?template_id=' + templateId;
+    }
+    window.location.href = url;
+}
+
 // Product calculation
 function recalcProduct(index) {
     var textarea = document.querySelector('textarea[name="line_items[' + index + '].serial_numbers"]');
@@ -427,4 +436,5 @@ document.addEventListener('DOMContentLoaded', function() {
     recalcSummary();
 });
 </script>
+<script src="/static/js/serial_validation.js"></script>
 {{ end }}

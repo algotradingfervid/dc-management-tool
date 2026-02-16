@@ -98,8 +98,20 @@ func main() {
 		// Transit DC routes
 		protected.GET("/projects/:id/dcs/transit/new", handlers.ShowCreateTransitDC)
 		protected.POST("/projects/:id/dcs/transit", handlers.CreateTransitDC)
-		protected.GET("/projects/:id/dcs/:dcid", handlers.ShowTransitDCDetail)
 		protected.GET("/projects/:id/templates/:tid/products", handlers.LoadTemplateProducts)
+
+		// Official DC routes
+		protected.GET("/projects/:id/dcs/official/new", handlers.ShowCreateOfficialDC)
+		protected.POST("/projects/:id/dcs/official", handlers.CreateOfficialDC)
+
+		// DC detail and lifecycle
+		protected.GET("/projects/:id/dcs/:dcid", handlers.ShowDCDetail)
+		protected.GET("/projects/:id/dcs/:dcid/print", handlers.ShowTransitDCPrintView)
+		protected.POST("/projects/:id/dcs/:dcid/issue", handlers.IssueDCHandler)
+		protected.DELETE("/projects/:id/dcs/:dcid", handlers.DeleteDCHandler)
+
+		// Serial number validation API
+		protected.POST("/api/serial-numbers/validate", handlers.ValidateSerialNumbers)
 
 		// Ship-to address routes
 		protected.GET("/projects/:id/ship-to", handlers.ShowShipToPage)

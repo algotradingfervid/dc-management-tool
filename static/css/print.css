@@ -1,0 +1,103 @@
+/* Print-specific styles */
+@media print {
+    body {
+        margin: 0;
+        padding: 0;
+        background: white !important;
+    }
+
+    /* Hide non-printable elements */
+    .no-print,
+    #sidebar,
+    #mobile-sidebar-overlay,
+    header,
+    nav,
+    #toast-container {
+        display: none !important;
+    }
+
+    /* Reset container for full-page print */
+    .print-area {
+        box-shadow: none !important;
+        border: none !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    .max-w-4xl {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Remove sidebar margin on main content */
+    .lg\:ml-64,
+    [class*="ml-64"] {
+        margin-left: 0 !important;
+    }
+
+    /* Remove shadows */
+    .shadow-lg,
+    .shadow-sm,
+    .shadow,
+    .dc-document {
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    /* Page break controls */
+    table {
+        page-break-inside: avoid;
+    }
+
+    thead {
+        display: table-header-group;
+    }
+
+    tr {
+        page-break-inside: avoid;
+    }
+
+    /* Keep signature section together */
+    .grid.grid-cols-2:last-child {
+        page-break-inside: avoid;
+    }
+
+    /* Ensure proper page settings */
+    @page {
+        margin: 1cm;
+        size: A4 portrait;
+    }
+
+    /* Print links without decoration */
+    a {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    /* Ensure background colors print */
+    .bg-gray-50,
+    .bg-gray-100,
+    [class*="bg-"] {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .dc-table th {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .totals-row td {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+
+/* Screen-only: hide print-only elements */
+@media screen {
+    .print-only {
+        display: none;
+    }
+}

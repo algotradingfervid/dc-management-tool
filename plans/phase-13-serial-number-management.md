@@ -1299,6 +1299,58 @@ ORDER BY sn.created_at DESC;
 - **HTMX:** For real-time validation
 - **JavaScript:** For client-side duplicate detection and UI feedback
 
+## Implementation Summary (Completed 2026-02-16)
+
+### What Was Implemented
+
+1. **Database Layer** (`internal/database/delivery_challans.go`):
+   - `CheckSerialsInProject()` - Queries serial_numbers table joined with DCs and products to find conflicts, with optional DC exclusion for edit mode
+   - `DeleteDC()` - Transactional deletion of DC + line items + serial numbers
+
+2. **Validation API** (`internal/handlers/serial_validation.go`):
+   - `POST /api/serial-numbers/validate` - Accepts project_id, serial_numbers (newline-separated), optional exclude_dc_id. Returns JSON with duplicate_in_db (with DC number, status, product name), duplicate_in_input, valid flag, total_count
+   - `DELETE /projects/:id/dcs/:dcid` - DC deletion handler (draft only)
+
+3. **Frontend Validation** (`static/js/serial_validation.js`):
+   - 500ms debounced validation on all `.serial-textarea` inputs
+   - Red border + error messages for duplicates (within-input and cross-DC)
+   - Green border for valid serials
+   - Form submission prevention when validation errors exist
+   - Barcode scanner Enter key handling
+   - CSRF token included in validation requests
+
+4. **Template Integration**:
+   - `serial_validation.js` included in both `create.html` (Transit) and `official_create.html` (Official)
+   - Validation errors appear inline below each serial textarea
+
+5. **Route Registration** (`cmd/server/main.go`):
+   - `POST /api/serial-numbers/validate` - Serial validation endpoint
+   - `DELETE /projects/:id/dcs/:dcid` - DC deletion endpoint
+
+### Pre-existing (from Phase 11/12)
+
+- `serial_numbers` table with UNIQUE(project_id, serial_number) constraint
+- Serial number insertion in `CreateDeliveryChallan()` transaction
+- Serial number retrieval by line item ID
+- UNIQUE constraint error handling in DC creation handlers
+
+### Test Results (Playwright Browser Tests)
+
+- [x] Login and navigate to Transit DC creation form
+- [x] Fill serial numbers - quantity counter updates correctly (3 serials = Qty 3)
+- [x] Duplicate within same textarea detected ("Duplicates in this list: SN001")
+- [x] Red border applied to textarea with duplicates
+- [x] Save DC with valid serials - redirects to detail page with serials displayed
+- [x] Cross-DC duplicate detection works ("Already used in other DCs: SN001 — SCP-TDC-2526-014 (draft)")
+- [x] Official DC form also validates serials against same project scope
+- [x] Green border shown for valid serial inputs
+- [x] Debouncing works (500ms delay before API call)
+
+### Screenshots
+
+- `serial-validation-duplicate-detected.png` - Within-input duplicate detection
+- `serial-validation-cross-dc-duplicate.png` - Cross-DC duplicate detection
+
 ## Next Steps
 
 After Phase 13 completion:

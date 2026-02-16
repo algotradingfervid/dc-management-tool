@@ -37,9 +37,46 @@ type DCNumberParts struct {
 	SequenceNumber int
 }
 
+// PeekNextDCNumber returns what the next DC number would be WITHOUT incrementing the sequence.
+// Use this for display purposes (e.g., showing the number on the create form).
+func PeekNextDCNumber(db *sql.DB, projectID int, dcType string) (string, error) {
+	if dcType != DCTypeTransit && dcType != DCTypeOfficial {
+		return "", fmt.Errorf("invalid DC type: %s (must be 'transit' or 'official')", dcType)
+	}
+
+	var dcPrefix string
+	err := db.QueryRow("SELECT dc_prefix FROM projects WHERE id = ?", projectID).Scan(&dcPrefix)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("project not found: %d", projectID)
+		}
+		return "", fmt.Errorf("failed to get project prefix: %w", err)
+	}
+	if dcPrefix == "" {
+		return "", fmt.Errorf("project %d has no DC prefix set", projectID)
+	}
+
+	fy := GetFinancialYear(time.Now())
+
+	var nextSeq int
+	err = db.QueryRow(`
+		SELECT next_sequence FROM dc_number_sequences
+		WHERE project_id = ? AND dc_type = ? AND financial_year = ?`,
+		projectID, dcType, fy,
+	).Scan(&nextSeq)
+	if err == sql.ErrNoRows {
+		nextSeq = 1
+	} else if err != nil {
+		return "", fmt.Errorf("failed to read sequence: %w", err)
+	}
+
+	return FormatDCNumber(dcPrefix, fy, dcType, nextSeq), nil
+}
+
 // GenerateDCNumber generates a unique DC number for a delivery challan.
 // Format: {Prefix}-{TDC|ODC}-{YYYYYY}-{NNN}
 // Example: SCP-TDC-2425-001
+// WARNING: This increments the sequence. Only call when actually creating a DC.
 func GenerateDCNumber(db *sql.DB, projectID int, dcType string) (string, error) {
 	return GenerateDCNumberForDate(db, projectID, dcType, time.Now())
 }
