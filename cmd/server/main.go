@@ -107,6 +107,7 @@ func main() {
 		// DC detail and lifecycle
 		protected.GET("/projects/:id/dcs/:dcid", handlers.ShowDCDetail)
 		protected.GET("/projects/:id/dcs/:dcid/print", handlers.ShowTransitDCPrintView)
+		protected.GET("/projects/:id/dcs/:dcid/official-print", handlers.ShowOfficialDCPrintView)
 		protected.POST("/projects/:id/dcs/:dcid/issue", handlers.IssueDCHandler)
 		protected.DELETE("/projects/:id/dcs/:dcid", handlers.DeleteDCHandler)
 

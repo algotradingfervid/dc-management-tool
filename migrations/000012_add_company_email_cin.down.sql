@@ -1,0 +1,1 @@
+-- SQLite doesn't support DROP COLUMN, but this is a down migration placeholder

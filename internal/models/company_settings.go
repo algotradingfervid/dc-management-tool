@@ -11,4 +11,6 @@ type CompanySettings struct {
 	Pincode        string `json:"pincode"`
 	GSTIN          string `json:"gstin"`
 	SignatureImage string `json:"signature_image"`
+	Email          string `json:"email"`
+	CIN            string `json:"cin"`
 }

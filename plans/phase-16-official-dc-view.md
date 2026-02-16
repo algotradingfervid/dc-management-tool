@@ -838,9 +838,52 @@ WHERE id = ?;
 
 ---
 
+## Implementation Summary (Completed 2026-02-16)
+
+### Files Created
+- `migrations/000012_add_company_email_cin.up.sql` - Adds email and CIN columns to company_settings
+- `migrations/000012_add_company_email_cin.down.sql` - Down migration placeholder
+- `templates/pages/delivery_challans/official_print.html` - Official DC print view template
+
+### Files Modified
+- `internal/models/company_settings.go` - Added Email and CIN fields to CompanySettings struct
+- `internal/database/company_settings.go` - Updated query to fetch email and CIN columns
+- `internal/handlers/official_dc.go` - Added ShowOfficialDCPrintView handler
+- `templates/pages/delivery_challans/official_detail.html` - Added Print View button
+- `cmd/server/main.go` - Registered `/projects/:id/dcs/:dcid/official-print` route
+
+### What Was Implemented
+1. Official DC print view with company header (name, address, email, GSTIN, CIN)
+2. "DELIVERY CHALLAN" title with double-border styling
+3. DC metadata (number, date), tender ref, PO ref, project info
+4. "Issued To" section with district/mandal from ship-to address
+5. Bill To and Ship To address blocks
+6. Product table with 7 columns (S.No, Item Name, Description, Brand/Model No, Qty, Serial Number, Remarks) - NO pricing
+7. Serial numbers displayed per line item
+8. Acknowledgement: "It is certified that the material is received in good condition."
+9. Date of Receipt blank line
+10. Dual signature blocks: FSSPL Representative and Department Official
+11. Print button (triggers window.print())
+12. Print CSS via existing print.css (A4, hides nav/buttons)
+13. Back to DC navigation link
+
+### Testing Results (Playwright)
+- Login and navigation: PASS
+- Official DC detail page shows Print View button: PASS
+- Print View page loads successfully: PASS
+- Company header with all info (name, address, email, GSTIN, CIN): PASS
+- "DELIVERY CHALLAN" title centered: PASS
+- DC number and date displayed: PASS
+- Product table with correct columns (no pricing): PASS
+- Serial numbers per line item: PASS
+- Acknowledgement text and Date of Receipt: PASS
+- Dual signature blocks (FSSPL Rep + Dept Official): PASS
+- Print button in action bar: PASS
+- Back to DC link: PASS
+
 ## Notes
-- Company information is hardcoded as specified
-- Mandal code extraction logic may need customization based on address format
+- Company information is loaded from company_settings table (not hardcoded)
+- Mandal/ULB and mandal_code are extracted from ship-to address data fields if present
 - Consider adding a settings page for company signature management
 - Future enhancement: allow template customization per project
 - Consider adding a "Download as PDF" option in Phase 17

@@ -330,6 +330,84 @@ func ShowOfficialDCDetail(c *gin.Context) {
 	})
 }
 
+// ShowOfficialDCPrintView renders a print-ready view for an Official DC.
+func ShowOfficialDCPrintView(c *gin.Context) {
+	user := auth.GetCurrentUser(c)
+
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.Redirect(http.StatusFound, "/projects")
+		return
+	}
+
+	dcID, err := strconv.Atoi(c.Param("dcid"))
+	if err != nil {
+		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
+		return
+	}
+
+	project, err := database.GetProjectByID(projectID)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/projects")
+		return
+	}
+
+	dc, err := database.GetDeliveryChallanByID(dcID)
+	if err != nil || dc.ProjectID != projectID {
+		auth.SetFlash(c.Request, "error", "DC not found")
+		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
+		return
+	}
+
+	lineItems, _ := database.GetLineItemsByDCID(dcID)
+
+	// Load serial numbers for each line item
+	for i := range lineItems {
+		serials, _ := database.GetSerialNumbersByLineItemID(lineItems[i].ID)
+		lineItems[i].SerialNumbers = serials
+	}
+
+	// Calculate total quantity
+	var totalQty int
+	for _, li := range lineItems {
+		totalQty += li.Quantity
+	}
+
+	// Get addresses
+	var shipToAddress *models.Address
+	if dc.ShipToAddressID > 0 {
+		shipToAddress, _ = database.GetAddress(dc.ShipToAddressID)
+	}
+	var billToAddress *models.Address
+	if dc.BillToAddressID != nil && *dc.BillToAddressID > 0 {
+		billToAddress, _ = database.GetAddress(*dc.BillToAddressID)
+	}
+
+	// Get company settings
+	company, _ := database.GetCompanySettings()
+
+	breadcrumbs := helpers.BuildBreadcrumbs(
+		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
+		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
+		helpers.Breadcrumb{Title: dc.DCNumber, URL: fmt.Sprintf("/projects/%d/dcs/%d", projectID, dcID)},
+		helpers.Breadcrumb{Title: "Official Print View", URL: ""},
+	)
+
+	c.HTML(http.StatusOK, "delivery_challans/official_print.html", gin.H{
+		"user":          user,
+		"currentPath":   c.Request.URL.Path,
+		"breadcrumbs":   breadcrumbs,
+		"project":       project,
+		"dc":            dc,
+		"lineItems":     lineItems,
+		"totalQty":      totalQty,
+		"shipToAddress": shipToAddress,
+		"billToAddress": billToAddress,
+		"company":       company,
+		"activeTab":     "templates",
+	})
+}
+
 func renderOfficialCreateFormWithErrors(c *gin.Context, project *models.Project, templateID *int, dcNumber, challanDate string, errors map[string]string) {
 	user := auth.GetCurrentUser(c)
 
