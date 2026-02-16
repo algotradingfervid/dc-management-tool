@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — DC Management Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['DM Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                            950: '#1e1b4b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; }
+
+        .login-bg {
+            background-color: #f8fafc;
+            background-image:
+                radial-gradient(at 20% 80%, rgba(99, 102, 241, 0.06) 0%, transparent 50%),
+                radial-gradient(at 80% 20%, rgba(99, 102, 241, 0.04) 0%, transparent 50%);
+        }
+
+        .card-shadow {
+            box-shadow:
+                0 0 0 1px rgba(0, 0, 0, 0.03),
+                0 1px 2px rgba(0, 0, 0, 0.04),
+                0 8px 16px -4px rgba(0, 0, 0, 0.06),
+                0 24px 48px -12px rgba(0, 0, 0, 0.05);
+        }
+
+        .input-focus:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #4f46e5, 0 0 0 4px rgba(79, 70, 229, 0.15);
+            border-color: transparent;
+        }
+
+        .btn-press:active {
+            transform: scale(0.985);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .animate-card {
+            animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .animate-fade {
+            animation: fadeIn 0.6s ease forwards;
+        }
+
+        @keyframes shakeX {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px); }
+            40% { transform: translateX(6px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
+
+        .shake { animation: shakeX 0.45s ease; }
+
+        .geometric-accent {
+            position: absolute;
+            border: 1.5px solid rgba(79, 70, 229, 0.08);
+            border-radius: 2px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="login-bg min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+
+    <!-- Subtle geometric accents -->
+    <div class="geometric-accent w-32 h-32 -rotate-12 top-[10%] left-[8%] hidden md:block"></div>
+    <div class="geometric-accent w-20 h-20 rotate-45 bottom-[15%] right-[10%] hidden md:block"></div>
+    <div class="geometric-accent w-14 h-14 rotate-6 top-[20%] right-[18%] hidden md:block"></div>
+
+    <div class="w-full max-w-[420px] animate-card">
+        <!-- Card -->
+        <div class="bg-white rounded-2xl card-shadow p-8 sm:p-10">
+
+            <!-- Logo / Brand -->
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-14 h-14 bg-brand-600 rounded-xl mb-5 relative">
+                    <svg class="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+                    </svg>
+                    <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-white"></div>
+                </div>
+
+                <h1 class="text-[22px] font-bold text-slate-900 tracking-tight leading-tight">
+                    FERVID SMART SOLUTIONS
+                </h1>
+                <p class="text-slate-400 text-sm font-medium mt-1.5 tracking-wide uppercase">
+                    DC Management Tool
+                </p>
+            </div>
+
+            <!-- Divider -->
+            <div class="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-7"></div>
+
+            <!-- Error Message (sample — toggle visibility to demo) -->
+            <div id="error-area" class="mb-5 shake">
+                <div class="flex items-start gap-2.5 bg-red-50 border border-red-100 text-red-700 rounded-lg px-4 py-3 text-sm">
+                    <svg class="w-4 h-4 mt-0.5 shrink-0 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="font-medium">Invalid username or password. Please try again.</span>
+                </div>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" action="/login" method="POST" class="space-y-5">
+
+                <!-- Username -->
+                <div>
+                    <label for="username" class="block text-sm font-semibold text-slate-700 mb-2">
+                        Username
+                    </label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        required
+                        autofocus
+                        placeholder="Enter your username"
+                        class="input-focus w-full h-11 px-4 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg placeholder:text-slate-400 transition-all duration-150 hover:border-slate-300 hover:bg-white"
+                    >
+                </div>
+
+                <!-- Password -->
+                <div>
+                    <label for="password" class="block text-sm font-semibold text-slate-700 mb-2">
+                        Password
+                    </label>
+                    <div class="relative">
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            required
+                            placeholder="Enter your password"
+                            class="input-focus w-full h-11 px-4 pr-11 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg placeholder:text-slate-400 transition-all duration-150 hover:border-slate-300 hover:bg-white"
+                        >
+                        <button
+                            type="button"
+                            onclick="togglePassword()"
+                            class="absolute right-1 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600 transition-colors rounded-md"
+                            aria-label="Toggle password visibility"
+                        >
+                            <svg id="eye-open" class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <svg id="eye-closed" class="w-[18px] h-[18px] hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sign In Button -->
+                <button
+                    type="submit"
+                    class="btn-press w-full h-11 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-lg transition-all duration-150 mt-2 flex items-center justify-center gap-2 shadow-sm shadow-brand-600/20"
+                >
+                    Sign In
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
+                </button>
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <p class="text-center text-xs text-slate-400 mt-6 animate-fade" style="animation-delay: 0.3s; opacity: 0;">
+            Fervid Smart Solutions Pvt. Ltd. &middot; Internal Use Only
+        </p>
+    </div>
+
+    <script>
+        function togglePassword() {
+            const input = document.getElementById('password');
+            const eyeOpen = document.getElementById('eye-open');
+            const eyeClosed = document.getElementById('eye-closed');
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                eyeOpen.classList.add('hidden');
+                eyeClosed.classList.remove('hidden');
+            } else {
+                input.type = 'password';
+                eyeOpen.classList.remove('hidden');
+                eyeClosed.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

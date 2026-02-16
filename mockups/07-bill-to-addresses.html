@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill To Addresses — GSWS UPS — DC Management Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['DM Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                            950: '#1e1b4b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; }
+
+        .card-shadow {
+            box-shadow:
+                0 0 0 1px rgba(0, 0, 0, 0.03),
+                0 1px 2px rgba(0, 0, 0, 0.04),
+                0 8px 16px -4px rgba(0, 0, 0, 0.06),
+                0 24px 48px -12px rgba(0, 0, 0, 0.05);
+        }
+
+        .input-focus:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #4f46e5, 0 0 0 4px rgba(79, 70, 229, 0.15);
+            border-color: transparent;
+        }
+
+        .btn-press:active {
+            transform: scale(0.985);
+        }
+
+        /* Sidebar */
+        .sidebar-item {
+            transition: all 0.15s ease;
+        }
+        .sidebar-item:hover {
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        .sidebar-item.active {
+            background-color: #eef2ff;
+            color: #4338ca;
+            font-weight: 600;
+        }
+
+        /* Custom scrollbar */
+        .table-wrap::-webkit-scrollbar {
+            height: 6px;
+        }
+        .table-wrap::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 3px;
+        }
+        .table-wrap::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        /* File input styling */
+        .file-label {
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .file-label:hover {
+            border-color: #4f46e5;
+            background-color: #f5f3ff;
+        }
+
+        /* Radio custom */
+        .radio-custom:checked {
+            background-color: #4f46e5;
+            border-color: #4f46e5;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/40 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-200 z-50 transform -translate-x-full lg:translate-x-0 transition-transform duration-200 flex flex-col">
+        <!-- Brand -->
+        <div class="h-16 flex items-center gap-3 px-5 border-b border-slate-100">
+            <div class="w-9 h-9 bg-brand-600 rounded-lg flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+                </svg>
+            </div>
+            <div class="min-w-0">
+                <p class="text-sm font-bold text-slate-900 truncate leading-tight">DC Management</p>
+                <p class="text-[11px] text-slate-400 font-medium tracking-wide uppercase">Fervid Smart</p>
+            </div>
+        </div>
+
+        <!-- Nav -->
+        <nav class="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+            <a href="02-dashboard.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600">
+                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                </svg>
+                Dashboard
+            </a>
+            <a href="03-projects-list.html" class="sidebar-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm">
+                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                </svg>
+                Projects
+            </a>
+            <a href="16-all-dcs.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600">
+                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+                All DCs
+            </a>
+            <a href="17-serial-search.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600">
+                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                Serial Search
+            </a>
+        </nav>
+
+        <!-- User -->
+        <div class="border-t border-slate-100 px-4 py-3">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 text-xs font-bold">RK</div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium text-slate-800 truncate">Rajesh Kumar</p>
+                    <p class="text-[11px] text-slate-400 truncate">Admin</p>
+                </div>
+                <a href="01-login.html" class="text-slate-400 hover:text-slate-600 transition-colors p-1" title="Sign Out">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="lg:ml-64 min-h-screen flex flex-col">
+
+        <!-- Top Bar -->
+        <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/80">
+            <div class="flex items-center justify-between px-4 sm:px-6 h-16">
+                <!-- Left: hamburger + breadcrumb -->
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleSidebar()" class="lg:hidden p-1.5 -ml-1.5 text-slate-500 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                        </svg>
+                    </button>
+                    <nav class="flex items-center text-sm">
+                        <a href="03-projects-list.html" class="text-slate-400 hover:text-brand-600 font-medium transition-colors">Projects</a>
+                        <svg class="w-4 h-4 text-slate-300 mx-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                        <a href="05-project-detail.html" class="text-slate-400 hover:text-brand-600 font-medium transition-colors">GSWS UPS</a>
+                        <svg class="w-4 h-4 text-slate-300 mx-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                        <span class="text-slate-700 font-semibold">Bill To Addresses</span>
+                    </nav>
+                </div>
+                <!-- Right: user avatar -->
+                <div class="flex items-center gap-3">
+                    <button class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                        </svg>
+                    </button>
+                    <div class="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-white text-xs font-bold cursor-pointer">NK</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-6xl w-full">
+
+            <!-- Page Title -->
+            <div class="mb-6">
+                <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Bill To Addresses</h1>
+                <p class="text-slate-500 text-sm mt-1">Define column structure and manage the bill-to address list for GSWS UPS.</p>
+            </div>
+
+            <!-- Column Structure Card -->
+            <section class="bg-white rounded-xl card-shadow p-5 sm:p-6 mb-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Column Structure</h2>
+                    <button class="btn-press inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-brand-600 bg-brand-50 hover:bg-brand-100 rounded-lg transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                        </svg>
+                        Edit Columns
+                    </button>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 text-sm font-medium rounded-full">
+                        <span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span>
+                        District
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 text-sm font-medium rounded-full">
+                        <span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span>
+                        Office Name
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 text-sm font-medium rounded-full">
+                        <span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span>
+                        Address
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 text-sm font-medium rounded-full">
+                        <span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span>
+                        Pin Code
+                    </span>
+                </div>
+            </section>
+
+            <!-- Upload Section Card -->
+            <section class="bg-white rounded-xl card-shadow p-5 sm:p-6 mb-5">
+                <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Upload Addresses</h2>
+                <form class="space-y-4">
+                    <!-- File Input -->
+                    <div>
+                        <label class="file-label flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50 transition-colors">
+                            <svg class="w-8 h-8 text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                            </svg>
+                            <span class="text-sm text-slate-500 font-medium">Choose a <span class="text-brand-600 font-semibold">.csv</span> or <span class="text-brand-600 font-semibold">.xlsx</span> file</span>
+                            <span class="text-xs text-slate-400 mt-0.5">or drag and drop here</span>
+                            <input type="file" accept=".csv,.xlsx" class="hidden" />
+                        </label>
+                    </div>
+                    <!-- Mode Radio -->
+                    <div class="flex flex-wrap items-center gap-5">
+                        <label class="flex items-center gap-2 cursor-pointer group">
+                            <input type="radio" name="upload-mode" value="append" checked class="radio-custom w-4 h-4 border-2 border-slate-300 text-brand-600 focus:ring-brand-500 focus:ring-offset-0 transition-colors" />
+                            <span class="text-sm text-slate-700 font-medium group-hover:text-slate-900 transition-colors">Append to existing</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer group">
+                            <input type="radio" name="upload-mode" value="replace" class="radio-custom w-4 h-4 border-2 border-slate-300 text-brand-600 focus:ring-brand-500 focus:ring-offset-0 transition-colors" />
+                            <span class="text-sm text-slate-700 font-medium group-hover:text-slate-900 transition-colors">Replace all</span>
+                        </label>
+                    </div>
+                    <!-- Upload Button -->
+                    <button type="button" class="btn-press inline-flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm shadow-brand-600/20">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                        </svg>
+                        Upload
+                    </button>
+                </form>
+            </section>
+
+            <!-- Addresses Table Card -->
+            <section id="address-section" class="bg-white rounded-xl card-shadow">
+                <!-- Table Header -->
+                <div class="p-5 sm:p-6 border-b border-slate-100">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Addresses</h2>
+                            <span class="inline-flex items-center px-2.5 py-0.5 bg-brand-50 text-brand-700 text-xs font-bold rounded-full">248 total</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <!-- Search -->
+                            <div class="relative">
+                                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                                </svg>
+                                <input
+                                    type="text"
+                                    placeholder="Search addresses..."
+                                    class="input-focus w-full sm:w-64 h-9 pl-9 pr-4 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg placeholder:text-slate-400 transition-all duration-150 hover:border-slate-300 hover:bg-white"
+                                />
+                            </div>
+                            <!-- Delete All -->
+                            <button class="btn-press inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                                Delete All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="table-wrap overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-100">
+                                <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">#</th>
+                                <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">District</th>
+                                <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Office Name</th>
+                                <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Address</th>
+                                <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Pin Code</th>
+                                <th class="text-right px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="address-table" class="divide-y divide-slate-50">
+                            <tr class="hover:bg-slate-50/80 transition-colors">
+                                <td class="px-5 py-3.5 text-slate-400 font-mono text-xs">1</td>
+                                <td class="px-5 py-3.5 text-slate-900 font-medium whitespace-nowrap">Hyderabad</td>
+                                <td class="px-5 py-3.5 text-slate-700 whitespace-nowrap">SRO Madhapur</td>
+                                <td class="px-5 py-3.5 text-slate-600 max-w-xs truncate">Plot 14, Arunodaya Colony, Madhapur, Hyderabad</td>
+                                <td class="px-5 py-3.5 text-slate-700 font-mono">500081</td>
+                                <td class="px-5 py-3.5 text-right">
+                                    <button class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-50/80 transition-colors">
+                                <td class="px-5 py-3.5 text-slate-400 font-mono text-xs">2</td>
+                                <td class="px-5 py-3.5 text-slate-900 font-medium whitespace-nowrap">Warangal</td>
+                                <td class="px-5 py-3.5 text-slate-700 whitespace-nowrap">SRO Hanamkonda</td>
+                                <td class="px-5 py-3.5 text-slate-600 max-w-xs truncate">Main Road, Subedari, Hanamkonda, Warangal</td>
+                                <td class="px-5 py-3.5 text-slate-700 font-mono">506001</td>
+                                <td class="px-5 py-3.5 text-right">
+                                    <button class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-50/80 transition-colors">
+                                <td class="px-5 py-3.5 text-slate-400 font-mono text-xs">3</td>
+                                <td class="px-5 py-3.5 text-slate-900 font-medium whitespace-nowrap">Vijayawada</td>
+                                <td class="px-5 py-3.5 text-slate-700 whitespace-nowrap">SRO Governorpet</td>
+                                <td class="px-5 py-3.5 text-slate-600 max-w-xs truncate">D.No. 27-18-42, Governorpet, Vijayawada, Krishna Dt.</td>
+                                <td class="px-5 py-3.5 text-slate-700 font-mono">520002</td>
+                                <td class="px-5 py-3.5 text-right">
+                                    <button class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-50/80 transition-colors">
+                                <td class="px-5 py-3.5 text-slate-400 font-mono text-xs">4</td>
+                                <td class="px-5 py-3.5 text-slate-900 font-medium whitespace-nowrap">Guntur</td>
+                                <td class="px-5 py-3.5 text-slate-700 whitespace-nowrap">SRO Brodipet</td>
+                                <td class="px-5 py-3.5 text-slate-600 max-w-xs truncate">4th Line, Brodipet, Guntur, Andhra Pradesh</td>
+                                <td class="px-5 py-3.5 text-slate-700 font-mono">522002</td>
+                                <td class="px-5 py-3.5 text-right">
+                                    <button class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-50/80 transition-colors">
+                                <td class="px-5 py-3.5 text-slate-400 font-mono text-xs">5</td>
+                                <td class="px-5 py-3.5 text-slate-900 font-medium whitespace-nowrap">Karimnagar</td>
+                                <td class="px-5 py-3.5 text-slate-700 whitespace-nowrap">SRO Karimnagar</td>
+                                <td class="px-5 py-3.5 text-slate-600 max-w-xs truncate">H.No. 5-6-430, Mankammathota, Karimnagar</td>
+                                <td class="px-5 py-3.5 text-slate-700 font-mono">505001</td>
+                                <td class="px-5 py-3.5 text-right">
+                                    <button class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-50/80 transition-colors">
+                                <td class="px-5 py-3.5 text-slate-400 font-mono text-xs">6</td>
+                                <td class="px-5 py-3.5 text-slate-900 font-medium whitespace-nowrap">Nalgonda</td>
+                                <td class="px-5 py-3.5 text-slate-700 whitespace-nowrap">SRO Nalgonda Town</td>
+                                <td class="px-5 py-3.5 text-slate-600 max-w-xs truncate">Near Bus Stand, Old Town, Nalgonda, Telangana</td>
+                                <td class="px-5 py-3.5 text-slate-700 font-mono">508001</td>
+                                <td class="px-5 py-3.5 text-right">
+                                    <button class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-50/80 transition-colors">
+                                <td class="px-5 py-3.5 text-slate-400 font-mono text-xs">7</td>
+                                <td class="px-5 py-3.5 text-slate-900 font-medium whitespace-nowrap">Tirupati</td>
+                                <td class="px-5 py-3.5 text-slate-700 whitespace-nowrap">SRO Tirupati East</td>
+                                <td class="px-5 py-3.5 text-slate-600 max-w-xs truncate">D.No. 19-2-198, Tilak Road, Tirupati, Chittoor Dt.</td>
+                                <td class="px-5 py-3.5 text-slate-700 font-mono">517501</td>
+                                <td class="px-5 py-3.5 text-right">
+                                    <button class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-50/80 transition-colors">
+                                <td class="px-5 py-3.5 text-slate-400 font-mono text-xs">8</td>
+                                <td class="px-5 py-3.5 text-slate-900 font-medium whitespace-nowrap">Khammam</td>
+                                <td class="px-5 py-3.5 text-slate-700 whitespace-nowrap">SRO Khammam</td>
+                                <td class="px-5 py-3.5 text-slate-600 max-w-xs truncate">H.No. 3-4-56, Balaji Nagar, Khammam, Telangana</td>
+                                <td class="px-5 py-3.5 text-slate-700 font-mono">507001</td>
+                                <td class="px-5 py-3.5 text-right">
+                                    <button class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-50/80 transition-colors">
+                                <td class="px-5 py-3.5 text-slate-400 font-mono text-xs">9</td>
+                                <td class="px-5 py-3.5 text-slate-900 font-medium whitespace-nowrap">Vizag</td>
+                                <td class="px-5 py-3.5 text-slate-700 whitespace-nowrap">SRO Gajuwaka</td>
+                                <td class="px-5 py-3.5 text-slate-600 max-w-xs truncate">D.No. 48-12-7, Opp. Steel Plant Gate, Gajuwaka, Vizag</td>
+                                <td class="px-5 py-3.5 text-slate-700 font-mono">530026</td>
+                                <td class="px-5 py-3.5 text-right">
+                                    <button class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-50/80 transition-colors">
+                                <td class="px-5 py-3.5 text-slate-400 font-mono text-xs">10</td>
+                                <td class="px-5 py-3.5 text-slate-900 font-medium whitespace-nowrap">Nizamabad</td>
+                                <td class="px-5 py-3.5 text-slate-700 whitespace-nowrap">SRO Nizamabad</td>
+                                <td class="px-5 py-3.5 text-slate-600 max-w-xs truncate">H.No. 8-1-120, Beside Collectorate, Nizamabad</td>
+                                <td class="px-5 py-3.5 text-slate-700 font-mono">503001</td>
+                                <td class="px-5 py-3.5 text-right">
+                                    <button class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="px-5 sm:px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <p class="text-sm text-slate-500">Showing <span class="font-semibold text-slate-700">1-25</span> of <span class="font-semibold text-slate-700">248</span> addresses</p>
+                    <div class="flex items-center gap-1">
+                        <button disabled class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 cursor-not-allowed">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                        </button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-semibold bg-brand-600 text-white">1</button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">2</button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">3</button>
+                        <span class="w-8 h-8 flex items-center justify-center text-slate-400 text-sm">...</span>
+                        <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">10</button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ===== MOBILE BOTTOM TAB BAR ===== -->
+    <nav class="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 z-30 flex items-center justify-around h-14">
+        <a href="02-dashboard.html" class="flex flex-col items-center gap-0.5 px-3 py-1.5 text-slate-400 text-[10px] font-medium">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+            Dashboard
+        </a>
+        <a href="03-projects-list.html" class="flex flex-col items-center gap-0.5 px-3 py-1.5 text-brand-600 text-[10px] font-semibold">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>
+            Projects
+        </a>
+        <a href="16-all-dcs.html" class="flex flex-col items-center gap-0.5 px-3 py-1.5 text-slate-400 text-[10px] font-medium">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+            All DCs
+        </a>
+        <a href="17-serial-search.html" class="flex flex-col items-center gap-0.5 px-3 py-1.5 text-slate-400 text-[10px] font-medium">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+            Serial Search
+        </a>
+    </nav>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+    </script>
+</body>
+</html>

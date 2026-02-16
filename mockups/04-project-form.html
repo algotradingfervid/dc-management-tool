@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Project — DC Management Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['DM Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                            950: '#1e1b4b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; }
+
+        .card-shadow {
+            box-shadow:
+                0 0 0 1px rgba(0, 0, 0, 0.03),
+                0 1px 2px rgba(0, 0, 0, 0.04),
+                0 8px 16px -4px rgba(0, 0, 0, 0.06),
+                0 24px 48px -12px rgba(0, 0, 0, 0.05);
+        }
+
+        .input-focus:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #4f46e5, 0 0 0 4px rgba(79, 70, 229, 0.15);
+            border-color: transparent;
+        }
+
+        .btn-press:active {
+            transform: scale(0.985);
+        }
+
+        /* Sidebar */
+        .sidebar-item {
+            transition: all 0.15s ease;
+        }
+        .sidebar-item:hover {
+            background-color: rgba(79, 70, 229, 0.06);
+        }
+        .sidebar-item.active {
+            background-color: #eef2ff;
+            color: #4338ca;
+            font-weight: 600;
+        }
+
+        .dropdown-menu {
+            display: none;
+        }
+        .dropdown-menu.open {
+            display: block;
+        }
+
+        /* Upload zone */
+        .upload-zone {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.2s ease;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: #4f46e5;
+            background-color: #eef2ff;
+        }
+
+        /* Scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        @media (max-width: 768px) {
+            .mobile-bottom-bar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: white;
+                border-top: 1px solid #e2e8f0;
+                padding: 12px 16px;
+                z-index: 50;
+                box-shadow: 0 -4px 12px rgba(0,0,0,0.06);
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+    <div class="flex min-h-screen">
+
+        <!-- ==================== SIDEBAR ==================== -->
+        <aside class="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 shrink-0 fixed inset-y-0 left-0 z-40">
+            <!-- Brand -->
+            <div class="flex items-center gap-3 px-5 h-16 border-b border-slate-100 shrink-0">
+                <div class="w-9 h-9 bg-brand-600 rounded-lg flex items-center justify-center relative">
+                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+                    </svg>
+                    <div class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white"></div>
+                </div>
+                <div class="leading-tight">
+                    <span class="text-sm font-bold text-slate-900 tracking-tight block">DC Manager</span>
+                    <span class="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Fervid Smart</span>
+                </div>
+            </div>
+
+            <!-- Nav Links -->
+            <nav class="flex-1 py-4 px-3 space-y-1 custom-scroll overflow-y-auto">
+                <a href="02-dashboard.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="03-projects-list.html" class="sidebar-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                    </svg>
+                    Projects
+                </a>
+                <a href="16-all-dcs.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                    All DCs
+                </a>
+                <a href="17-serial-search.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                    </svg>
+                    Serial Search
+                </a>
+            </nav>
+
+            <!-- Sidebar footer -->
+            <div class="px-4 py-3 border-t border-slate-100 shrink-0">
+                <p class="text-[10px] text-slate-400 text-center">Fervid Smart Solutions Pvt. Ltd.</p>
+            </div>
+        </aside>
+
+        <!-- ==================== MAIN CONTENT ==================== -->
+        <div class="flex-1 lg:ml-64 flex flex-col min-h-screen">
+
+            <!-- Top Bar -->
+            <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200">
+                <div class="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
+                    <div class="flex items-center gap-3">
+                        <!-- Mobile menu button -->
+                        <button class="lg:hidden p-2 -ml-2 text-slate-500 hover:text-slate-700 rounded-lg" onclick="document.getElementById('mobile-sidebar').classList.toggle('hidden')">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                            </svg>
+                        </button>
+                        <div>
+                            <h1 class="text-lg font-bold text-slate-900">New Project</h1>
+                            <nav class="flex items-center gap-1.5 text-sm">
+                                <a href="03-projects-list.html" class="text-brand-600 hover:text-brand-700 font-medium">Projects</a>
+                                <svg class="w-3.5 h-3.5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                </svg>
+                                <span class="text-slate-500">New Project</span>
+                            </nav>
+                        </div>
+                    </div>
+
+                    <!-- User dropdown -->
+                    <div class="relative">
+                        <button onclick="toggleDropdown()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors text-sm">
+                            <div class="w-7 h-7 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-bold">RK</div>
+                            <span class="hidden sm:block font-medium text-slate-700">Rajesh K.</span>
+                            <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                            </svg>
+                        </button>
+                        <div id="userDropdown" class="dropdown-menu absolute right-0 mt-1 w-48 bg-white rounded-xl card-shadow border border-slate-100 py-1 z-50">
+                            <div class="px-4 py-2 border-b border-slate-100">
+                                <p class="text-sm font-semibold text-slate-900">Rajesh Kumar</p>
+                                <p class="text-xs text-slate-400">rajesh@fervidsmart.com</p>
+                            </div>
+                            <a href="01-login.html" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                                </svg>
+                                Sign Out
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <main class="flex-1 px-4 sm:px-6 lg:px-8 py-6 pb-28 md:pb-6">
+                <form action="/projects" method="POST" enctype="multipart/form-data" class="max-w-3xl mx-auto space-y-6">
+
+                    <!-- ======== Section 1: Project Information ======== -->
+                    <section class="bg-white rounded-xl card-shadow overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100">
+                            <h2 class="text-[15px] font-bold text-slate-900 flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-lg bg-brand-50 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                                    </svg>
+                                </span>
+                                Project Information
+                            </h2>
+                        </div>
+                        <div class="p-6 space-y-5">
+                            <!-- Project Name -->
+                            <div>
+                                <label for="project_name" class="block text-sm font-semibold text-slate-700 mb-2">
+                                    Project Name <span class="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="project_name"
+                                    name="project_name"
+                                    required
+                                    value="GHMC Smart Water Metering System"
+                                    class="input-focus w-full h-11 px-4 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg placeholder:text-slate-400 transition-all duration-150 hover:border-slate-300 hover:bg-white"
+                                >
+                            </div>
+
+                            <!-- Project Description -->
+                            <div>
+                                <label for="project_description" class="block text-sm font-semibold text-slate-700 mb-2">
+                                    Project Description <span class="text-red-500">*</span>
+                                </label>
+                                <textarea
+                                    id="project_description"
+                                    name="project_description"
+                                    rows="3"
+                                    required
+                                    class="input-focus w-full px-4 py-3 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg placeholder:text-slate-400 transition-all duration-150 hover:border-slate-300 hover:bg-white resize-none"
+                                >Supply, installation, testing and commissioning of IoT-based smart water meters across 12 GHMC zones including data integration with central monitoring dashboard.</textarea>
+                            </div>
+
+                            <!-- DC Number Prefix -->
+                            <div>
+                                <label for="dc_prefix" class="block text-sm font-semibold text-slate-700 mb-2">
+                                    DC Number Prefix <span class="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="dc_prefix"
+                                    name="dc_prefix"
+                                    required
+                                    value="FS/GS"
+                                    placeholder="e.g. FS/GS"
+                                    class="input-focus w-full h-11 px-4 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg placeholder:text-slate-400 transition-all duration-150 hover:border-slate-300 hover:bg-white"
+                                    oninput="updateDcPreview()"
+                                >
+                                <div class="mt-2.5 flex items-center gap-2 bg-brand-50 rounded-lg px-4 py-2.5">
+                                    <svg class="w-4 h-4 text-brand-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    <span class="text-sm text-slate-500">Preview:</span>
+                                    <span id="dc-preview" class="text-sm font-mono font-medium text-brand-700">FS/GS/25-26/T/001</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ======== Section 2: Purchase Order Details ======== -->
+                    <section class="bg-white rounded-xl card-shadow overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100">
+                            <h2 class="text-[15px] font-bold text-slate-900 flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+                                    </svg>
+                                </span>
+                                Purchase Order Details
+                            </h2>
+                        </div>
+                        <div class="p-6 space-y-5">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <!-- PO Number -->
+                                <div>
+                                    <label for="po_number" class="block text-sm font-semibold text-slate-700 mb-2">
+                                        PO Number
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="po_number"
+                                        name="po_number"
+                                        value="PO/GHMC/2025/WM-1847"
+                                        class="input-focus w-full h-11 px-4 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg placeholder:text-slate-400 transition-all duration-150 hover:border-slate-300 hover:bg-white"
+                                    >
+                                </div>
+                                <!-- PO Date -->
+                                <div>
+                                    <label for="po_date" class="block text-sm font-semibold text-slate-700 mb-2">
+                                        PO Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        id="po_date"
+                                        name="po_date"
+                                        value="2025-10-15"
+                                        class="input-focus w-full h-11 px-4 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg transition-all duration-150 hover:border-slate-300 hover:bg-white"
+                                    >
+                                </div>
+                            </div>
+                            <!-- PO Reference -->
+                            <div>
+                                <label for="po_reference" class="block text-sm font-semibold text-slate-700 mb-2">
+                                    PO Reference
+                                </label>
+                                <textarea
+                                    id="po_reference"
+                                    name="po_reference"
+                                    rows="3"
+                                    class="input-focus w-full px-4 py-3 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg placeholder:text-slate-400 transition-all duration-150 hover:border-slate-300 hover:bg-white resize-none"
+                                >Ref: GHMC/EE/WS/Smart-Meter/2025-26 dated 10-Oct-2025. Purchase order for supply of 5000 NB-IoT smart water meters with installation accessories and 3-year AMC.</textarea>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ======== Section 3: Tender Details ======== -->
+                    <section class="bg-white rounded-xl card-shadow overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100">
+                            <h2 class="text-[15px] font-bold text-slate-900 flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                    </svg>
+                                </span>
+                                Tender Details
+                            </h2>
+                        </div>
+                        <div class="p-6 space-y-5">
+                            <!-- Tender Ref Number -->
+                            <div>
+                                <label for="tender_ref_number" class="block text-sm font-semibold text-slate-700 mb-2">
+                                    Tender Reference Number
+                                </label>
+                                <input
+                                    type="text"
+                                    id="tender_ref_number"
+                                    name="tender_ref_number"
+                                    value="GHMC/T/WS/2025-26/087"
+                                    class="input-focus w-full h-11 px-4 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg placeholder:text-slate-400 transition-all duration-150 hover:border-slate-300 hover:bg-white"
+                                >
+                            </div>
+                            <!-- Tender Ref Details -->
+                            <div>
+                                <label for="tender_ref_details" class="block text-sm font-semibold text-slate-700 mb-2">
+                                    Tender Reference Details
+                                </label>
+                                <textarea
+                                    id="tender_ref_details"
+                                    name="tender_ref_details"
+                                    rows="3"
+                                    class="input-focus w-full px-4 py-3 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg placeholder:text-slate-400 transition-all duration-150 hover:border-slate-300 hover:bg-white resize-none"
+                                >Open tender for supply, installation, testing and commissioning of IoT-based smart water meters under GHMC Smart City Mission. Bid document ref: GHMC/EE/WS/2025-26/087, published on eProcurement portal on 01-Sep-2025.</textarea>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ======== Section 4: Address & Tax ======== -->
+                    <section class="bg-white rounded-xl card-shadow overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100">
+                            <h2 class="text-[15px] font-bold text-slate-900 flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                                    </svg>
+                                </span>
+                                Address & Tax
+                            </h2>
+                        </div>
+                        <div class="p-6 space-y-5">
+                            <!-- Bill From Address -->
+                            <div>
+                                <label for="bill_from" class="block text-sm font-semibold text-slate-700 mb-2">
+                                    Bill From Address <span class="text-red-500">*</span>
+                                </label>
+                                <textarea
+                                    id="bill_from"
+                                    name="bill_from"
+                                    rows="4"
+                                    required
+                                    class="input-focus w-full px-4 py-3 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg placeholder:text-slate-400 transition-all duration-150 hover:border-slate-300 hover:bg-white resize-none"
+                                >Fervid Smart Solutions Pvt. Ltd.
+Plot No. 42, Cyber Towers, HITEC City,
+Madhapur, Hyderabad - 500081,
+Telangana, India</textarea>
+                            </div>
+
+                            <!-- GSTIN -->
+                            <div>
+                                <label for="gstin" class="block text-sm font-semibold text-slate-700 mb-2">
+                                    Company GSTIN <span class="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="gstin"
+                                    name="gstin"
+                                    required
+                                    value="36AACCF9742K1Z8"
+                                    class="input-focus w-full h-11 px-4 text-sm font-mono text-slate-900 bg-slate-50 border border-slate-200 rounded-lg placeholder:text-slate-400 transition-all duration-150 hover:border-slate-300 hover:bg-white tracking-wider"
+                                >
+                            </div>
+
+                            <!-- Default Bill To -->
+                            <div>
+                                <label for="default_bill_to" class="block text-sm font-semibold text-slate-700 mb-2">
+                                    Default Bill To Address
+                                </label>
+                                <select
+                                    id="default_bill_to"
+                                    name="default_bill_to"
+                                    class="input-focus w-full h-11 px-4 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-lg transition-all duration-150 hover:border-slate-300 hover:bg-white appearance-none"
+                                    style="background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 14px center;"
+                                >
+                                    <option value="">-- Select Bill To Address --</option>
+                                    <option value="ghmc_hq" selected>GHMC Head Office, Tank Bund Road, Hyderabad - 500063</option>
+                                    <option value="ghmc_zone_1">GHMC Zonal Office - Secunderabad, Trimulgherry, 500015</option>
+                                    <option value="ghmc_zone_2">GHMC Zonal Office - LB Nagar, Saroornagar, 500035</option>
+                                </select>
+                                <p class="mt-1.5 text-xs text-slate-400">Pre-selects this address when issuing DCs for this project. Can be changed later.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ======== Section 5: Company Signature ======== -->
+                    <section class="bg-white rounded-xl card-shadow overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100">
+                            <h2 class="text-[15px] font-bold text-slate-900 flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                    </svg>
+                                </span>
+                                Company Signature
+                            </h2>
+                        </div>
+                        <div class="p-6">
+                            <!-- Upload Zone -->
+                            <div
+                                id="upload-zone"
+                                class="upload-zone rounded-xl p-8 text-center cursor-pointer"
+                                onclick="document.getElementById('signature_file').click()"
+                                ondragover="event.preventDefault(); this.classList.add('dragover')"
+                                ondragleave="this.classList.remove('dragover')"
+                                ondrop="event.preventDefault(); this.classList.remove('dragover'); handleFiles(event.dataTransfer.files)"
+                            >
+                                <input
+                                    type="file"
+                                    id="signature_file"
+                                    name="signature_file"
+                                    accept="image/*"
+                                    class="hidden"
+                                    onchange="handleFiles(this.files)"
+                                >
+                                <div id="upload-placeholder">
+                                    <div class="inline-flex items-center justify-center w-12 h-12 bg-slate-100 rounded-xl mb-3">
+                                        <svg class="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                        </svg>
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-700 mb-1">Upload signature image</p>
+                                    <p class="text-xs text-slate-400">Drag and drop or click to browse. PNG, JPG up to 2MB.</p>
+                                </div>
+                                <div id="upload-preview" class="hidden">
+                                    <img id="preview-img" src="" alt="Signature preview" class="max-h-24 mx-auto mb-3 rounded-lg border border-slate-200">
+                                    <p id="file-name" class="text-sm font-medium text-slate-700"></p>
+                                    <button type="button" onclick="event.stopPropagation(); clearUpload()" class="mt-2 text-xs text-red-500 hover:text-red-700 font-medium">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ======== Action Buttons (Desktop) ======== -->
+                    <div class="hidden lg:flex items-center gap-3 pt-2">
+                        <button
+                            type="submit"
+                            class="btn-press h-11 px-8 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-lg transition-all duration-150 flex items-center justify-center gap-2 shadow-sm shadow-brand-600/20"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                            Save Project
+                        </button>
+                        <a
+                            href="03-projects-list.html"
+                            class="btn-press h-11 px-6 text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-all duration-150 flex items-center justify-center"
+                        >
+                            Cancel
+                        </a>
+                    </div>
+
+                </form>
+            </main>
+
+            <!-- Mobile Bottom Action Bar -->
+            <div class="lg:hidden mobile-bottom-bar flex items-center gap-3">
+                <button
+                    type="button"
+                    onclick="document.querySelector('form').requestSubmit()"
+                    class="btn-press flex-1 h-11 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-lg transition-all duration-150 flex items-center justify-center gap-2 shadow-sm shadow-brand-600/20"
+                >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                    Save Project
+                </button>
+                <a
+                    href="03-projects-list.html"
+                    class="btn-press h-11 px-5 text-sm font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all duration-150 flex items-center justify-center"
+                >
+                    Cancel
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ==================== MOBILE SIDEBAR OVERLAY ==================== -->
+    <div id="mobile-sidebar" class="hidden fixed inset-0 z-50 lg:hidden">
+        <div class="absolute inset-0 bg-black/40" onclick="document.getElementById('mobile-sidebar').classList.add('hidden')"></div>
+        <aside class="absolute left-0 top-0 bottom-0 w-64 bg-white flex flex-col border-r border-slate-200">
+            <div class="flex items-center gap-3 px-5 h-16 border-b border-slate-100">
+                <div class="w-9 h-9 bg-brand-600 rounded-lg flex items-center justify-center relative">
+                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+                    </svg>
+                </div>
+                <div class="leading-tight">
+                    <span class="text-sm font-bold text-slate-900 tracking-tight block">DC Manager</span>
+                    <span class="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Fervid Smart</span>
+                </div>
+                <button class="ml-auto p-1.5 text-slate-400 hover:text-slate-700" onclick="document.getElementById('mobile-sidebar').classList.add('hidden')">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <nav class="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+                <a href="02-dashboard.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+                    Dashboard
+                </a>
+                <a href="03-projects-list.html" class="sidebar-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>
+                    Projects
+                </a>
+                <a href="16-all-dcs.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                    All DCs
+                </a>
+                <a href="17-serial-search.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                    Serial Search
+                </a>
+            </nav>
+        </aside>
+    </div>
+
+    <!-- ===== MOBILE BOTTOM TAB BAR ===== -->
+    <nav class="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 z-30">
+        <div class="grid grid-cols-4 h-16">
+            <a href="02-dashboard.html" class="flex flex-col items-center justify-center gap-1 text-slate-400">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                </svg>
+                <span class="text-[10px] font-medium">Home</span>
+            </a>
+            <a href="03-projects-list.html" class="flex flex-col items-center justify-center gap-1 text-brand-600">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                </svg>
+                <span class="text-[10px] font-semibold">Projects</span>
+            </a>
+            <a href="16-all-dcs.html" class="flex flex-col items-center justify-center gap-1 text-slate-400">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+                <span class="text-[10px] font-medium">DCs</span>
+            </a>
+            <a href="17-serial-search.html" class="flex flex-col items-center justify-center gap-1 text-slate-400">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <span class="text-[10px] font-medium">Search</span>
+            </a>
+        </div>
+    </nav>
+
+    <script>
+        function toggleDropdown() {
+            document.getElementById('userDropdown').classList.toggle('open');
+        }
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('userDropdown');
+            if (!e.target.closest('.relative') && dropdown.classList.contains('open')) {
+                dropdown.classList.remove('open');
+            }
+        });
+
+        // DC Prefix live preview
+        function updateDcPreview() {
+            const prefix = document.getElementById('dc_prefix').value.trim();
+            const preview = document.getElementById('dc-preview');
+            if (prefix) {
+                preview.textContent = prefix + '/25-26/T/001';
+            } else {
+                preview.textContent = '—';
+            }
+        }
+
+        // Signature file upload handling
+        function handleFiles(files) {
+            if (!files || files.length === 0) return;
+            const file = files[0];
+            if (!file.type.startsWith('image/')) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('preview-img').src = e.target.result;
+                document.getElementById('file-name').textContent = file.name;
+                document.getElementById('upload-placeholder').classList.add('hidden');
+                document.getElementById('upload-preview').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearUpload() {
+            document.getElementById('signature_file').value = '';
+            document.getElementById('upload-placeholder').classList.remove('hidden');
+            document.getElementById('upload-preview').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

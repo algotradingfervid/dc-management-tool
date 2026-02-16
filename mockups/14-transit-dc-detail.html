@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DC FS/GS/25-26/T/005 — DC Management Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['DM Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                            950: '#1e1b4b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; }
+
+        .card-shadow {
+            box-shadow:
+                0 0 0 1px rgba(0, 0, 0, 0.03),
+                0 1px 2px rgba(0, 0, 0, 0.04),
+                0 8px 16px -4px rgba(0, 0, 0, 0.06),
+                0 24px 48px -12px rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-press:active {
+            transform: scale(0.985);
+        }
+
+        .sidebar-item {
+            transition: all 0.15s ease;
+        }
+
+        .sidebar-item:hover {
+            background-color: #f8fafc;
+        }
+
+        .sidebar-item.active {
+            background-color: #eef2ff;
+            color: #4338ca;
+            font-weight: 600;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in {
+            animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* DC Preview document styling */
+        .dc-document {
+            background: white;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+        }
+
+        .dc-table th,
+        .dc-table td {
+            border: 1px solid #cbd5e1;
+            padding: 6px 8px;
+            font-size: 12px;
+            vertical-align: top;
+        }
+
+        .dc-table th {
+            background: #f1f5f9;
+            font-weight: 600;
+            text-align: center;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+            color: #334155;
+        }
+
+        .dc-table td {
+            color: #1e293b;
+        }
+
+        .dc-table .totals-row td {
+            font-weight: 700;
+            background: #f8fafc;
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                background: white !important;
+                margin: 0;
+                padding: 0;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                max-width: 100% !important;
+                width: 100% !important;
+            }
+            .dc-document {
+                box-shadow: none !important;
+                border: none !important;
+            }
+            .print-content-area {
+                margin-left: 0 !important;
+                padding: 0 !important;
+            }
+        }
+
+        /* Mobile action bar scroll */
+        .action-scroll {
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .action-scroll::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+    <div class="flex min-h-screen">
+
+        <!-- ====== SIDEBAR (Desktop) ====== -->
+        <aside class="no-print hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 fixed inset-y-0 left-0 z-30">
+            <!-- Brand -->
+            <div class="flex items-center gap-3 px-6 h-16 border-b border-slate-100">
+                <div class="w-9 h-9 bg-brand-600 rounded-lg flex items-center justify-center relative">
+                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+                    </svg>
+                    <div class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white"></div>
+                </div>
+                <div>
+                    <p class="text-sm font-bold text-slate-900 leading-tight">DC Management</p>
+                    <p class="text-[11px] text-slate-400 font-medium">Fervid Smart Solutions</p>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 px-3 py-4 space-y-1">
+                <a href="02-dashboard.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+                    <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="03-projects-list.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+                    <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                    </svg>
+                    Projects
+                </a>
+                <a href="16-all-dcs.html" class="sidebar-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016A3.001 3.001 0 0021 9.349m-18 0a2.99 2.99 0 00.621-1.853L4.148 3.9A1.5 1.5 0 015.637 2.75h12.726a1.5 1.5 0 011.489 1.15l.527 3.596A2.99 2.99 0 0021 9.35" />
+                    </svg>
+                    All DCs
+                </a>
+                <a href="17-serial-search.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+                    <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                    </svg>
+                    Serial Search
+                </a>
+            </nav>
+
+            <!-- Sidebar footer -->
+            <div class="px-4 py-3 border-t border-slate-100">
+                <p class="text-[11px] text-slate-400 text-center">v1.0.0 &middot; Internal Use Only</p>
+            </div>
+        </aside>
+
+        <!-- ====== MAIN CONTENT ====== -->
+        <div class="flex-1 lg:ml-64 print-content-area flex flex-col min-h-screen pb-20 lg:pb-0">
+
+            <!-- ====== TOP BAR ====== -->
+            <header class="no-print sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-200">
+                <div class="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
+                    <!-- Left: Breadcrumb -->
+                    <div class="flex items-center gap-2">
+                        <nav class="flex items-center gap-1.5 text-sm">
+                            <a href="03-projects-list.html" class="text-slate-400 hover:text-brand-600 transition-colors">Projects</a>
+                            <svg class="w-3.5 h-3.5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                            <a href="05-project-detail.html" class="text-slate-400 hover:text-brand-600 transition-colors">GSWS UPS</a>
+                            <svg class="w-3.5 h-3.5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                            <span class="text-slate-900 font-semibold">DC T/005</span>
+                        </nav>
+                    </div>
+
+                    <!-- Right: User dropdown -->
+                    <div class="relative">
+                        <button onclick="toggleUserMenu()" class="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors">
+                            <div class="w-8 h-8 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center text-sm font-semibold">
+                                AR
+                            </div>
+                            <div class="hidden sm:block text-left">
+                                <p class="text-sm font-semibold text-slate-700 leading-tight">Admin Rao</p>
+                                <p class="text-[11px] text-slate-400">Administrator</p>
+                            </div>
+                            <svg class="w-4 h-4 text-slate-400 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                            </svg>
+                        </button>
+                        <div id="user-menu" class="hidden absolute right-0 top-full mt-1 w-48 bg-white rounded-xl card-shadow border border-slate-100 py-1.5 z-50">
+                            <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
+                                <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0" /></svg>
+                                Profile
+                            </a>
+                            <div class="h-px bg-slate-100 my-1"></div>
+                            <a href="01-login.html" class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg>
+                                Sign Out
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- ====== PAGE CONTENT ====== -->
+            <main class="flex-1 px-4 sm:px-6 lg:px-8 py-6 print-only">
+                <div class="animate-in">
+
+                    <!-- ====== ACTION BAR ====== -->
+                    <div class="no-print flex items-center gap-3 mb-6 action-scroll overflow-x-auto pb-1">
+                        <!-- Status badge -->
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold border border-emerald-200 whitespace-nowrap shrink-0">
+                            <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                            ISSUED
+                        </span>
+
+                        <div class="h-6 w-px bg-slate-200 shrink-0"></div>
+
+                        <!-- Edit (grayed out / disabled) -->
+                        <button disabled class="btn-press inline-flex items-center gap-2 h-9 px-4 bg-slate-100 text-slate-400 text-sm font-medium rounded-lg cursor-not-allowed whitespace-nowrap shrink-0" title="Cannot edit issued DC">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                            <span class="hidden sm:inline">Issued</span>
+                        </button>
+
+                        <!-- Download PDF -->
+                        <button class="btn-press inline-flex items-center gap-2 h-9 px-4 bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all whitespace-nowrap shrink-0">
+                            <svg class="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                            <span class="hidden sm:inline">PDF</span>
+                        </button>
+
+                        <!-- Download Excel -->
+                        <button class="btn-press inline-flex items-center gap-2 h-9 px-4 bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all whitespace-nowrap shrink-0">
+                            <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M10.875 12h-7.5m8.625 0h7.5m-7.5 0c.621 0 1.125.504 1.125 1.125M3.375 12c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125M3.375 15.75h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M12 15.75h7.5m-8.625 0c.621 0 1.125.504 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0v1.5m-2.25-1.5v1.5" /></svg>
+                            <span class="hidden sm:inline">Excel</span>
+                        </button>
+
+                        <!-- Print -->
+                        <button onclick="window.print()" class="btn-press inline-flex items-center gap-2 h-9 px-4 bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all whitespace-nowrap shrink-0">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" /></svg>
+                            <span class="hidden sm:inline">Print</span>
+                        </button>
+
+                        <!-- Delete -->
+                        <button onclick="confirmDelete()" class="btn-press inline-flex items-center gap-2 h-9 px-4 bg-white border border-red-200 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 hover:border-red-300 transition-all whitespace-nowrap shrink-0">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                            <span class="hidden sm:inline">Delete</span>
+                        </button>
+                    </div>
+
+                    <!-- ====== DC PREVIEW CARD ====== -->
+                    <div class="max-w-4xl mx-auto">
+                        <div class="dc-document rounded-lg overflow-hidden print-only">
+                            <div class="p-6 sm:p-8 lg:p-10">
+
+                                <!-- Company Header -->
+                                <div class="text-center mb-6 pb-4 border-b-2 border-slate-800">
+                                    <h1 class="text-lg font-bold text-slate-900 uppercase tracking-wide">Fervid Smart Solutions Pvt. Ltd.</h1>
+                                    <p class="text-xs text-slate-600 mt-1.5 leading-relaxed max-w-lg mx-auto">
+                                        Plot No 14/2, Dwaraka Park View, 1st Floor, Sector-1, HUDA Techno Enclave,<br>
+                                        Madhapur, Hyderabad, Telangana 500081
+                                    </p>
+                                    <p class="text-xs text-slate-700 mt-1 font-semibold font-mono">GSTIN: 36AACCF9742K1Z8</p>
+                                </div>
+
+                                <!-- DC Title -->
+                                <div class="text-center mb-6">
+                                    <h2 class="text-base font-bold text-slate-900 uppercase tracking-widest border border-slate-300 inline-block px-8 py-1.5">Delivery Challan</h2>
+                                </div>
+
+                                <!-- Two Column Header -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5 text-xs">
+                                    <!-- Left Column -->
+                                    <div class="border border-slate-200 rounded p-3 space-y-1.5">
+                                        <div class="flex justify-between"><span class="text-slate-500 font-medium">DC No:</span> <span class="font-semibold text-slate-800 font-mono">FS/GS/25-26/T/005</span></div>
+                                        <div class="flex justify-between"><span class="text-slate-500 font-medium">Date:</span> <span class="text-slate-800">16-02-2026</span></div>
+                                        <div class="flex justify-between"><span class="text-slate-500 font-medium">Mode:</span> <span class="text-slate-800">By Road</span></div>
+                                        <div class="flex justify-between"><span class="text-slate-500 font-medium">Vehicle:</span> <span class="font-mono text-slate-800">AP-09-AB-1234</span></div>
+                                        <div class="flex justify-between"><span class="text-slate-500 font-medium">Driver:</span> <span class="text-slate-800">Ramesh Kumar</span></div>
+                                        <div class="flex justify-between"><span class="text-slate-500 font-medium">E-Way Bill:</span> <span class="font-mono text-slate-800">EWB123456</span></div>
+                                        <div class="flex justify-between"><span class="text-slate-500 font-medium">Reverse Charge:</span> <span class="text-slate-800">No</span></div>
+                                    </div>
+                                    <!-- Right Column -->
+                                    <div class="border border-slate-200 rounded p-3 space-y-1.5">
+                                        <div class="flex justify-between"><span class="text-slate-500 font-medium">State:</span> <span class="text-slate-800">Telangana</span></div>
+                                        <div class="flex justify-between"><span class="text-slate-500 font-medium">Place of Supply:</span> <span class="text-slate-800">Warangal</span></div>
+                                    </div>
+                                </div>
+
+                                <!-- PO Details -->
+                                <div class="border border-slate-200 rounded p-3 mb-5 text-xs space-y-1.5">
+                                    <div class="flex justify-between"><span class="text-slate-500 font-medium">PO Number:</span> <span class="font-semibold text-slate-800 font-mono">Purchase Order E.File No 3059446</span></div>
+                                    <div class="flex justify-between"><span class="text-slate-500 font-medium">PO Date:</span> <span class="text-slate-800">15-01-2026</span></div>
+                                    <div class="flex justify-between"><span class="text-slate-500 font-medium">Project:</span> <span class="text-slate-800">GSWS Department &mdash; Procurement of UPS Systems</span></div>
+                                </div>
+
+                                <!-- Address Blocks 2x2 -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                                    <!-- Bill From -->
+                                    <div class="border border-slate-200 rounded p-3">
+                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Bill From</p>
+                                        <p class="text-xs font-semibold text-slate-800">Fervid Smart Solutions Pvt. Ltd.</p>
+                                        <p class="text-xs text-slate-600 leading-relaxed">Plot No 14/2, Dwaraka Park View, 1st Floor, Sector-1, HUDA Techno Enclave, Madhapur, Hyderabad, Telangana 500081</p>
+                                    </div>
+                                    <!-- Bill To -->
+                                    <div class="border border-slate-200 rounded p-3">
+                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Bill To</p>
+                                        <p class="text-xs font-semibold text-slate-800">District Collector Office</p>
+                                        <p class="text-xs text-slate-600 leading-relaxed">District Collector Office, Warangal Urban, Telangana 506002</p>
+                                    </div>
+                                    <!-- Dispatch From -->
+                                    <div class="border border-slate-200 rounded p-3">
+                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Dispatch From</p>
+                                        <p class="text-xs font-semibold text-slate-800">Fervid Smart Solutions Pvt. Ltd.</p>
+                                        <p class="text-xs text-slate-600 leading-relaxed">Plot No 14/2, Dwaraka Park View, 1st Floor, Sector-1, HUDA Techno Enclave, Madhapur, Hyderabad, Telangana 500081</p>
+                                    </div>
+                                    <!-- Ship To -->
+                                    <div class="border border-slate-200 rounded p-3">
+                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Ship To</p>
+                                        <p class="text-xs font-semibold text-slate-800">SRO Hanamkonda</p>
+                                        <p class="text-xs text-slate-600 leading-relaxed">Sub Registrar Office, Hanamkonda, Warangal Urban, Telangana 506001</p>
+                                    </div>
+                                </div>
+
+                                <!-- Product Table -->
+                                <div class="overflow-x-auto mb-6 -mx-2 px-2">
+                                    <table class="dc-table w-full border-collapse" style="min-width: 820px;">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 36px;">S.No</th>
+                                                <th style="width: 140px;">Item Description</th>
+                                                <th style="width: 110px;">Serial Nos</th>
+                                                <th style="width: 40px;">UoM</th>
+                                                <th style="width: 50px;">HSN Code</th>
+                                                <th style="width: 36px;">Qty</th>
+                                                <th style="width: 80px;">Per Unit Price</th>
+                                                <th style="width: 80px;">Taxable Value</th>
+                                                <th style="width: 40px;">GST %</th>
+                                                <th style="width: 75px;">GST Amount</th>
+                                                <th style="width: 80px;">Total Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Row 1: UPS -->
+                                            <tr>
+                                                <td class="text-center">1</td>
+                                                <td>
+                                                    <span class="font-semibold">UPS</span><br>
+                                                    <span class="text-slate-500">AVO 1000 1KVA</span>
+                                                </td>
+                                                <td class="font-mono text-[11px]">
+                                                    SN001234<br>
+                                                    SN001235<br>
+                                                    SN001236
+                                                </td>
+                                                <td class="text-center">Nos</td>
+                                                <td class="text-center font-mono">8504</td>
+                                                <td class="text-center">3</td>
+                                                <td class="text-right font-mono">&#8377;12,500</td>
+                                                <td class="text-right font-mono">&#8377;37,500</td>
+                                                <td class="text-center">18%</td>
+                                                <td class="text-right font-mono">&#8377;6,750</td>
+                                                <td class="text-right font-mono font-semibold">&#8377;44,250</td>
+                                            </tr>
+                                            <!-- Row 2: Battery -->
+                                            <tr>
+                                                <td class="text-center">2</td>
+                                                <td>
+                                                    <span class="font-semibold">Battery</span><br>
+                                                    <span class="text-slate-500">12V 7Ah</span>
+                                                </td>
+                                                <td class="font-mono text-[11px]">
+                                                    SN101001<br>
+                                                    SN101002
+                                                </td>
+                                                <td class="text-center">Nos</td>
+                                                <td class="text-center font-mono">8507</td>
+                                                <td class="text-center">2</td>
+                                                <td class="text-right font-mono">&#8377;4,200</td>
+                                                <td class="text-right font-mono">&#8377;8,400</td>
+                                                <td class="text-center">18%</td>
+                                                <td class="text-right font-mono">&#8377;1,512</td>
+                                                <td class="text-right font-mono font-semibold">&#8377;9,912</td>
+                                            </tr>
+                                            <!-- Totals Row -->
+                                            <tr class="totals-row">
+                                                <td class="text-center" colspan="2"></td>
+                                                <td class="text-center font-bold text-xs uppercase">Total</td>
+                                                <td></td>
+                                                <td></td>
+                                                <td class="text-center font-mono">5</td>
+                                                <td></td>
+                                                <td class="text-right font-mono">&#8377;45,900</td>
+                                                <td></td>
+                                                <td class="text-right font-mono">&#8377;8,262</td>
+                                                <td class="text-right font-mono">&#8377;54,162</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Tax Summary -->
+                                <div class="flex justify-end mb-6">
+                                    <div class="w-full sm:w-72 border border-slate-200 rounded overflow-hidden text-xs">
+                                        <div class="flex justify-between px-3 py-2 border-b border-slate-100">
+                                            <span class="text-slate-500">Taxable Value</span>
+                                            <span class="font-semibold text-slate-800 font-mono">&#8377;45,900</span>
+                                        </div>
+                                        <div class="flex justify-between px-3 py-2 border-b border-slate-100">
+                                            <span class="text-slate-500">CGST (9%)</span>
+                                            <span class="font-semibold text-slate-800 font-mono">&#8377;4,131</span>
+                                        </div>
+                                        <div class="flex justify-between px-3 py-2 border-b border-slate-100">
+                                            <span class="text-slate-500">SGST (9%)</span>
+                                            <span class="font-semibold text-slate-800 font-mono">&#8377;4,131</span>
+                                        </div>
+                                        <div class="flex justify-between px-3 py-2 border-b border-slate-100">
+                                            <span class="text-slate-500">Round Off</span>
+                                            <span class="font-semibold text-slate-800 font-mono">-&#8377;0.00</span>
+                                        </div>
+                                        <div class="flex justify-between px-3 py-2.5 bg-slate-50">
+                                            <span class="font-bold text-slate-900">Invoice Value</span>
+                                            <span class="font-bold text-slate-900 font-mono">&#8377;54,162</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Amount in Words -->
+                                <div class="border border-slate-200 rounded p-3 mb-6">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Amount in Words</p>
+                                    <p class="text-xs font-semibold text-slate-800">Rupees Fifty-Four Thousand One Hundred and Sixty-Two Only</p>
+                                </div>
+
+                                <!-- Notes -->
+                                <div class="border border-slate-200 rounded p-3 mb-8">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Notes</p>
+                                    <p class="text-xs text-slate-700">Handle with care</p>
+                                </div>
+
+                                <!-- Signature Section -->
+                                <div class="grid grid-cols-2 gap-8 pt-4 border-t border-slate-200">
+                                    <!-- Receiver -->
+                                    <div>
+                                        <p class="text-xs font-semibold text-slate-700 mb-10">Receiver's Signature</p>
+                                        <div class="border-b border-slate-300 mb-1"></div>
+                                        <p class="text-[10px] text-slate-400">Name: _________________________</p>
+                                    </div>
+                                    <!-- Authorised Signatory -->
+                                    <div class="text-right">
+                                        <p class="text-xs font-semibold text-slate-700 mb-2">For Fervid Smart Solutions Pvt. Ltd.</p>
+                                        <!-- Signature placeholder -->
+                                        <div class="h-12 mb-2 flex items-end justify-end">
+                                            <div class="w-32 h-10 border border-dashed border-slate-300 rounded flex items-center justify-center">
+                                                <span class="text-[10px] text-slate-300 italic">Signature</span>
+                                            </div>
+                                        </div>
+                                        <p class="text-xs font-semibold text-slate-600">Authorised Signatory</p>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- ====== MOBILE BOTTOM TAB BAR ====== -->
+    <nav class="no-print lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 z-30">
+        <div class="flex items-center justify-around h-16 px-2">
+            <a href="02-dashboard.html" class="flex flex-col items-center gap-1 px-3 py-1.5 text-slate-400">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                </svg>
+                <span class="text-[10px] font-medium">Dashboard</span>
+            </a>
+            <a href="03-projects-list.html" class="flex flex-col items-center gap-1 px-3 py-1.5 text-slate-400">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                </svg>
+                <span class="text-[10px] font-medium">Projects</span>
+            </a>
+            <a href="16-all-dcs.html" class="flex flex-col items-center gap-1 px-3 py-1.5 text-brand-600">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016A3.001 3.001 0 0021 9.349m-18 0a2.99 2.99 0 00.621-1.853L4.148 3.9A1.5 1.5 0 015.637 2.75h12.726a1.5 1.5 0 011.489 1.15l.527 3.596A2.99 2.99 0 0021 9.35" />
+                </svg>
+                <span class="text-[10px] font-semibold">All DCs</span>
+            </a>
+            <a href="17-serial-search.html" class="flex flex-col items-center gap-1 px-3 py-1.5 text-slate-400">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <span class="text-[10px] font-medium">Search</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- ====== DELETE CONFIRMATION MODAL ====== -->
+    <div id="delete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="closeDeleteModal()"></div>
+        <div class="relative bg-white rounded-2xl card-shadow p-6 w-full max-w-sm">
+            <div class="text-center">
+                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 mb-1">Delete this DC?</h3>
+                <p class="text-sm text-slate-500 mb-6">This action cannot be undone. DC <span class="font-mono font-semibold">FS/GS/25-26/T/005</span> will be permanently deleted.</p>
+                <div class="flex items-center gap-3">
+                    <button onclick="closeDeleteModal()" class="btn-press flex-1 h-10 bg-slate-100 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-200 transition-colors">Cancel</button>
+                    <button class="btn-press flex-1 h-10 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleUserMenu() {
+            document.getElementById('user-menu').classList.toggle('hidden');
+        }
+
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('user-menu');
+            if (!e.target.closest('.relative') && !menu.classList.contains('hidden')) {
+                menu.classList.add('hidden');
+            }
+        });
+
+        function confirmDelete() {
+            document.getElementById('delete-modal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
