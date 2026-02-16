@@ -20,8 +20,13 @@ func GetOrCreateAddressConfig(projectID int, addressType string) (*models.Addres
 	).Scan(&config.ID, &config.ProjectID, &config.AddressType, &config.ColumnJSON, &config.CreatedAt, &config.UpdatedAt)
 
 	if err == sql.ErrNoRows {
-		// Create default config
-		defaultCols := models.DefaultBillToColumns()
+		// Create default config based on address type
+		var defaultCols []models.ColumnDefinition
+		if addressType == "ship_to" {
+			defaultCols = models.DefaultShipToColumns()
+		} else {
+			defaultCols = models.DefaultBillToColumns()
+		}
 		colJSON, _ := json.Marshal(defaultCols)
 
 		result, err := DB.Exec(

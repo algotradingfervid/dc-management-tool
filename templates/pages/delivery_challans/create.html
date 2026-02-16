@@ -1,0 +1,430 @@
+{{ define "title" }}Create Transit DC{{ end }}
+
+{{ define "content" }}
+<div class="max-w-4xl mx-auto space-y-6">
+
+    {{ if .errors.general }}
+    <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+        {{ .errors.general }}
+    </div>
+    {{ end }}
+
+    {{ if .errors.serial_numbers }}
+    <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+        {{ .errors.serial_numbers }}
+    </div>
+    {{ end }}
+
+    <form method="POST" action="/projects/{{ .project.ID }}/dcs/transit" id="transitDCForm">
+        {{ .csrfField }}
+        <input type="hidden" name="dc_number" value="{{ .dcNumber }}">
+
+        <!-- Section 1: Template Selection -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-6 mb-6">
+            <h2 class="text-base font-bold text-gray-800 mb-4">Template</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Template <span class="text-red-500">*</span></label>
+                    <select name="template_id" id="templateSelect"
+                            hx-get="" hx-trigger="change" hx-target="#productLines"
+                            class="w-full h-10 px-3 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg">
+                        <option value="">Select a template...</option>
+                        {{ range .templates }}
+                        <option value="{{ .ID }}" {{ if $.template }}{{ if eq .ID $.template.ID }}selected{{ end }}{{ end }}>
+                            {{ .Name }} ({{ .ProductCount }} products)
+                        </option>
+                        {{ end }}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Purpose</label>
+                    <input type="text" name="purpose" value="{{ .purpose }}" readonly
+                           class="w-full h-10 px-3 text-sm text-gray-900 bg-gray-100 border border-gray-200 rounded-lg">
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: DC Information -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-base font-bold text-gray-800">DC Information</h2>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">DRAFT</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Transit DC Number</label>
+                    <div class="h-10 px-3 flex items-center text-sm font-mono font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-lg">
+                        {{ .dcNumber }}
+                        <span class="ml-auto text-xs text-gray-400 font-sans font-normal">Auto</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">DC Date <span class="text-red-500">*</span></label>
+                    <input type="date" name="challan_date" value="{{ .challanDate }}" required
+                           class="w-full h-10 px-3 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg {{ if .errors.challan_date }}border-red-300{{ end }}">
+                    {{ if .errors.challan_date }}
+                    <p class="text-xs text-red-500 mt-1">{{ .errors.challan_date }}</p>
+                    {{ end }}
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Addresses -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-6 mb-6">
+            <h2 class="text-base font-bold text-gray-800 mb-4">Addresses</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Bill To</label>
+                    <select name="bill_to_address_id" id="billToSelect" onchange="updateAddressPreview('billTo', this)"
+                            class="w-full h-10 px-3 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg">
+                        <option value="">None (optional)</option>
+                        {{ range .billToAddresses }}
+                        <option value="{{ .ID }}" data-address='{{ toJSON .Data }}'>
+                            {{ mapGet .Data "Company Name" }} - {{ mapGet .Data "City" }}
+                        </option>
+                        {{ end }}
+                    </select>
+                    <div id="billToPreview" class="mt-2 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 leading-relaxed border border-gray-100 hidden"></div>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Ship To <span class="text-red-500">*</span></label>
+                    <select name="ship_to_address_id" id="shipToSelect" onchange="updateAddressPreview('shipTo', this)" required
+                            class="w-full h-10 px-3 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg {{ if .errors.ship_to_address_id }}border-red-300{{ end }}">
+                        <option value="">Select ship-to address...</option>
+                        {{ range .shipToAddresses }}
+                        <option value="{{ .ID }}" data-address='{{ toJSON .Data }}'>
+                            {{ mapGet .Data "District" }} - {{ mapGet .Data "Secretariat Name" }}
+                        </option>
+                        {{ end }}
+                    </select>
+                    {{ if .errors.ship_to_address_id }}
+                    <p class="text-xs text-red-500 mt-1">{{ .errors.ship_to_address_id }}</p>
+                    {{ end }}
+                    <div id="shipToPreview" class="mt-2 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 leading-relaxed border border-gray-100 hidden"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Transport Details -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-6 mb-6">
+            <h2 class="text-base font-bold text-gray-800 mb-1">Transport Details</h2>
+            <p class="text-xs text-gray-400 font-medium mb-4">These details appear only on the Transit DC</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Transporter Name</label>
+                    <input type="text" name="transporter_name" placeholder="Enter name"
+                           class="w-full h-10 px-3 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Vehicle Number</label>
+                    <input type="text" name="vehicle_number" placeholder="AP-09-AB-1234"
+                           class="w-full h-10 px-3 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg font-mono">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">E-Way Bill Number <span class="text-gray-400 font-normal">(optional)</span></label>
+                    <input type="text" name="eway_bill_number" placeholder="Enter e-way bill number"
+                           class="w-full h-10 px-3 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Tax Type</label>
+                    <div class="flex items-center gap-5">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="tax_type" value="cgst_sgst" checked class="w-4 h-4 text-indigo-600 border-gray-300" onchange="recalcSummary()">
+                            <span class="text-sm text-gray-700">CGST + SGST</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="tax_type" value="igst" class="w-4 h-4 text-indigo-600 border-gray-300" onchange="recalcSummary()">
+                            <span class="text-sm text-gray-700">IGST</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Reverse Charge</label>
+                    <div class="flex items-center gap-5">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="reverse_charge" value="N" checked class="w-4 h-4 text-indigo-600 border-gray-300">
+                            <span class="text-sm text-gray-700">No</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="reverse_charge" value="Y" class="w-4 h-4 text-indigo-600 border-gray-300">
+                            <span class="text-sm text-gray-700">Yes</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Product Lines -->
+        <section class="space-y-4 mb-6" id="productLines">
+            <h2 class="text-base font-bold text-gray-800 px-1">Product Lines</h2>
+
+            {{ if .errors.line_items }}
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {{ .errors.line_items }}
+            </div>
+            {{ end }}
+
+            {{ if .products }}
+            {{ range $index, $product := .products }}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden product-card" data-index="{{ $index }}">
+                <!-- Product Header -->
+                <div class="bg-gray-50 border-b border-gray-200 px-5 sm:px-6 py-4">
+                    <h3 class="text-sm font-bold text-gray-800">{{ add $index 1 }}. {{ $product.ItemName }} &mdash; {{ $product.BrandModel }}</h3>
+                    <p class="text-xs text-gray-500 mt-1">{{ $product.ItemDescription }}</p>
+                    <div class="flex flex-wrap gap-x-5 gap-y-1 mt-2.5 text-xs text-gray-500">
+                        {{ if $product.HSNCode }}<span>HSN: <strong class="text-gray-700">{{ $product.HSNCode }}</strong></span>{{ end }}
+                        <span>UoM: <strong class="text-gray-700">{{ $product.UoM }}</strong></span>
+                        <span>Price: <strong class="text-gray-700">&#8377;{{ printf "%.2f" $product.PerUnitPrice }}/unit</strong></span>
+                        <span>GST: <strong class="text-gray-700">{{ printf "%.0f" $product.GSTPercentage }}%</strong></span>
+                    </div>
+                </div>
+
+                <input type="hidden" name="line_items[{{ $index }}].product_id" value="{{ $product.ID }}">
+                <input type="hidden" name="line_items[{{ $index }}].rate" value="{{ printf "%.2f" $product.PerUnitPrice }}">
+                <input type="hidden" name="line_items[{{ $index }}].tax_percentage" value="{{ printf "%.2f" $product.GSTPercentage }}">
+
+                <div class="px-5 sm:px-6 py-5 space-y-4">
+                    <!-- Serial Numbers -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Serial Numbers <span class="text-gray-400 font-normal text-xs">(one per line, scan or type)</span></label>
+                        <textarea name="line_items[{{ $index }}].serial_numbers" rows="4"
+                                  oninput="recalcProduct({{ $index }})"
+                                  class="serial-textarea w-full px-3 py-2.5 text-gray-900 bg-gray-50 border border-gray-200 rounded-lg resize-y font-mono text-sm"
+                                  placeholder="Scan or enter serial numbers here..."></textarea>
+                    </div>
+
+                    <!-- Calculated Row -->
+                    <div class="bg-gray-50 rounded-lg border border-gray-200 px-4 py-3">
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                            <div>
+                                <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Qty</div>
+                                <div id="qty-{{ $index }}" class="text-sm font-bold text-gray-800 mt-0.5">0</div>
+                            </div>
+                            <div>
+                                <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Taxable</div>
+                                <div id="taxable-{{ $index }}" class="text-sm font-bold text-gray-800 mt-0.5">&#8377;0.00</div>
+                            </div>
+                            <div>
+                                <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider">GST ({{ printf "%.0f" $product.GSTPercentage }}%)</div>
+                                <div id="gst-{{ $index }}" class="text-sm font-bold text-gray-800 mt-0.5">&#8377;0.00</div>
+                            </div>
+                            <div>
+                                <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total</div>
+                                <div id="total-{{ $index }}" class="text-sm font-bold text-indigo-700 mt-0.5">&#8377;0.00</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{ end }}
+            {{ else }}
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center text-sm text-gray-500">
+                Select a template above to load product lines.
+            </div>
+            {{ end }}
+        </section>
+
+        <!-- Section 6: Tax Summary -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-6 mb-6">
+            <h2 class="text-base font-bold text-gray-800 mb-4">Tax Summary</h2>
+            <div id="taxSummary">
+                <div class="max-w-sm space-y-2.5">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">Taxable Value</span>
+                        <span id="summaryTaxable" class="font-semibold text-gray-700">&#8377;0.00</span>
+                    </div>
+                    <div class="flex justify-between text-sm" id="cgstRow">
+                        <span class="text-gray-500">CGST</span>
+                        <span id="summaryCgst" class="font-semibold text-gray-700">&#8377;0.00</span>
+                    </div>
+                    <div class="flex justify-between text-sm" id="sgstRow">
+                        <span class="text-gray-500">SGST</span>
+                        <span id="summarySgst" class="font-semibold text-gray-700">&#8377;0.00</span>
+                    </div>
+                    <div class="flex justify-between text-sm hidden" id="igstRow">
+                        <span class="text-gray-500">IGST</span>
+                        <span id="summaryIgst" class="font-semibold text-gray-700">&#8377;0.00</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">Round Off</span>
+                        <span id="summaryRoundOff" class="font-semibold text-gray-700">&#8377;0.00</span>
+                    </div>
+                    <div class="h-px bg-gray-200 my-1"></div>
+                    <div class="flex justify-between text-sm">
+                        <span class="font-bold text-gray-800">Invoice Value</span>
+                        <span id="summaryTotal" class="font-bold text-indigo-700 text-base">&#8377;0.00</span>
+                    </div>
+                </div>
+                <div class="mt-4 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                    <p class="text-xs font-semibold text-indigo-700">Amount in words</p>
+                    <p id="amountWords" class="text-sm text-indigo-800 mt-0.5">Zero Rupees Only</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: Notes -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-6 mb-6">
+            <h2 class="text-base font-bold text-gray-800 mb-4">Notes</h2>
+            <textarea name="notes" rows="3" placeholder="Optional notes..."
+                      class="w-full px-3 py-2.5 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg resize-y"></textarea>
+        </section>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center justify-end gap-3 pt-2">
+            <a href="/projects/{{ .project.ID }}" class="h-10 px-5 text-sm font-semibold text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 inline-flex items-center">
+                Cancel
+            </a>
+            <button type="submit" class="h-10 px-6 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm">
+                Save as Draft
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+.serial-textarea {
+    line-height: 1.75;
+    letter-spacing: 0.025em;
+}
+</style>
+
+<script>
+// Product calculation
+function recalcProduct(index) {
+    var textarea = document.querySelector('textarea[name="line_items[' + index + '].serial_numbers"]');
+    var rateInput = document.querySelector('input[name="line_items[' + index + '].rate"]');
+    var taxPctInput = document.querySelector('input[name="line_items[' + index + '].tax_percentage"]');
+
+    if (!textarea || !rateInput || !taxPctInput) return;
+
+    var lines = textarea.value.split('\n').filter(function(l) { return l.trim().length > 0; });
+    var qty = lines.length;
+    var rate = parseFloat(rateInput.value) || 0;
+    var taxPct = parseFloat(taxPctInput.value) || 0;
+
+    var taxable = rate * qty;
+    var gst = taxable * taxPct / 100;
+    var total = taxable + gst;
+
+    document.getElementById('qty-' + index).textContent = qty;
+    document.getElementById('taxable-' + index).innerHTML = '&#8377;' + formatIndian(taxable);
+    document.getElementById('gst-' + index).innerHTML = '&#8377;' + formatIndian(gst);
+    document.getElementById('total-' + index).innerHTML = '&#8377;' + formatIndian(total);
+
+    recalcSummary();
+}
+
+function recalcSummary() {
+    var cards = document.querySelectorAll('.product-card');
+    var totalTaxable = 0;
+    var totalGST = 0;
+
+    cards.forEach(function(card) {
+        var index = card.getAttribute('data-index');
+        var rateInput = document.querySelector('input[name="line_items[' + index + '].rate"]');
+        var taxPctInput = document.querySelector('input[name="line_items[' + index + '].tax_percentage"]');
+        var textarea = document.querySelector('textarea[name="line_items[' + index + '].serial_numbers"]');
+
+        if (!rateInput || !taxPctInput || !textarea) return;
+
+        var lines = textarea.value.split('\n').filter(function(l) { return l.trim().length > 0; });
+        var qty = lines.length;
+        var rate = parseFloat(rateInput.value) || 0;
+        var taxPct = parseFloat(taxPctInput.value) || 0;
+
+        var taxable = rate * qty;
+        var gst = taxable * taxPct / 100;
+
+        totalTaxable += taxable;
+        totalGST += gst;
+    });
+
+    var taxType = document.querySelector('input[name="tax_type"]:checked');
+    var taxTypeVal = taxType ? taxType.value : 'cgst_sgst';
+
+    var subtotal = totalTaxable + totalGST;
+    var roundedTotal = Math.round(subtotal);
+    var roundOff = roundedTotal - subtotal;
+
+    document.getElementById('summaryTaxable').innerHTML = '&#8377;' + formatIndian(totalTaxable);
+
+    if (taxTypeVal === 'cgst_sgst') {
+        var half = totalGST / 2;
+        document.getElementById('summaryCgst').innerHTML = '&#8377;' + formatIndian(half);
+        document.getElementById('summarySgst').innerHTML = '&#8377;' + formatIndian(half);
+        document.getElementById('cgstRow').classList.remove('hidden');
+        document.getElementById('sgstRow').classList.remove('hidden');
+        document.getElementById('igstRow').classList.add('hidden');
+    } else {
+        document.getElementById('summaryIgst').innerHTML = '&#8377;' + formatIndian(totalGST);
+        document.getElementById('cgstRow').classList.add('hidden');
+        document.getElementById('sgstRow').classList.add('hidden');
+        document.getElementById('igstRow').classList.remove('hidden');
+    }
+
+    document.getElementById('summaryRoundOff').innerHTML = '&#8377;' + roundOff.toFixed(2);
+    document.getElementById('summaryTotal').innerHTML = '&#8377;' + formatIndian(roundedTotal);
+    document.getElementById('amountWords').textContent = numberToWords(roundedTotal);
+}
+
+function formatIndian(num) {
+    return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function numberToWords(num) {
+    if (num === 0) return 'Zero Rupees Only';
+    var ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten',
+        'Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+    var tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+
+    function convert(n) {
+        if (n < 20) return ones[n];
+        if (n < 100) return tens[Math.floor(n/10)] + (n%10 ? ' ' + ones[n%10] : '');
+        if (n < 1000) return ones[Math.floor(n/100)] + ' Hundred' + (n%100 ? ' and ' + convert(n%100) : '');
+        if (n < 100000) return convert(Math.floor(n/1000)) + ' Thousand' + (n%1000 ? ' ' + convert(n%1000) : '');
+        if (n < 10000000) return convert(Math.floor(n/100000)) + ' Lakh' + (n%100000 ? ' ' + convert(n%100000) : '');
+        return convert(Math.floor(n/10000000)) + ' Crore' + (n%10000000 ? ' ' + convert(n%10000000) : '');
+    }
+    return 'Rupees ' + convert(Math.abs(Math.round(num))) + ' Only';
+}
+
+function updateAddressPreview(type, selectEl) {
+    var previewDiv = document.getElementById(type + 'Preview');
+    var option = selectEl.options[selectEl.selectedIndex];
+    if (!option || !option.value) {
+        previewDiv.classList.add('hidden');
+        previewDiv.innerHTML = '';
+        return;
+    }
+
+    var dataStr = option.getAttribute('data-address');
+    if (!dataStr) {
+        previewDiv.classList.add('hidden');
+        return;
+    }
+
+    try {
+        var data = JSON.parse(dataStr);
+        var html = '';
+        for (var key in data) {
+            if (data[key]) {
+                html += '<strong>' + key + ':</strong> ' + data[key] + '<br>';
+            }
+        }
+        previewDiv.innerHTML = html;
+        previewDiv.classList.remove('hidden');
+    } catch(e) {
+        previewDiv.classList.add('hidden');
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    recalcSummary();
+});
+</script>
+{{ end }}

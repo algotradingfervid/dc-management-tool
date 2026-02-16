@@ -86,3 +86,16 @@ func DefaultBillToColumns() []ColumnDefinition {
 		{Name: "PIN Code", Required: true, Type: "text"},
 	}
 }
+
+// DefaultShipToColumns returns default column definitions for ship-to addresses.
+func DefaultShipToColumns() []ColumnDefinition {
+	return []ColumnDefinition{
+		{Name: "District", Required: true, Type: "text"},
+		{Name: "SRO", Required: false, Type: "text"},
+		{Name: "Location", Required: true, Type: "text"},
+		{Name: "Location ID", Required: true, Type: "text"},
+		{Name: "Mandal/ULB", Required: false, Type: "text"},
+		{Name: "Secretariat Name", Required: true, Type: "text"},
+		{Name: "Secretariat Code", Required: true, Type: "text"},
+	}
+}

@@ -1,0 +1,157 @@
+{{ define "form.html" }}
+<div class="p-6">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-lg font-semibold text-gray-900">{{ if .isEdit }}Edit Template{{ else }}Create Template{{ end }}</h2>
+        <button onclick="closeTemplateSlideOver()" class="text-gray-400 hover:text-gray-500">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+
+    {{ if index .errors "general" }}
+    <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <p class="text-sm text-red-600">{{ index .errors "general" }}</p>
+    </div>
+    {{ end }}
+
+    <form {{ if .isEdit }}
+            hx-post="/projects/{{ .projectID }}/templates/{{ .template.ID }}"
+          {{ else }}
+            hx-post="/projects/{{ .projectID }}/templates"
+          {{ end }}
+          hx-target="#template-form-container"
+          hx-swap="innerHTML"
+          class="space-y-5">
+        {{ .csrfField }}
+
+        <!-- Template Name -->
+        <div>
+            <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Template Name <span class="text-red-500">*</span></label>
+            <input type="text" id="name" name="name" value="{{ .template.Name }}"
+                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm {{ if index .errors "name" }}border-red-300{{ end }}"
+                placeholder="e.g., Standard Secretariat Kit" maxlength="100">
+            {{ if index .errors "name" }}
+            <p class="mt-1 text-xs text-red-500">{{ index .errors "name" }}</p>
+            {{ end }}
+        </div>
+
+        <!-- Purpose -->
+        <div>
+            <label for="purpose" class="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+            <textarea id="purpose" name="purpose" rows="2"
+                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm {{ if index .errors "purpose" }}border-red-300{{ end }}"
+                placeholder="Describe the purpose of this template" maxlength="500">{{ .template.Purpose }}</textarea>
+            {{ if index .errors "purpose" }}
+            <p class="mt-1 text-xs text-red-500">{{ index .errors "purpose" }}</p>
+            {{ end }}
+        </div>
+
+        <!-- Product Selection -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+                Select Products <span class="text-red-500">*</span>
+                <span id="selected-count" class="ml-2 text-xs text-gray-500">(0 selected)</span>
+            </label>
+            {{ if index .errors "products" }}
+            <p class="mb-2 text-xs text-red-500">{{ index .errors "products" }}</p>
+            {{ end }}
+
+            <!-- Search and controls -->
+            <div class="flex items-center gap-2 mb-2">
+                <input type="text" id="product-search" placeholder="Search products..."
+                    class="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm"
+                    oninput="filterProducts(this.value)">
+                <button type="button" onclick="selectAllProducts()" class="text-xs text-brand-600 hover:text-brand-800 font-medium whitespace-nowrap">Select All</button>
+                <button type="button" onclick="deselectAllProducts()" class="text-xs text-gray-600 hover:text-gray-800 font-medium whitespace-nowrap">Clear</button>
+            </div>
+
+            <!-- Product list -->
+            <div class="border border-gray-200 rounded-lg max-h-64 overflow-y-auto" id="product-list">
+                {{ if .products }}
+                {{ range .products }}
+                <label class="product-item flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0" data-name="{{ .ItemName }}">
+                    <input type="checkbox" name="product_ids" value="{{ .ID }}"
+                        class="product-checkbox mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                        onchange="updateSelectedCount(); toggleQuantity(this, {{ .ID }})"
+                        {{ if index $.selectedProducts .ID }}checked{{ end }}>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-gray-900">{{ .ItemName }}</div>
+                        <div class="text-xs text-gray-500">
+                            {{ if .HSNCode }}HSN: {{ .HSNCode }} | {{ end }}{{ .UoM }} | {{ printf "%.2f" .PerUnitPrice }}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 qty-input {{ if not (index $.selectedProducts .ID) }}hidden{{ end }}" id="qty-wrap-{{ .ID }}">
+                        <label class="text-xs text-gray-500">Qty:</label>
+                        <input type="number" name="quantity_{{ .ID }}" min="1" value="{{ if index $.selectedProducts .ID }}{{ index $.selectedProducts .ID }}{{ else }}1{{ end }}"
+                            class="w-16 rounded border-gray-300 text-sm text-right py-0.5 px-1" onclick="event.stopPropagation()">
+                    </div>
+                </label>
+                {{ end }}
+                {{ else }}
+                <p class="text-sm text-gray-500 text-center py-4">No products in this project. Add products first.</p>
+                {{ end }}
+            </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="flex justify-end gap-3 pt-4 border-t">
+            <button type="button" onclick="closeTemplateSlideOver()" class="btn btn-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary">
+                {{ if .isEdit }}Update Template{{ else }}Create Template{{ end }}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function updateSelectedCount() {
+    var checked = document.querySelectorAll('.product-checkbox:checked').length;
+    var el = document.getElementById('selected-count');
+    if (el) el.textContent = '(' + checked + ' selected)';
+}
+
+function toggleQuantity(checkbox, productId) {
+    var wrap = document.getElementById('qty-wrap-' + productId);
+    if (wrap) {
+        if (checkbox.checked) {
+            wrap.classList.remove('hidden');
+        } else {
+            wrap.classList.add('hidden');
+        }
+    }
+}
+
+function filterProducts(query) {
+    var items = document.querySelectorAll('.product-item');
+    query = query.toLowerCase();
+    items.forEach(function(item) {
+        var name = item.getAttribute('data-name').toLowerCase();
+        item.style.display = name.indexOf(query) >= 0 ? '' : 'none';
+    });
+}
+
+function selectAllProducts() {
+    document.querySelectorAll('.product-checkbox').forEach(function(cb) {
+        cb.checked = true;
+        var productId = cb.value;
+        var wrap = document.getElementById('qty-wrap-' + productId);
+        if (wrap) wrap.classList.remove('hidden');
+    });
+    updateSelectedCount();
+}
+
+function deselectAllProducts() {
+    document.querySelectorAll('.product-checkbox').forEach(function(cb) {
+        cb.checked = false;
+        var productId = cb.value;
+        var wrap = document.getElementById('qty-wrap-' + productId);
+        if (wrap) wrap.classList.add('hidden');
+    });
+    updateSelectedCount();
+}
+
+// Initialize count on load
+updateSelectedCount();
+</script>
+{{ end }}

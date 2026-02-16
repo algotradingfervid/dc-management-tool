@@ -780,3 +780,58 @@ GROUP BY t.id;
 42. Product recommendations based on template type
 43. Template preview before creation
 44. Drag-and-drop product selection
+
+## Implementation Summary
+
+### Completed: 2026-02-16
+
+#### Files Created
+- `internal/models/dc_template.go` - DCTemplate, DCTemplateProduct, TemplateProductRow structs with validation
+- `internal/database/dc_templates.go` - Full CRUD operations with transaction support, product association, DC count queries, name uniqueness checks
+- `internal/handlers/dc_templates.go` - 7 handlers: List, ShowCreate, Create, ShowDetail, ShowEdit, Update, Delete
+- `templates/pages/dc_templates/list.html` - Card grid layout with template stats, empty state, create/edit slide-over, delete modal
+- `templates/pages/dc_templates/detail.html` - Template detail with products table (including default qty), DC tabs, edit/delete actions
+- `templates/htmx/dc_templates/form.html` - Create/edit form with multi-select product picker, search, select all/clear, per-product quantity
+- `templates/htmx/dc_templates/form-success.html` - Success message partial
+
+#### Files Modified
+- `cmd/server/main.go` - Added 7 DC template routes (GET/POST/DELETE)
+- `templates/pages/projects/detail.html` - Updated Templates tab to link to templates page
+
+#### Routes Added
+```
+GET    /projects/:id/templates          - List templates
+GET    /projects/:id/templates/new      - Show create form (HTMX)
+POST   /projects/:id/templates          - Create template
+GET    /projects/:id/templates/:tid     - Show template detail
+GET    /projects/:id/templates/:tid/edit - Show edit form (HTMX)
+POST   /projects/:id/templates/:tid     - Update template
+DELETE /projects/:id/templates/:tid     - Delete template
+```
+
+#### Key Features Implemented
+- Template CRUD with name, purpose, and product selection
+- Multi-select product picker with search, select all, clear, and per-product default quantities
+- Card grid layout on list page showing product count, transit DC count, official DC count
+- Template detail page with products table (shows default quantity) and issued DCs tabs
+- Slide-over forms for create/edit with pre-filled data on edit
+- Delete confirmation modal with DC issuance protection
+- Validation: name required/unique, at least one product, purpose optional
+- HTMX integration for smooth UX (templateChanged event triggers list refresh)
+
+#### Test Results (Playwright Browser Tests)
+- [PASS] Templates list page loads with card grid layout
+- [PASS] Template cards show name, purpose, product count, DC counts
+- [PASS] Create Template form opens in slide-over with product selector
+- [PASS] Product selector shows all project products with checkboxes
+- [PASS] Select/deselect products updates count indicator
+- [PASS] Per-product quantity inputs appear when product is selected
+- [PASS] Template creation succeeds with valid data
+- [PASS] New template card appears in grid after creation
+- [PASS] Template detail page shows products table with default quantities
+- [PASS] Edit form loads with pre-filled name, purpose, and selected products with quantities
+- [PASS] Template update succeeds and name changes persist
+- [PASS] Template deletion succeeds for templates without DCs
+- [PASS] Template deletion blocked for templates with issued DCs (400 error with message)
+- [PASS] Validation errors show for missing name and no products selected
+- [PASS] Empty state displays when no templates exist

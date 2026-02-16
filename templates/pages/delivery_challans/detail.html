@@ -1,0 +1,158 @@
+{{ define "title" }}{{ .dc.DCNumber }} - Transit DC{{ end }}
+
+{{ define "content" }}
+<div class="max-w-4xl mx-auto space-y-6">
+
+    {{ if .flashType }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            showToast('{{ .flashMessage }}', '{{ .flashType }}');
+        });
+    </script>
+    {{ end }}
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 font-mono">{{ .dc.DCNumber }}</h1>
+            <div class="flex items-center gap-2 mt-1">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold {{ if eq .dc.Status "draft" }}bg-amber-100 text-amber-700{{ else }}bg-green-100 text-green-700{{ end }}">
+                    {{ if eq .dc.Status "draft" }}DRAFT{{ else }}ISSUED{{ end }}
+                </span>
+                <span class="text-sm text-gray-500">Transit DC</span>
+                {{ if .dc.ChallanDate }}<span class="text-sm text-gray-500">| {{ derefStr .dc.ChallanDate }}</span>{{ end }}
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="/projects/{{ .project.ID }}" class="btn btn-secondary text-sm">Back to Project</a>
+        </div>
+    </div>
+
+    <!-- Transport Details -->
+    {{ if .transitDetails }}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-6">
+        <h2 class="text-base font-bold text-gray-800 mb-4">Transport Details</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+            {{ if .transitDetails.TransporterName }}
+            <div>
+                <span class="text-gray-500">Transporter Name</span>
+                <p class="font-medium text-gray-900 mt-0.5">{{ .transitDetails.TransporterName }}</p>
+            </div>
+            {{ end }}
+            {{ if .transitDetails.VehicleNumber }}
+            <div>
+                <span class="text-gray-500">Vehicle Number</span>
+                <p class="font-medium text-gray-900 mt-0.5 font-mono">{{ .transitDetails.VehicleNumber }}</p>
+            </div>
+            {{ end }}
+            {{ if .transitDetails.EwayBillNumber }}
+            <div>
+                <span class="text-gray-500">E-Way Bill</span>
+                <p class="font-medium text-gray-900 mt-0.5">{{ .transitDetails.EwayBillNumber }}</p>
+            </div>
+            {{ end }}
+        </div>
+        {{ if .transitDetails.Notes }}
+        <div class="mt-4 text-sm">
+            <span class="text-gray-500">Notes</span>
+            <p class="font-medium text-gray-900 mt-0.5">{{ .transitDetails.Notes }}</p>
+        </div>
+        {{ end }}
+    </div>
+    {{ end }}
+
+    <!-- Addresses -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {{ if .billToAddress }}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <h3 class="text-sm font-bold text-gray-800 mb-2">Bill To</h3>
+            <div class="text-xs text-gray-500 leading-relaxed">
+                {{ range $k, $v := .billToAddress.Data }}
+                {{ if $v }}<strong>{{ $k }}:</strong> {{ $v }}<br>{{ end }}
+                {{ end }}
+            </div>
+        </div>
+        {{ end }}
+        {{ if .shipToAddress }}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <h3 class="text-sm font-bold text-gray-800 mb-2">Ship To</h3>
+            <div class="text-xs text-gray-500 leading-relaxed">
+                {{ range $k, $v := .shipToAddress.Data }}
+                {{ if $v }}<strong>{{ $k }}:</strong> {{ $v }}<br>{{ end }}
+                {{ end }}
+            </div>
+        </div>
+        {{ end }}
+    </div>
+
+    <!-- Line Items -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-6">
+        <h2 class="text-base font-bold text-gray-800 mb-4">Line Items</h2>
+        {{ range .lineItems }}
+        <div class="border border-gray-200 rounded-lg mb-4 overflow-hidden">
+            <div class="bg-gray-50 border-b border-gray-200 px-4 py-3">
+                <h3 class="text-sm font-bold text-gray-800">{{ .LineOrder }}. {{ .ItemName }}</h3>
+                <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-gray-500">
+                    {{ if .HSNCode }}<span>HSN: {{ .HSNCode }}</span>{{ end }}
+                    <span>UoM: {{ .UoM }}</span>
+                    <span>Rate: &#8377;{{ printf "%.2f" .Rate }}</span>
+                    <span>GST: {{ printf "%.0f" .TaxPercentage }}%</span>
+                </div>
+            </div>
+            <div class="px-4 py-3">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-sm">
+                    <div>
+                        <div class="text-xs text-gray-400 uppercase">Qty</div>
+                        <div class="font-bold text-gray-800">{{ .Quantity }}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-400 uppercase">Taxable</div>
+                        <div class="font-bold text-gray-800">&#8377;{{ printf "%.2f" .TaxableAmount }}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-400 uppercase">Tax</div>
+                        <div class="font-bold text-gray-800">&#8377;{{ printf "%.2f" .TaxAmount }}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-400 uppercase">Total</div>
+                        <div class="font-bold text-indigo-700">&#8377;{{ printf "%.2f" .TotalAmount }}</div>
+                    </div>
+                </div>
+                {{ if .SerialNumbers }}
+                <div class="mt-3 pt-3 border-t border-gray-100">
+                    <div class="text-xs font-semibold text-gray-500 mb-1">Serial Numbers ({{ len .SerialNumbers }})</div>
+                    <div class="text-xs font-mono text-gray-600 leading-relaxed">
+                        {{ range .SerialNumbers }}{{ . }}<br>{{ end }}
+                    </div>
+                </div>
+                {{ end }}
+            </div>
+        </div>
+        {{ end }}
+    </div>
+
+    <!-- Tax Summary -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-6">
+        <h2 class="text-base font-bold text-gray-800 mb-4">Tax Summary</h2>
+        <div class="max-w-sm space-y-2.5">
+            <div class="flex justify-between text-sm">
+                <span class="text-gray-500">Taxable Value</span>
+                <span class="font-semibold text-gray-700">&#8377;{{ printf "%.2f" .totalTaxable }}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+                <span class="text-gray-500">Tax</span>
+                <span class="font-semibold text-gray-700">&#8377;{{ printf "%.2f" .totalTax }}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+                <span class="text-gray-500">Round Off</span>
+                <span class="font-semibold text-gray-700">&#8377;{{ printf "%.2f" .roundOff }}</span>
+            </div>
+            <div class="h-px bg-gray-200 my-1"></div>
+            <div class="flex justify-between text-sm">
+                <span class="font-bold text-gray-800">Invoice Value</span>
+                <span class="font-bold text-indigo-700 text-base">&#8377;{{ printf "%.0f" .roundedTotal }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}

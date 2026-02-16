@@ -76,6 +76,15 @@ func main() {
 		protected.POST("/projects/:id/products/:pid", handlers.UpdateProductHandler)
 		protected.DELETE("/projects/:id/products/:pid", handlers.DeleteProductHandler)
 
+		// DC Template routes
+		protected.GET("/projects/:id/templates", handlers.ListTemplates)
+		protected.GET("/projects/:id/templates/new", handlers.ShowCreateTemplateForm)
+		protected.POST("/projects/:id/templates", handlers.CreateTemplateHandler)
+		protected.GET("/projects/:id/templates/:tid", handlers.ShowTemplateDetail)
+		protected.GET("/projects/:id/templates/:tid/edit", handlers.ShowEditTemplateForm)
+		protected.POST("/projects/:id/templates/:tid", handlers.UpdateTemplateHandler)
+		protected.DELETE("/projects/:id/templates/:tid", handlers.DeleteTemplateHandler)
+
 		// Bill-to address routes
 		protected.GET("/projects/:id/bill-to", handlers.ShowBillToPage)
 		protected.POST("/projects/:id/bill-to/config", handlers.UpdateColumnConfig)
@@ -85,6 +94,22 @@ func main() {
 		protected.DELETE("/projects/:id/bill-to/addresses/:aid", handlers.DeleteAddressHandler)
 		protected.DELETE("/projects/:id/bill-to/addresses", handlers.DeleteAllAddressesHandler)
 		protected.GET("/projects/:id/bill-to/addresses/:aid", handlers.GetAddressJSON)
+
+		// Transit DC routes
+		protected.GET("/projects/:id/dcs/transit/new", handlers.ShowCreateTransitDC)
+		protected.POST("/projects/:id/dcs/transit", handlers.CreateTransitDC)
+		protected.GET("/projects/:id/dcs/:dcid", handlers.ShowTransitDCDetail)
+		protected.GET("/projects/:id/templates/:tid/products", handlers.LoadTemplateProducts)
+
+		// Ship-to address routes
+		protected.GET("/projects/:id/ship-to", handlers.ShowShipToPage)
+		protected.POST("/projects/:id/ship-to/config", handlers.UpdateShipToColumnConfig)
+		protected.POST("/projects/:id/ship-to/upload", handlers.UploadShipToAddresses)
+		protected.POST("/projects/:id/ship-to/addresses", handlers.CreateShipToAddressHandler)
+		protected.POST("/projects/:id/ship-to/addresses/:aid", handlers.UpdateShipToAddressHandler)
+		protected.DELETE("/projects/:id/ship-to/addresses/:aid", handlers.DeleteShipToAddressHandler)
+		protected.DELETE("/projects/:id/ship-to/addresses", handlers.DeleteAllShipToAddressesHandler)
+		protected.GET("/projects/:id/ship-to/addresses/:aid", handlers.GetShipToAddressJSON)
 	}
 
 	// Wrap with SCS session middleware + CSRF middleware

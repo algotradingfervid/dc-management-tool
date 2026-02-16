@@ -142,8 +142,11 @@
             </div>
 
             {{ else if eq .activeTab "templates" }}
-            <div class="text-center py-8 text-gray-500">
-                <p>Template management will be available in Phase 9.</p>
+            <div class="text-center py-8">
+                <p class="text-sm text-gray-500 mb-4">Manage DC templates for this project.</p>
+                <a href="/projects/{{ .project.ID }}/templates" class="btn btn-primary text-sm">
+                    Go to Templates
+                </a>
             </div>
 
             {{ else if eq .activeTab "addresses" }}
@@ -163,19 +166,20 @@
                             </div>
                         </div>
                     </a>
-                    <div class="block p-6 bg-gray-50 border border-gray-200 rounded-lg opacity-60">
+                    <a href="/projects/{{ .project.ID }}/ship-to" class="block p-6 bg-white border border-gray-200 rounded-lg hover:border-brand-300 hover:shadow-sm transition-all">
                         <div class="flex items-center gap-3">
-                            <div class="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 </svg>
                             </div>
                             <div>
-                                <h3 class="text-sm font-semibold text-gray-500">Ship To Addresses</h3>
-                                <p class="text-xs text-gray-400">Coming in Phase 8</p>
+                                <h3 class="text-sm font-semibold text-gray-900">Ship To Addresses</h3>
+                                <p class="text-xs text-gray-500">Manage shipping addresses for delivery challans</p>
                             </div>
                         </div>
-                    </div>
+                    </a>
                 </div>
             </div>
 
