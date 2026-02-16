@@ -111,8 +111,18 @@ func main() {
 		protected.POST("/projects/:id/dcs/:dcid/issue", handlers.IssueDCHandler)
 		protected.DELETE("/projects/:id/dcs/:dcid", handlers.DeleteDCHandler)
 
+		// DC Export routes (PDF & Excel)
+		protected.GET("/projects/:id/dcs/:dcid/export/pdf", handlers.ExportDCPDF)
+		protected.GET("/projects/:id/dcs/:dcid/export/excel", handlers.ExportDCExcel)
+
 		// Serial number validation API
 		protected.POST("/api/serial-numbers/validate", handlers.ValidateSerialNumbers)
+
+		// Global DC listing
+		protected.GET("/delivery-challans", handlers.ListAllDeliveryChallans)
+
+		// Serial number search
+		protected.GET("/serial-search", handlers.ShowSerialSearch)
 
 		// Ship-to address routes
 		protected.GET("/projects/:id/ship-to", handlers.ShowShipToPage)

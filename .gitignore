@@ -35,3 +35,11 @@ Thumbs.db
 tmp/
 build-errors.log
 *.log
+
+# Build artifacts
+server
+
+# Test artifacts
+.playwright-cli/
+transit-dc-print-test.pdf
+test_ship_to.csv

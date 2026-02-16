@@ -86,6 +86,15 @@ func TemplateFuncs() template.FuncMap {
 		"numberToWords": func(amount float64) string {
 			return NumberToIndianWords(amount)
 		},
+		"derefFloat": func(f *float64) float64 {
+			if f == nil {
+				return 0
+			}
+			return *f
+		},
+		"intToStr": func(i int) string {
+			return fmt.Sprintf("%d", i)
+		},
 	}
 }
 

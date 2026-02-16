@@ -1,73 +1,4 @@
-{{ define "title" }}Dashboard - DC Management Tool{{ end }}
-
-{{ define "content" }}
-<div class="space-y-6">
-    <!-- Header with Date Range Filter -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h2 class="text-2xl font-bold text-gray-900">Dashboard</h2>
-            <p class="text-sm text-gray-500 mt-1">Welcome back, {{ .user.FullName }}</p>
-        </div>
-        <div>
-            <select
-                name="range"
-                hx-get="/"
-                hx-target="#dashboard-stats"
-                hx-swap="innerHTML"
-                hx-trigger="change"
-                hx-indicator="#stats-loading"
-                class="block w-full sm:w-auto px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-            >
-                <option value="all_time" {{ if eq .Range "all_time" }}selected{{ end }}>All Time</option>
-                <option value="current_month" {{ if eq .Range "current_month" }}selected{{ end }}>Current Month</option>
-                <option value="last_7_days" {{ if eq .Range "last_7_days" }}selected{{ end }}>Last 7 Days</option>
-                <option value="last_30_days" {{ if eq .Range "last_30_days" }}selected{{ end }}>Last 30 Days</option>
-                <option value="last_3_months" {{ if eq .Range "last_3_months" }}selected{{ end }}>Last 3 Months</option>
-            </select>
-        </div>
-    </div>
-
-    <!-- Loading indicator -->
-    <div id="stats-loading" class="htmx-indicator text-center py-4">
-        <svg class="animate-spin h-6 w-6 text-brand-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-        </svg>
-    </div>
-
-    <!-- HTMX Target: Stats + Recent DCs -->
-    <div id="dashboard-stats">
-        {{ template "dashboard_stats_content" . }}
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="card">
-        <h3 class="card-title mb-4">Quick Actions</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <a href="/projects/new" class="btn btn-primary">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                New Project
-            </a>
-            <a href="/projects" class="btn btn-secondary">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                </svg>
-                View All Projects
-            </a>
-            <a href="/projects" class="btn btn-secondary">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                </svg>
-                View All DCs
-            </a>
-        </div>
-    </div>
-</div>
-{{ end }}
-
-{{ define "dashboard_stats_content" }}
+{{ define "dashboard_stats_partial.html" }}
     <!-- Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <!-- Total Projects -->
@@ -133,13 +64,10 @@
 
     <!-- DCs This Month + Type Breakdown -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <!-- DCs This Month -->
         <div class="card">
             <p class="text-sm font-medium text-gray-600">DCs This Month</p>
             <p class="text-3xl font-bold text-brand-600 mt-2">{{ .Stats.DCsThisMonth }}</p>
         </div>
-
-        <!-- Transit DCs -->
         <div class="card">
             <div class="flex items-center justify-between">
                 <div>
@@ -149,8 +77,6 @@
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Transit</span>
             </div>
         </div>
-
-        <!-- Official DCs -->
         <div class="card">
             <div class="flex items-center justify-between">
                 <div>
@@ -241,10 +167,7 @@
         </div>
         {{ else }}
         <div class="text-center py-8">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-            <p class="mt-2 text-sm text-gray-500">No delivery challans yet. Create your first project to get started.</p>
+            <p class="text-sm text-gray-500">No delivery challans yet.</p>
         </div>
         {{ end }}
     </div>

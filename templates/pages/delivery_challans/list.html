@@ -1,0 +1,303 @@
+{{ define "title" }}All Delivery Challans - DC Management Tool{{ end }}
+
+{{ define "content" }}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">All Delivery Challans</h1>
+            <p class="text-sm text-gray-500 mt-1">View and manage DCs across all projects</p>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {{ if .flashType }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            showToast('{{ .flashMessage }}', '{{ .flashType }}');
+        });
+    </script>
+    {{ end }}
+
+    <!-- Filter Bar -->
+    <div class="card">
+        <form id="filter-form"
+              hx-get="/delivery-challans"
+              hx-target="#dc-table-container"
+              hx-select="#dc-table-container"
+              hx-swap="outerHTML"
+              hx-push-url="true">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-4">
+                <!-- Project Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                    <select name="project" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm">
+                        <option value="all" {{ if eq .filters.ProjectID "all" }}selected{{ end }}>All Projects</option>
+                        {{ range .projects }}
+                        <option value="{{ .ID }}" {{ if eq $.filters.ProjectID (intToStr .ID) }}selected{{ end }}>{{ .Name }}</option>
+                        {{ end }}
+                    </select>
+                </div>
+
+                <!-- DC Type Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">DC Type</label>
+                    <select name="type" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm">
+                        <option value="all" {{ if eq .filters.DCType "all" }}selected{{ end }}>All Types</option>
+                        <option value="transit" {{ if eq .filters.DCType "transit" }}selected{{ end }}>Transit</option>
+                        <option value="official" {{ if eq .filters.DCType "official" }}selected{{ end }}>Official</option>
+                    </select>
+                </div>
+
+                <!-- Status Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select name="status" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm">
+                        <option value="all" {{ if eq .filters.Status "all" }}selected{{ end }}>All Status</option>
+                        <option value="draft" {{ if eq .filters.Status "draft" }}selected{{ end }}>Draft</option>
+                        <option value="issued" {{ if eq .filters.Status "issued" }}selected{{ end }}>Issued</option>
+                    </select>
+                </div>
+
+                <!-- Date From -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+                    <input type="date" name="date_from" value="{{ .filters.DateFrom }}"
+                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm">
+                </div>
+
+                <!-- Date To -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+                    <input type="date" name="date_to" value="{{ .filters.DateTo }}"
+                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm">
+                </div>
+
+                <!-- Search -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Search DC #</label>
+                    <input type="text" name="search" value="{{ .filters.Search }}" placeholder="DC number..."
+                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm"
+                           hx-get="/delivery-challans"
+                           hx-target="#dc-table-container"
+                           hx-select="#dc-table-container"
+                           hx-swap="outerHTML"
+                           hx-trigger="keyup changed delay:500ms"
+                           hx-include="#filter-form"
+                           hx-push-url="true">
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary text-sm">
+                    Apply Filters
+                </button>
+                <a href="/delivery-challans" class="btn btn-secondary text-sm">
+                    Clear All
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- DC Table Container (HTMX Target) -->
+    <div id="dc-table-container">
+        <!-- Results Count -->
+        <div class="flex items-center justify-between mb-4">
+            <p class="text-sm text-gray-600">
+                {{ if gt .result.TotalCount 0 }}
+                Showing {{ add (mul (sub .result.Page 1) .result.PageSize) 1 }}–{{ if gt (mul .result.Page .result.PageSize) .result.TotalCount }}{{ .result.TotalCount }}{{ else }}{{ mul .result.Page .result.PageSize }}{{ end }} of {{ .result.TotalCount }} results
+                {{ else }}
+                No results found
+                {{ end }}
+            </p>
+            {{ if gt .result.TotalPages 1 }}
+            <p class="text-sm text-gray-500">Page {{ .result.Page }} of {{ .result.TotalPages }}</p>
+            {{ end }}
+        </div>
+
+        <!-- DC Table -->
+        <div class="card overflow-hidden p-0">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <!-- DC Number (sortable) -->
+                            <th class="px-6 py-3 text-left">
+                                <a href="/delivery-challans?sort_by=dc_number&sort_order={{ if and (eq .filters.SortBy "dc_number") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}&project={{ .filters.ProjectID }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
+                                   hx-get="/delivery-challans?sort_by=dc_number&sort_order={{ if and (eq .filters.SortBy "dc_number") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}"
+                                   hx-target="#dc-table-container"
+                                   hx-select="#dc-table-container"
+                                   hx-swap="outerHTML"
+                                   hx-include="#filter-form"
+                                   class="text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700 flex items-center gap-1">
+                                    DC Number
+                                    {{ if eq .filters.SortBy "dc_number" }}
+                                        {{ if eq .filters.SortOrder "asc" }}<span class="text-brand-600">▲</span>{{ else }}<span class="text-brand-600">▼</span>{{ end }}
+                                    {{ end }}
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <!-- Date (sortable) -->
+                            <th class="px-6 py-3 text-left">
+                                <a href="/delivery-challans?sort_by=challan_date&sort_order={{ if and (eq .filters.SortBy "challan_date") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}&project={{ .filters.ProjectID }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
+                                   hx-get="/delivery-challans?sort_by=challan_date&sort_order={{ if and (eq .filters.SortBy "challan_date") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}"
+                                   hx-target="#dc-table-container"
+                                   hx-select="#dc-table-container"
+                                   hx-swap="outerHTML"
+                                   hx-include="#filter-form"
+                                   class="text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700 flex items-center gap-1">
+                                    Date
+                                    {{ if eq .filters.SortBy "challan_date" }}
+                                        {{ if eq .filters.SortOrder "asc" }}<span class="text-brand-600">▲</span>{{ else }}<span class="text-brand-600">▼</span>{{ end }}
+                                    {{ end }}
+                                </a>
+                            </th>
+                            <!-- Project (sortable) -->
+                            <th class="px-6 py-3 text-left">
+                                <a href="/delivery-challans?sort_by=project_name&sort_order={{ if and (eq .filters.SortBy "project_name") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}&project={{ .filters.ProjectID }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
+                                   hx-get="/delivery-challans?sort_by=project_name&sort_order={{ if and (eq .filters.SortBy "project_name") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}"
+                                   hx-target="#dc-table-container"
+                                   hx-select="#dc-table-container"
+                                   hx-swap="outerHTML"
+                                   hx-include="#filter-form"
+                                   class="text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700 flex items-center gap-1">
+                                    Project
+                                    {{ if eq .filters.SortBy "project_name" }}
+                                        {{ if eq .filters.SortOrder "asc" }}<span class="text-brand-600">▲</span>{{ else }}<span class="text-brand-600">▼</span>{{ end }}
+                                    {{ end }}
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ship To</th>
+                            <!-- Status (sortable) -->
+                            <th class="px-6 py-3 text-left">
+                                <a href="/delivery-challans?sort_by=status&sort_order={{ if and (eq .filters.SortBy "status") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}&project={{ .filters.ProjectID }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
+                                   hx-get="/delivery-challans?sort_by=status&sort_order={{ if and (eq .filters.SortBy "status") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}"
+                                   hx-target="#dc-table-container"
+                                   hx-select="#dc-table-container"
+                                   hx-swap="outerHTML"
+                                   hx-include="#filter-form"
+                                   class="text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700 flex items-center gap-1">
+                                    Status
+                                    {{ if eq .filters.SortBy "status" }}
+                                        {{ if eq .filters.SortOrder "asc" }}<span class="text-brand-600">▲</span>{{ else }}<span class="text-brand-600">▼</span>{{ end }}
+                                    {{ end }}
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Value</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {{ if .result.DCs }}
+                        {{ range .result.DCs }}
+                        <tr class="hover:bg-gray-50 cursor-pointer transition-colors"
+                            onclick="window.location='/projects/{{ .ProjectID }}/dcs/{{ .ID }}'">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <a href="/projects/{{ .ProjectID }}/dcs/{{ .ID }}" class="text-brand-600 hover:text-brand-800 font-medium">
+                                    {{ .DCNumber }}
+                                </a>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ if eq .DCType "transit" }}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Transit</span>
+                                {{ else }}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Official</span>
+                                {{ end }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                {{ .ChallanDate }}
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-gray-900 font-medium">{{ .ProjectName }}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-gray-600 max-w-xs truncate">{{ .ShipToSummary }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ if eq .Status "draft" }}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Draft</span>
+                                {{ else }}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Issued</span>
+                                {{ end }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                {{ if .TotalValue }}
+                                    ₹{{ formatINR (derefFloat .TotalValue) }}
+                                {{ else }}
+                                    <span class="text-gray-400">—</span>
+                                {{ end }}
+                            </td>
+                        </tr>
+                        {{ end }}
+                        {{ else }}
+                        <tr>
+                            <td colspan="7" class="px-6 py-12 text-center">
+                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                <h3 class="mt-4 text-lg font-medium text-gray-900">No delivery challans found</h3>
+                                <p class="mt-2 text-sm text-gray-500">Try adjusting your filters or create a new DC from a project.</p>
+                                <a href="/delivery-challans" class="mt-4 inline-block text-brand-600 hover:text-brand-800 font-medium text-sm">Clear all filters</a>
+                            </td>
+                        </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {{ if gt .result.TotalPages 1 }}
+        <div class="flex items-center justify-between mt-4">
+            <div>
+                {{ if gt .result.Page 1 }}
+                <a href="/delivery-challans?page={{ sub .result.Page 1 }}&sort_by={{ .filters.SortBy }}&sort_order={{ .filters.SortOrder }}&project={{ .filters.ProjectID }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
+                   hx-get="/delivery-challans?page={{ sub .result.Page 1 }}"
+                   hx-target="#dc-table-container"
+                   hx-select="#dc-table-container"
+                   hx-swap="outerHTML"
+                   hx-include="#filter-form"
+                   class="btn btn-secondary text-sm">
+                    ← Previous
+                </a>
+                {{ else }}
+                <span class="btn btn-secondary text-sm opacity-50 cursor-not-allowed">← Previous</span>
+                {{ end }}
+            </div>
+
+            <div class="flex gap-1">
+                {{ range seq 1 .result.TotalPages }}
+                {{ if eq . $.result.Page }}
+                <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-brand-600 text-white text-sm font-medium">{{ . }}</span>
+                {{ else }}
+                <a href="/delivery-challans?page={{ . }}&sort_by={{ $.filters.SortBy }}&sort_order={{ $.filters.SortOrder }}&project={{ $.filters.ProjectID }}&type={{ $.filters.DCType }}&status={{ $.filters.Status }}&date_from={{ $.filters.DateFrom }}&date_to={{ $.filters.DateTo }}&search={{ $.filters.Search }}"
+                   hx-get="/delivery-challans?page={{ . }}"
+                   hx-target="#dc-table-container"
+                   hx-select="#dc-table-container"
+                   hx-swap="outerHTML"
+                   hx-include="#filter-form"
+                   class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">{{ . }}</a>
+                {{ end }}
+                {{ end }}
+            </div>
+
+            <div>
+                {{ if lt .result.Page .result.TotalPages }}
+                <a href="/delivery-challans?page={{ add .result.Page 1 }}&sort_by={{ .filters.SortBy }}&sort_order={{ .filters.SortOrder }}&project={{ .filters.ProjectID }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
+                   hx-get="/delivery-challans?page={{ add .result.Page 1 }}"
+                   hx-target="#dc-table-container"
+                   hx-select="#dc-table-container"
+                   hx-swap="outerHTML"
+                   hx-include="#filter-form"
+                   class="btn btn-secondary text-sm">
+                    Next →
+                </a>
+                {{ else }}
+                <span class="btn btn-secondary text-sm opacity-50 cursor-not-allowed">Next →</span>
+                {{ end }}
+            </div>
+        </div>
+        {{ end }}
+    </div>
+</div>
+{{ end }}
