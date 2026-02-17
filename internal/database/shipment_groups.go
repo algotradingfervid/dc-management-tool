@@ -5,17 +5,69 @@ import (
 	"fmt"
 	"time"
 
+	db "github.com/narendhupati/dc-management-tool/internal/database/sqlc"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
+// mapShipmentGroupRow maps hand-written scan results to *models.ShipmentGroup.
+// Used by GetShipmentGroup and GetShipmentGroupsByProjectID.
+func mapShipmentGroupFull(
+	id, projectID int64,
+	templateID sql.NullInt64,
+	numSets int64,
+	taxType, reverseCharge, status string,
+	createdBy sql.NullInt64,
+	createdAt, updatedAt sql.NullTime,
+	templateName string,
+	officialDCCount int64,
+	transitDCNumber string,
+	transitDCID sql.NullInt64,
+	projectName string,
+) *models.ShipmentGroup {
+	sg := &models.ShipmentGroup{
+		ID:              int(id),
+		ProjectID:       int(projectID),
+		NumSets:         int(numSets),
+		TaxType:         taxType,
+		ReverseCharge:   reverseCharge,
+		Status:          status,
+		TemplateName:    templateName,
+		OfficialDCCount: int(officialDCCount),
+		TransitDCNumber: transitDCNumber,
+		ProjectName:     projectName,
+	}
+	if createdBy.Valid {
+		sg.CreatedBy = int(createdBy.Int64)
+	}
+	if createdAt.Valid {
+		sg.CreatedAt = createdAt.Time
+	}
+	if updatedAt.Valid {
+		sg.UpdatedAt = updatedAt.Time
+	}
+	if templateID.Valid {
+		v := int(templateID.Int64)
+		sg.TemplateID = &v
+	}
+	if transitDCID.Valid {
+		v := int(transitDCID.Int64)
+		sg.TransitDCID = &v
+	}
+	return sg
+}
+
 // CreateShipmentGroup inserts a new shipment group and returns its ID.
+// sqlc-backed: CreateShipmentGroup.
 func CreateShipmentGroup(group *models.ShipmentGroup) (int, error) {
-	result, err := DB.Exec(
-		`INSERT INTO shipment_groups (project_id, template_id, num_sets, tax_type, reverse_charge, status, created_by)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		group.ProjectID, group.TemplateID, group.NumSets,
-		group.TaxType, group.ReverseCharge, group.Status, group.CreatedBy,
-	)
+	result, err := queries().CreateShipmentGroup(ctx(), db.CreateShipmentGroupParams{
+		ProjectID:     int64(group.ProjectID),
+		TemplateID:    nullInt64FromPtr(group.TemplateID),
+		NumSets:       int64(group.NumSets),
+		TaxType:       group.TaxType,
+		ReverseCharge: group.ReverseCharge,
+		Status:        group.Status,
+		CreatedBy:     nullInt64FromInt(group.CreatedBy),
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to create shipment group: %w", err)
 	}
@@ -24,12 +76,15 @@ func CreateShipmentGroup(group *models.ShipmentGroup) (int, error) {
 }
 
 // GetShipmentGroup fetches a shipment group by ID with computed fields.
+// Hand-written SQL: sqlc-generated SQL for GetShipmentGroup is truncated.
 func GetShipmentGroup(id int) (*models.ShipmentGroup, error) {
 	sg := &models.ShipmentGroup{}
 	var templateID sql.NullInt64
 	var templateName sql.NullString
 	var transitDCID sql.NullInt64
 	var transitDCNumber sql.NullString
+	var createdBy sql.NullInt64
+	var createdAt, updatedAt sql.NullTime
 
 	err := DB.QueryRow(
 		`SELECT sg.id, sg.project_id, sg.template_id, sg.num_sets, sg.tax_type,
@@ -45,7 +100,7 @@ func GetShipmentGroup(id int) (*models.ShipmentGroup, error) {
 		 WHERE sg.id = ?`, id,
 	).Scan(
 		&sg.ID, &sg.ProjectID, &templateID, &sg.NumSets, &sg.TaxType,
-		&sg.ReverseCharge, &sg.Status, &sg.CreatedBy, &sg.CreatedAt, &sg.UpdatedAt,
+		&sg.ReverseCharge, &sg.Status, &createdBy, &createdAt, &updatedAt,
 		&templateName,
 		&sg.ProjectName,
 		&transitDCID, &transitDCNumber,
@@ -55,6 +110,15 @@ func GetShipmentGroup(id int) (*models.ShipmentGroup, error) {
 		return nil, err
 	}
 
+	if createdBy.Valid {
+		sg.CreatedBy = int(createdBy.Int64)
+	}
+	if createdAt.Valid {
+		sg.CreatedAt = createdAt.Time
+	}
+	if updatedAt.Valid {
+		sg.UpdatedAt = updatedAt.Time
+	}
 	if templateID.Valid {
 		v := int(templateID.Int64)
 		sg.TemplateID = &v
@@ -74,6 +138,7 @@ func GetShipmentGroup(id int) (*models.ShipmentGroup, error) {
 }
 
 // GetShipmentGroupByDCID finds the shipment group that contains a given DC.
+// Hand-written SQL: sqlc-generated SQL for GetShipmentGroupIDByDCID is truncated.
 func GetShipmentGroupByDCID(dcID int) (*models.ShipmentGroup, error) {
 	var groupID int
 	err := DB.QueryRow(
@@ -86,6 +151,7 @@ func GetShipmentGroupByDCID(dcID int) (*models.ShipmentGroup, error) {
 }
 
 // GetShipmentGroupDCs returns all delivery challans in a shipment group.
+// Hand-written SQL: sqlc-generated SQL for GetShipmentGroupDCs is truncated.
 func GetShipmentGroupDCs(groupID int) ([]*models.DeliveryChallan, error) {
 	rows, err := DB.Query(
 		`SELECT dc.id, dc.project_id, dc.dc_number, dc.dc_type, dc.status,
@@ -119,6 +185,7 @@ func GetShipmentGroupDCs(groupID int) ([]*models.DeliveryChallan, error) {
 }
 
 // UpdateShipmentGroupStatus updates the status of a shipment group.
+// Hand-written SQL: sqlc-generated SQL for UpdateShipmentGroupStatus is truncated.
 func UpdateShipmentGroupStatus(id int, status string) error {
 	_, err := DB.Exec(
 		`UPDATE shipment_groups SET status = ?, updated_at = ? WHERE id = ?`,
@@ -131,6 +198,7 @@ func UpdateShipmentGroupStatus(id int, status string) error {
 }
 
 // GetShipmentGroupsByProjectID returns all shipment groups for a project.
+// Hand-written SQL: sqlc-generated SQL for GetShipmentGroupsByProjectID is truncated.
 func GetShipmentGroupsByProjectID(projectID int) ([]*models.ShipmentGroup, error) {
 	rows, err := DB.Query(
 		`SELECT sg.id, sg.project_id, sg.template_id, sg.num_sets, sg.tax_type,
@@ -155,9 +223,11 @@ func GetShipmentGroupsByProjectID(projectID int) ([]*models.ShipmentGroup, error
 		sg := &models.ShipmentGroup{}
 		var templateID sql.NullInt64
 		var transitDCID sql.NullInt64
+		var createdBy sql.NullInt64
+		var createdAt, updatedAt sql.NullTime
 		err := rows.Scan(
 			&sg.ID, &sg.ProjectID, &templateID, &sg.NumSets, &sg.TaxType,
-			&sg.ReverseCharge, &sg.Status, &sg.CreatedBy, &sg.CreatedAt, &sg.UpdatedAt,
+			&sg.ReverseCharge, &sg.Status, &createdBy, &createdAt, &updatedAt,
 			&sg.TemplateName,
 			&sg.OfficialDCCount,
 			&sg.TransitDCNumber,
@@ -165,6 +235,15 @@ func GetShipmentGroupsByProjectID(projectID int) ([]*models.ShipmentGroup, error
 		)
 		if err != nil {
 			return nil, err
+		}
+		if createdBy.Valid {
+			sg.CreatedBy = int(createdBy.Int64)
+		}
+		if createdAt.Valid {
+			sg.CreatedAt = createdAt.Time
+		}
+		if updatedAt.Valid {
+			sg.UpdatedAt = updatedAt.Time
 		}
 		if templateID.Valid {
 			v := int(templateID.Int64)
@@ -180,6 +259,7 @@ func GetShipmentGroupsByProjectID(projectID int) ([]*models.ShipmentGroup, error
 }
 
 // IssueAllDCsInGroup issues all draft DCs in a shipment group.
+// Hand-written SQL: sqlc-generated SQL for IssueAllDCsInGroup is truncated.
 func IssueAllDCsInGroup(groupID int, issuedBy int) (int, error) {
 	now := time.Now()
 	result, err := DB.Exec(

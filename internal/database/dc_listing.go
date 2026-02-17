@@ -1,24 +1,27 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
+
+	db "github.com/narendhupati/dc-management-tool/internal/database/sqlc"
 )
 
 // DCListItem represents a single DC row in the global listing.
 type DCListItem struct {
-	ID              int
-	DCNumber        string
-	DCType          string
-	ChallanDate     string
-	ProjectID       int
-	ProjectName     string
-	ShipToSummary   string
-	Status          string
-	TotalValue      *float64
-	LineItemCount   int
-	TotalQuantity   int
+	ID            int
+	DCNumber      string
+	DCType        string
+	ChallanDate   string
+	ProjectID     int
+	ProjectName   string
+	ShipToSummary string
+	Status        string
+	TotalValue    *float64
+	LineItemCount int
+	TotalQuantity int
 }
 
 // DCListFilters holds all filter/sort/pagination parameters.
@@ -50,7 +53,9 @@ type ProjectOption struct {
 	Name string
 }
 
-// GetAllDCsFiltered fetches all DCs across projects with filters, sorting, and pagination.
+// GetAllDCsFiltered fetches all DCs across projects with dynamic filters, sorting, and pagination.
+// This function is hand-written because the WHERE clause is built dynamically at runtime
+// and cannot be expressed as a static sqlc query.
 func GetAllDCsFiltered(filters DCListFilters) (*DCListResult, error) {
 	whereClauses := []string{}
 	args := []interface{}{}
@@ -90,7 +95,7 @@ func GetAllDCsFiltered(filters DCListFilters) (*DCListResult, error) {
 		whereClause = "WHERE " + strings.Join(whereClauses, " AND ")
 	}
 
-	// Count query
+	// Count query (hand-written dynamic SQL)
 	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM delivery_challans dc %s`, whereClause)
 	var totalCount int
 	if err := DB.QueryRow(countQuery, args...).Scan(&totalCount); err != nil {
@@ -123,7 +128,7 @@ func GetAllDCsFiltered(filters DCListFilters) (*DCListResult, error) {
 	}
 	offset := (filters.Page - 1) * filters.PageSize
 
-	// Main query with JOINs
+	// Main query with JOINs (hand-written dynamic SQL)
 	query := fmt.Sprintf(`
 		SELECT
 			dc.id,
@@ -196,20 +201,20 @@ func GetAllDCsFiltered(filters DCListFilters) (*DCListResult, error) {
 }
 
 // GetAllProjectOptions returns all projects for the filter dropdown.
+// sqlc-backed via GetAllProjectOptions query in projects.sql.go.
 func GetAllProjectOptions() ([]ProjectOption, error) {
-	rows, err := DB.Query("SELECT id, name FROM projects ORDER BY name")
+	q := db.New(DB)
+	rows, err := q.GetAllProjectOptions(context.Background())
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var projects []ProjectOption
-	for rows.Next() {
-		var p ProjectOption
-		if err := rows.Scan(&p.ID, &p.Name); err != nil {
-			return nil, err
-		}
-		projects = append(projects, p)
+	projects := make([]ProjectOption, 0, len(rows))
+	for _, r := range rows {
+		projects = append(projects, ProjectOption{
+			ID:   int(r.ID),
+			Name: r.Name,
+		})
 	}
 	return projects, nil
 }

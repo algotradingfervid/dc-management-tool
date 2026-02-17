@@ -1,70 +1,51 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
+	db "github.com/narendhupati/dc-management-tool/internal/database/sqlc"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
+// GetTemplatesByProjectID returns all templates for a project with aggregate counts.
+// sqlc-backed via GetTemplatesByProjectID query.
 func GetTemplatesByProjectID(projectID int) ([]*models.DCTemplate, error) {
-	query := `
-		SELECT
-			t.id, t.project_id, t.name, t.purpose, t.created_at, t.updated_at,
-			COUNT(DISTINCT tp.product_id) as product_count,
-			COUNT(DISTINCT CASE WHEN dc.dc_type = 'transit' THEN dc.id END) as transit_count,
-			COUNT(DISTINCT CASE WHEN dc.dc_type = 'official' THEN dc.id END) as official_count,
-			COUNT(DISTINCT dc.id) as usage_count
-		FROM dc_templates t
-		LEFT JOIN dc_template_products tp ON t.id = tp.template_id
-		LEFT JOIN delivery_challans dc ON t.id = dc.template_id
-		WHERE t.project_id = ?
-		GROUP BY t.id
-		ORDER BY t.created_at DESC
-	`
-
-	rows, err := DB.Query(query, projectID)
+	q := db.New(DB)
+	rows, err := q.GetTemplatesByProjectID(context.Background(), int64(projectID))
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var templates []*models.DCTemplate
-	for rows.Next() {
-		t := &models.DCTemplate{}
-		err := rows.Scan(
-			&t.ID, &t.ProjectID, &t.Name, &t.Purpose, &t.CreatedAt, &t.UpdatedAt,
-			&t.ProductCount, &t.TransitDCCount, &t.OfficialDCCount, &t.UsageCount,
-		)
-		if err != nil {
-			return nil, err
+	templates := make([]*models.DCTemplate, 0, len(rows))
+	for _, r := range rows {
+		t := &models.DCTemplate{
+			ID:              int(r.ID),
+			ProjectID:       int(r.ProjectID),
+			Name:            r.Name,
+			Purpose:         r.Purpose,
+			ProductCount:    int(r.ProductCount),
+			TransitDCCount:  int(r.TransitCount),
+			OfficialDCCount: int(r.OfficialCount),
+			UsageCount:      int(r.UsageCount),
+		}
+		if r.CreatedAt.Valid {
+			t.CreatedAt = r.CreatedAt.Time
+		}
+		if r.UpdatedAt.Valid {
+			t.UpdatedAt = r.UpdatedAt.Time
 		}
 		templates = append(templates, t)
 	}
-
 	return templates, nil
 }
 
+// GetTemplateByID returns a single template by ID with aggregate counts.
+// sqlc-backed via GetTemplateByID query.
 func GetTemplateByID(id int) (*models.DCTemplate, error) {
-	query := `
-		SELECT
-			t.id, t.project_id, t.name, t.purpose, t.created_at, t.updated_at,
-			COUNT(DISTINCT tp.product_id) as product_count,
-			COUNT(DISTINCT CASE WHEN dc.dc_type = 'transit' THEN dc.id END) as transit_count,
-			COUNT(DISTINCT CASE WHEN dc.dc_type = 'official' THEN dc.id END) as official_count,
-			COUNT(DISTINCT dc.id) as usage_count
-		FROM dc_templates t
-		LEFT JOIN dc_template_products tp ON t.id = tp.template_id
-		LEFT JOIN delivery_challans dc ON t.id = dc.template_id
-		WHERE t.id = ?
-		GROUP BY t.id
-	`
-
-	t := &models.DCTemplate{}
-	err := DB.QueryRow(query, id).Scan(
-		&t.ID, &t.ProjectID, &t.Name, &t.Purpose, &t.CreatedAt, &t.UpdatedAt,
-		&t.ProductCount, &t.TransitDCCount, &t.OfficialDCCount, &t.UsageCount,
-	)
+	q := db.New(DB)
+	r, err := q.GetTemplateByID(context.Background(), int64(id))
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("template not found")
 	}
@@ -72,57 +53,68 @@ func GetTemplateByID(id int) (*models.DCTemplate, error) {
 		return nil, err
 	}
 
+	t := &models.DCTemplate{
+		ID:              int(r.ID),
+		ProjectID:       int(r.ProjectID),
+		Name:            r.Name,
+		Purpose:         r.Purpose,
+		ProductCount:    int(r.ProductCount),
+		TransitDCCount:  int(r.TransitCount),
+		OfficialDCCount: int(r.OfficialCount),
+		UsageCount:      int(r.UsageCount),
+	}
+	if r.CreatedAt.Valid {
+		t.CreatedAt = r.CreatedAt.Time
+	}
+	if r.UpdatedAt.Valid {
+		t.UpdatedAt = r.UpdatedAt.Time
+	}
 	return t, nil
 }
 
+// GetTemplateProducts returns all products for a template with their default quantities.
+// sqlc-backed via GetTemplateProducts query.
 func GetTemplateProducts(templateID int) ([]*models.TemplateProductRow, error) {
-	query := `
-		SELECT p.id, p.project_id, p.item_name, p.item_description, p.hsn_code, p.uom,
-		       p.brand_model, p.per_unit_price, p.gst_percentage, p.created_at, p.updated_at,
-		       tp.default_quantity
-		FROM products p
-		INNER JOIN dc_template_products tp ON p.id = tp.product_id
-		WHERE tp.template_id = ?
-		ORDER BY tp.sort_order, p.item_name
-	`
-
-	rows, err := DB.Query(query, templateID)
+	q := db.New(DB)
+	rows, err := q.GetTemplateProducts(context.Background(), int64(templateID))
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var products []*models.TemplateProductRow
-	for rows.Next() {
-		p := &models.TemplateProductRow{}
-		var hsnCode, brandModel sql.NullString
-		err := rows.Scan(
-			&p.ID, &p.ProjectID, &p.ItemName, &p.ItemDescription,
-			&hsnCode, &p.UoM, &brandModel,
-			&p.PerUnitPrice, &p.GSTPercentage, &p.CreatedAt, &p.UpdatedAt,
-			&p.DefaultQuantity,
-		)
-		if err != nil {
-			return nil, err
+	products := make([]*models.TemplateProductRow, 0, len(rows))
+	for _, r := range rows {
+		p := &models.TemplateProductRow{
+			DefaultQuantity: int(r.DefaultQuantity.Int64),
 		}
-		if hsnCode.Valid {
-			p.HSNCode = hsnCode.String
+		p.ID = int(r.ID)
+		p.ProjectID = int(r.ProjectID)
+		p.ItemName = r.ItemName
+		p.ItemDescription = r.ItemDescription
+		p.HSNCode = r.HsnCode.String
+		p.UoM = r.Uom.String
+		p.BrandModel = r.BrandModel
+		p.PerUnitPrice = r.PerUnitPrice.Float64
+		p.GSTPercentage = r.GstPercentage.Float64
+		if r.CreatedAt.Valid {
+			p.CreatedAt = r.CreatedAt.Time
 		}
-		if brandModel.Valid {
-			p.BrandModel = brandModel.String
+		if r.UpdatedAt.Valid {
+			p.UpdatedAt = r.UpdatedAt.Time
 		}
 		products = append(products, p)
 	}
-
 	return products, nil
 }
 
+// TemplateProductInput carries product data for template creation/update.
 type TemplateProductInput struct {
 	ProductID       int
 	DefaultQuantity int
 	SortOrder       int
 }
 
+// CreateTemplate inserts a new template and its product associations in a transaction.
+// Transaction uses DB.Begin(); sqlc queries run within that transaction via db.New(tx).
 func CreateTemplate(t *models.DCTemplate, products []TemplateProductInput) error {
 	tx, err := DB.Begin()
 	if err != nil {
@@ -130,10 +122,13 @@ func CreateTemplate(t *models.DCTemplate, products []TemplateProductInput) error
 	}
 	defer tx.Rollback()
 
-	result, err := tx.Exec(
-		"INSERT INTO dc_templates (project_id, name, purpose) VALUES (?, ?, ?)",
-		t.ProjectID, t.Name, t.Purpose,
-	)
+	qtx := db.New(tx)
+
+	result, err := qtx.CreateTemplate(context.Background(), db.CreateTemplateParams{
+		ProjectID: int64(t.ProjectID),
+		Name:      t.Name,
+		Purpose:   t.Purpose,
+	})
 	if err != nil {
 		return err
 	}
@@ -145,10 +140,12 @@ func CreateTemplate(t *models.DCTemplate, products []TemplateProductInput) error
 	t.ID = int(id)
 
 	for _, p := range products {
-		_, err := tx.Exec(
-			"INSERT INTO dc_template_products (template_id, product_id, default_quantity, sort_order) VALUES (?, ?, ?, ?)",
-			t.ID, p.ProductID, p.DefaultQuantity, p.SortOrder,
-		)
+		err := qtx.InsertTemplateProduct(context.Background(), db.InsertTemplateProductParams{
+			TemplateID:      int64(t.ID),
+			ProductID:       int64(p.ProductID),
+			DefaultQuantity: sql.NullInt64{Int64: int64(p.DefaultQuantity), Valid: true},
+			SortOrder:       sql.NullInt64{Int64: int64(p.SortOrder), Valid: true},
+		})
 		if err != nil {
 			return err
 		}
@@ -157,6 +154,8 @@ func CreateTemplate(t *models.DCTemplate, products []TemplateProductInput) error
 	return tx.Commit()
 }
 
+// UpdateTemplate updates template fields and replaces all product associations in a transaction.
+// Transaction uses DB.Begin(); sqlc queries run within that transaction via db.New(tx).
 func UpdateTemplate(t *models.DCTemplate, products []TemplateProductInput) error {
 	tx, err := DB.Begin()
 	if err != nil {
@@ -164,24 +163,29 @@ func UpdateTemplate(t *models.DCTemplate, products []TemplateProductInput) error
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec(
-		"UPDATE dc_templates SET name = ?, purpose = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND project_id = ?",
-		t.Name, t.Purpose, t.ID, t.ProjectID,
-	)
+	qtx := db.New(tx)
+
+	err = qtx.UpdateTemplate(context.Background(), db.UpdateTemplateParams{
+		Name:      t.Name,
+		Purpose:   t.Purpose,
+		ID:        int64(t.ID),
+		ProjectID: int64(t.ProjectID),
+	})
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM dc_template_products WHERE template_id = ?", t.ID)
-	if err != nil {
+	if err = qtx.DeleteTemplateProducts(context.Background(), int64(t.ID)); err != nil {
 		return err
 	}
 
 	for _, p := range products {
-		_, err := tx.Exec(
-			"INSERT INTO dc_template_products (template_id, product_id, default_quantity, sort_order) VALUES (?, ?, ?, ?)",
-			t.ID, p.ProductID, p.DefaultQuantity, p.SortOrder,
-		)
+		err := qtx.InsertTemplateProduct(context.Background(), db.InsertTemplateProductParams{
+			TemplateID:      int64(t.ID),
+			ProductID:       int64(p.ProductID),
+			DefaultQuantity: sql.NullInt64{Int64: int64(p.DefaultQuantity), Valid: true},
+			SortOrder:       sql.NullInt64{Int64: int64(p.SortOrder), Valid: true},
+		})
 		if err != nil {
 			return err
 		}
@@ -190,6 +194,8 @@ func UpdateTemplate(t *models.DCTemplate, products []TemplateProductInput) error
 	return tx.Commit()
 }
 
+// DeleteTemplate deletes a template if no DCs have been issued against it.
+// sqlc-backed for the DC count check and deletion.
 func DeleteTemplate(id, projectID int) error {
 	hasDCs, count, err := CheckTemplateHasDCs(id)
 	if err != nil {
@@ -199,12 +205,18 @@ func DeleteTemplate(id, projectID int) error {
 		return fmt.Errorf("cannot delete template: %d DCs have been issued using this template", count)
 	}
 
-	_, err = DB.Exec("DELETE FROM dc_templates WHERE id = ? AND project_id = ?", id, projectID)
-	return err
+	q := db.New(DB)
+	return q.DeleteTemplate(context.Background(), db.DeleteTemplateParams{
+		ID:        int64(id),
+		ProjectID: int64(projectID),
+	})
 }
 
+// CheckTemplateHasDCs returns whether any DCs reference this template.
+// The sqlite_master table-existence check is kept as hand-written SQL because
+// sqlc does not support querying sqlite_master. The DC count query is sqlc-backed.
 func CheckTemplateHasDCs(templateID int) (bool, int, error) {
-	// Check if delivery_challans table exists
+	// Hand-written: sqlite_master is not expressible in sqlc.
 	var tableCount int
 	err := DB.QueryRow(
 		"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='delivery_challans'",
@@ -216,52 +228,61 @@ func CheckTemplateHasDCs(templateID int) (bool, int, error) {
 		return false, 0, nil
 	}
 
-	var count int
-	err = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE template_id = ?", templateID).Scan(&count)
+	q := db.New(DB)
+	count, err := q.CheckTemplateHasDCs(context.Background(), sql.NullInt64{Int64: int64(templateID), Valid: true})
 	if err != nil {
 		return false, 0, err
 	}
-	return count > 0, count, nil
+	return count > 0, int(count), nil
 }
 
+// CheckTemplateNameUnique returns true if the given name is not already used
+// within the project (optionally excluding a template ID for edit scenarios).
+// sqlc-backed via CheckTemplateNameUnique / CheckTemplateNameUniqueExcludeID.
 func CheckTemplateNameUnique(projectID int, name string, excludeID int) (bool, error) {
-	query := "SELECT COUNT(*) FROM dc_templates WHERE project_id = ? AND name = ?"
-	args := []interface{}{projectID, name}
+	q := db.New(DB)
 
 	if excludeID > 0 {
-		query += " AND id != ?"
-		args = append(args, excludeID)
+		count, err := q.CheckTemplateNameUniqueExcludeID(context.Background(), db.CheckTemplateNameUniqueExcludeIDParams{
+			ProjectID: int64(projectID),
+			Name:      name,
+			ID:        int64(excludeID),
+		})
+		if err != nil {
+			return false, err
+		}
+		return count == 0, nil
 	}
 
-	var count int
-	err := DB.QueryRow(query, args...).Scan(&count)
+	count, err := q.CheckTemplateNameUnique(context.Background(), db.CheckTemplateNameUniqueParams{
+		ProjectID: int64(projectID),
+		Name:      name,
+	})
 	if err != nil {
 		return false, err
 	}
 	return count == 0, nil
 }
 
-// GetTemplateProductIDs returns the product IDs for a template (for pre-selecting in edit form)
+// GetTemplateProductIDs returns a map of productID → defaultQuantity for a template.
+// Used to pre-select products in edit forms.
+// sqlc-backed via GetTemplateProductIDs query.
 func GetTemplateProductIDs(templateID int) (map[int]int, error) {
-	query := "SELECT product_id, default_quantity FROM dc_template_products WHERE template_id = ?"
-	rows, err := DB.Query(query, templateID)
+	q := db.New(DB)
+	rows, err := q.GetTemplateProductIDs(context.Background(), int64(templateID))
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	result := make(map[int]int)
-	for rows.Next() {
-		var productID, qty int
-		if err := rows.Scan(&productID, &qty); err != nil {
-			return nil, err
-		}
-		result[productID] = qty
+	result := make(map[int]int, len(rows))
+	for _, r := range rows {
+		result[int(r.ProductID)] = int(r.DefaultQuantity.Int64)
 	}
 	return result, nil
 }
 
-// DuplicateTemplate creates a copy of a template with "Copy of " prefix and all product links
+// DuplicateTemplate creates a copy of a template (prefixed "Copy of ") with all product links.
+// sqlc-backed for source product retrieval and the underlying CreateTemplate call.
 func DuplicateTemplate(templateID, projectID int) (*models.DCTemplate, error) {
 	original, err := GetTemplateByID(templateID)
 	if err != nil {
@@ -271,20 +292,19 @@ func DuplicateTemplate(templateID, projectID int) (*models.DCTemplate, error) {
 		return nil, fmt.Errorf("template not found in project")
 	}
 
-	// Get original products with sort order
-	rows, err := DB.Query("SELECT product_id, default_quantity, sort_order FROM dc_template_products WHERE template_id = ? ORDER BY sort_order", templateID)
+	q := db.New(DB)
+	srcRows, err := q.GetTemplateDuplicateSource(context.Background(), int64(templateID))
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var products []TemplateProductInput
-	for rows.Next() {
-		var p TemplateProductInput
-		if err := rows.Scan(&p.ProductID, &p.DefaultQuantity, &p.SortOrder); err != nil {
-			return nil, err
-		}
-		products = append(products, p)
+	products := make([]TemplateProductInput, 0, len(srcRows))
+	for _, r := range srcRows {
+		products = append(products, TemplateProductInput{
+			ProductID:       int(r.ProductID),
+			DefaultQuantity: int(r.DefaultQuantity.Int64),
+			SortOrder:       int(r.SortOrder.Int64),
+		})
 	}
 
 	newTemplate := &models.DCTemplate{

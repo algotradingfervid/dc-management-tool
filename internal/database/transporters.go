@@ -1,69 +1,48 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
+	db "github.com/narendhupati/dc-management-tool/internal/database/sqlc"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
+// GetTransportersByProjectID returns all transporters for a project, optionally filtered to active only.
 func GetTransportersByProjectID(projectID int, activeOnly bool) ([]*models.Transporter, error) {
-	query := `
-		SELECT id, project_id, company_name, contact_person, phone, gst_number,
-		       is_active, created_at, updated_at
-		FROM transporters
-		WHERE project_id = ?
-	`
-	args := []interface{}{projectID}
-	if activeOnly {
-		query += " AND is_active = 1"
-	}
-	query += " ORDER BY company_name ASC"
+	q := db.New(DB)
+	ctx := context.Background()
 
-	rows, err := DB.Query(query, args...)
+	var rows []db.Transporter
+	var err error
+	if activeOnly {
+		rows, err = q.GetActiveTransportersByProjectID(ctx, int64(projectID))
+	} else {
+		rows, err = q.GetTransportersByProjectID(ctx, int64(projectID))
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var transporters []*models.Transporter
-	for rows.Next() {
-		t := &models.Transporter{}
-		err := rows.Scan(
-			&t.ID, &t.ProjectID, &t.CompanyName, &t.ContactPerson,
-			&t.Phone, &t.GSTNumber, &t.IsActive, &t.CreatedAt, &t.UpdatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		transporters = append(transporters, t)
-	}
-
-	// Load vehicles for each transporter
-	for _, t := range transporters {
+	transporters := make([]*models.Transporter, 0, len(rows))
+	for _, row := range rows {
+		t := mapTransporter(row)
 		vehicles, err := GetVehiclesByTransporterID(t.ID)
 		if err != nil {
 			return nil, err
 		}
 		t.Vehicles = vehicles
+		transporters = append(transporters, t)
 	}
-
 	return transporters, nil
 }
 
+// GetTransporterByID fetches a single transporter plus its vehicles.
 func GetTransporterByID(id int) (*models.Transporter, error) {
-	query := `
-		SELECT id, project_id, company_name, contact_person, phone, gst_number,
-		       is_active, created_at, updated_at
-		FROM transporters
-		WHERE id = ?
-	`
-
-	t := &models.Transporter{}
-	err := DB.QueryRow(query, id).Scan(
-		&t.ID, &t.ProjectID, &t.CompanyName, &t.ContactPerson,
-		&t.Phone, &t.GSTNumber, &t.IsActive, &t.CreatedAt, &t.UpdatedAt,
-	)
+	q := db.New(DB)
+	row, err := q.GetTransporterByID(context.Background(), int64(id))
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("transporter not found")
 	}
@@ -71,29 +50,29 @@ func GetTransporterByID(id int) (*models.Transporter, error) {
 		return nil, err
 	}
 
-	// Load vehicles
+	t := mapTransporter(row)
 	vehicles, err := GetVehiclesByTransporterID(t.ID)
 	if err != nil {
 		return nil, err
 	}
 	t.Vehicles = vehicles
-
 	return t, nil
 }
 
+// CreateTransporter inserts a new transporter and sets t.ID.
 func CreateTransporter(t *models.Transporter) error {
-	query := `
-		INSERT INTO transporters (project_id, company_name, contact_person, phone, gst_number, is_active)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`
-
-	result, err := DB.Exec(query,
-		t.ProjectID, t.CompanyName, t.ContactPerson, t.Phone, t.GSTNumber, t.IsActive,
-	)
+	q := db.New(DB)
+	result, err := q.CreateTransporter(context.Background(), db.CreateTransporterParams{
+		ProjectID:     int64(t.ProjectID),
+		CompanyName:   t.CompanyName,
+		ContactPerson: sql.NullString{String: t.ContactPerson, Valid: t.ContactPerson != ""},
+		Phone:         sql.NullString{String: t.Phone, Valid: t.Phone != ""},
+		GstNumber:     sql.NullString{String: t.GSTNumber, Valid: t.GSTNumber != ""},
+		IsActive:      sql.NullBool{Bool: t.IsActive, Valid: true},
+	})
 	if err != nil {
 		return err
 	}
-
 	id, err := result.LastInsertId()
 	if err != nil {
 		return err
@@ -102,37 +81,39 @@ func CreateTransporter(t *models.Transporter) error {
 	return nil
 }
 
+// UpdateTransporter updates an existing transporter record.
 func UpdateTransporter(t *models.Transporter) error {
-	query := `
-		UPDATE transporters SET
-			company_name = ?, contact_person = ?, phone = ?, gst_number = ?,
-			is_active = ?, updated_at = CURRENT_TIMESTAMP
-		WHERE id = ? AND project_id = ?
-	`
-
-	_, err := DB.Exec(query,
-		t.CompanyName, t.ContactPerson, t.Phone, t.GSTNumber, t.IsActive,
-		t.ID, t.ProjectID,
-	)
-	return err
+	q := db.New(DB)
+	return q.UpdateTransporter(context.Background(), db.UpdateTransporterParams{
+		CompanyName:   t.CompanyName,
+		ContactPerson: sql.NullString{String: t.ContactPerson, Valid: t.ContactPerson != ""},
+		Phone:         sql.NullString{String: t.Phone, Valid: t.Phone != ""},
+		GstNumber:     sql.NullString{String: t.GSTNumber, Valid: t.GSTNumber != ""},
+		IsActive:      sql.NullBool{Bool: t.IsActive, Valid: true},
+		ID:            int64(t.ID),
+		ProjectID:     int64(t.ProjectID),
+	})
 }
 
+// DeactivateTransporter sets is_active = 0 for the given transporter.
 func DeactivateTransporter(id, projectID int) error {
-	_, err := DB.Exec(
-		"UPDATE transporters SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND project_id = ?",
-		id, projectID,
-	)
-	return err
+	q := db.New(DB)
+	return q.DeactivateTransporter(context.Background(), db.DeactivateTransporterParams{
+		ID:        int64(id),
+		ProjectID: int64(projectID),
+	})
 }
 
+// ActivateTransporter sets is_active = 1 for the given transporter.
 func ActivateTransporter(id, projectID int) error {
-	_, err := DB.Exec(
-		"UPDATE transporters SET is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND project_id = ?",
-		id, projectID,
-	)
-	return err
+	q := db.New(DB)
+	return q.ActivateTransporter(context.Background(), db.ActivateTransporterParams{
+		ID:        int64(id),
+		ProjectID: int64(projectID),
+	})
 }
 
+// SearchTransporters searches/paginates transporters for a project.
 func SearchTransporters(projectID int, search string, page int, perPage int) (*models.TransporterPage, error) {
 	if page < 1 {
 		page = 1
@@ -141,55 +122,82 @@ func SearchTransporters(projectID int, search string, page int, perPage int) (*m
 		perPage = 20
 	}
 
-	where := "WHERE project_id = ?"
-	args := []interface{}{projectID}
-	if search != "" {
-		where += " AND (company_name LIKE ? OR contact_person LIKE ? OR phone LIKE ? OR gst_number LIKE ?)"
-		like := "%" + search + "%"
-		args = append(args, like, like, like, like)
-	}
+	q := db.New(DB)
+	ctx := context.Background()
 
-	var total int
-	countQuery := "SELECT COUNT(*) FROM transporters " + where
-	if err := DB.QueryRow(countQuery, args...).Scan(&total); err != nil {
+	var total int64
+	var rows []db.Transporter
+	var err error
+
+	if search == "" {
+		total, err = q.SearchTransportersCountNoFilter(ctx, int64(projectID))
+		if err != nil {
+			return nil, err
+		}
+
+		totalPages := (int(total) + perPage - 1) / perPage
+		if totalPages < 1 {
+			totalPages = 1
+		}
+		if page > totalPages {
+			page = totalPages
+		}
+		offset := (page - 1) * perPage
+
+		rows, err = q.SearchTransportersNoFilter(ctx, db.SearchTransportersNoFilterParams{
+			ProjectID: int64(projectID),
+			Limit:     int64(perPage),
+			Offset:    int64(offset),
+		})
+	} else {
+		like := "%" + search + "%"
+		countParams := db.SearchTransportersCountParams{
+			ProjectID:     int64(projectID),
+			CompanyName:   like,
+			ContactPerson: sql.NullString{String: like, Valid: true},
+			Phone:         sql.NullString{String: like, Valid: true},
+			GstNumber:     sql.NullString{String: like, Valid: true},
+		}
+		total, err = q.SearchTransportersCount(ctx, countParams)
+		if err != nil {
+			return nil, err
+		}
+
+		totalPages := (int(total) + perPage - 1) / perPage
+		if totalPages < 1 {
+			totalPages = 1
+		}
+		if page > totalPages {
+			page = totalPages
+		}
+		offset := (page - 1) * perPage
+
+		rows, err = q.SearchTransporters(ctx, db.SearchTransportersParams{
+			ProjectID:     int64(projectID),
+			CompanyName:   like,
+			ContactPerson: sql.NullString{String: like, Valid: true},
+			Phone:         sql.NullString{String: like, Valid: true},
+			GstNumber:     sql.NullString{String: like, Valid: true},
+			Limit:         int64(perPage),
+			Offset:        int64(offset),
+		})
+	}
+	if err != nil {
 		return nil, err
 	}
 
-	totalPages := (total + perPage - 1) / perPage
+	totalInt := int(total)
+	totalPages := (totalInt + perPage - 1) / perPage
 	if totalPages < 1 {
 		totalPages = 1
 	}
 	if page > totalPages {
 		page = totalPages
 	}
-	offset := (page - 1) * perPage
 
-	query := fmt.Sprintf(`
-		SELECT id, project_id, company_name, contact_person, phone, gst_number,
-		       is_active, created_at, updated_at
-		FROM transporters %s
-		ORDER BY company_name ASC
-		LIMIT ? OFFSET ?
-	`, where)
-
-	queryArgs := append(args, perPage, offset)
-	rows, err := DB.Query(query, queryArgs...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var transporters []*models.Transporter
-	for rows.Next() {
-		t := &models.Transporter{}
-		err := rows.Scan(
-			&t.ID, &t.ProjectID, &t.CompanyName, &t.ContactPerson,
-			&t.Phone, &t.GSTNumber, &t.IsActive, &t.CreatedAt, &t.UpdatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		// Load vehicles for each transporter
+	transporters := make([]*models.Transporter, 0, len(rows))
+	for _, row := range rows {
+		t := mapTransporter(row)
 		vehicles, err := GetVehiclesByTransporterID(t.ID)
 		if err != nil {
 			return nil, err
@@ -202,78 +210,65 @@ func SearchTransporters(projectID int, search string, page int, perPage int) (*m
 		Transporters: transporters,
 		CurrentPage:  page,
 		PerPage:      perPage,
-		TotalCount:   total,
+		TotalCount:   totalInt,
 		TotalPages:   totalPages,
 		Search:       search,
 	}, nil
 }
 
+// GetTransporterCount returns the number of active transporters for a project.
 func GetTransporterCount(projectID int) (int, error) {
-	var count int
-	err := DB.QueryRow("SELECT COUNT(*) FROM transporters WHERE project_id = ? AND is_active = 1", projectID).Scan(&count)
-	return count, err
+	q := db.New(DB)
+	count, err := q.GetTransporterCount(context.Background(), int64(projectID))
+	return int(count), err
 }
 
+// ---------------------------------------------------------------------------
 // Vehicle operations
+// ---------------------------------------------------------------------------
 
+// GetVehiclesByTransporterID fetches all vehicles for a transporter.
 func GetVehiclesByTransporterID(transporterID int) ([]*models.TransporterVehicle, error) {
-	query := `
-		SELECT id, transporter_id, vehicle_number, vehicle_type,
-		       driver_name, driver_phone1, driver_phone2, created_at
-		FROM transporter_vehicles
-		WHERE transporter_id = ?
-		ORDER BY vehicle_number ASC
-	`
-
-	rows, err := DB.Query(query, transporterID)
+	q := db.New(DB)
+	rows, err := q.GetVehiclesByTransporterID(context.Background(), int64(transporterID))
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var vehicles []*models.TransporterVehicle
-	for rows.Next() {
-		v := &models.TransporterVehicle{}
-		err := rows.Scan(&v.ID, &v.TransporterID, &v.VehicleNumber, &v.VehicleType,
-			&v.DriverName, &v.DriverPhone1, &v.DriverPhone2, &v.CreatedAt)
-		if err != nil {
-			return nil, err
-		}
-		vehicles = append(vehicles, v)
+	vehicles := make([]*models.TransporterVehicle, 0, len(rows))
+	for _, row := range rows {
+		vehicles = append(vehicles, mapVehicleRow(row))
 	}
-
 	return vehicles, nil
 }
 
+// GetVehicleByID fetches a single vehicle by ID.
 func GetVehicleByID(id int) (*models.TransporterVehicle, error) {
-	query := `
-		SELECT id, transporter_id, vehicle_number, vehicle_type,
-		       driver_name, driver_phone1, driver_phone2, created_at
-		FROM transporter_vehicles
-		WHERE id = ?
-	`
-
-	v := &models.TransporterVehicle{}
-	err := DB.QueryRow(query, id).Scan(&v.ID, &v.TransporterID, &v.VehicleNumber, &v.VehicleType,
-		&v.DriverName, &v.DriverPhone1, &v.DriverPhone2, &v.CreatedAt)
+	q := db.New(DB)
+	row, err := q.GetVehicleByID(context.Background(), int64(id))
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("vehicle not found")
 	}
 	if err != nil {
 		return nil, err
 	}
-
-	return v, nil
+	return mapGetVehicleByIDRow(row), nil
 }
 
+// CreateVehicle inserts a new vehicle and sets v.ID.
 func CreateVehicle(v *models.TransporterVehicle) error {
-	query := `INSERT INTO transporter_vehicles (transporter_id, vehicle_number, vehicle_type, driver_name, driver_phone1, driver_phone2) VALUES (?, ?, ?, ?, ?, ?)`
-
-	result, err := DB.Exec(query, v.TransporterID, v.VehicleNumber, v.VehicleType, v.DriverName, v.DriverPhone1, v.DriverPhone2)
+	q := db.New(DB)
+	result, err := q.CreateVehicle(context.Background(), db.CreateVehicleParams{
+		TransporterID: int64(v.TransporterID),
+		VehicleNumber: v.VehicleNumber,
+		VehicleType:   sql.NullString{String: v.VehicleType, Valid: v.VehicleType != ""},
+		DriverName:    sql.NullString{String: v.DriverName, Valid: v.DriverName != ""},
+		DriverPhone1:  sql.NullString{String: v.DriverPhone1, Valid: v.DriverPhone1 != ""},
+		DriverPhone2:  sql.NullString{String: v.DriverPhone2, Valid: v.DriverPhone2 != ""},
+	})
 	if err != nil {
 		return err
 	}
-
 	id, err := result.LastInsertId()
 	if err != nil {
 		return err
@@ -284,12 +279,76 @@ func CreateVehicle(v *models.TransporterVehicle) error {
 
 // IsVehicleUsedInDC checks if a vehicle number is referenced in any DC transit details.
 func IsVehicleUsedInDC(vehicleNumber string) (bool, error) {
-	var count int
-	err := DB.QueryRow("SELECT COUNT(*) FROM dc_transit_details WHERE vehicle_number = ?", vehicleNumber).Scan(&count)
+	q := db.New(DB)
+	count, err := q.IsVehicleUsedInDC(context.Background(),
+		sql.NullString{String: vehicleNumber, Valid: vehicleNumber != ""},
+	)
 	return count > 0, err
 }
 
+// DeleteVehicle removes a vehicle by id and transporter ownership check.
 func DeleteVehicle(id, transporterID int) error {
-	_, err := DB.Exec("DELETE FROM transporter_vehicles WHERE id = ? AND transporter_id = ?", id, transporterID)
-	return err
+	q := db.New(DB)
+	return q.DeleteVehicle(context.Background(), db.DeleteVehicleParams{
+		ID:            int64(id),
+		TransporterID: int64(transporterID),
+	})
 }
+
+// ---------------------------------------------------------------------------
+// Type mappers
+// ---------------------------------------------------------------------------
+
+func mapTransporter(row db.Transporter) *models.Transporter {
+	t := &models.Transporter{
+		ID:            int(row.ID),
+		ProjectID:     int(row.ProjectID),
+		CompanyName:   row.CompanyName,
+		ContactPerson: row.ContactPerson.String,
+		Phone:         row.Phone.String,
+		GSTNumber:     row.GstNumber.String,
+		IsActive:      row.IsActive.Bool,
+	}
+	if row.CreatedAt.Valid {
+		t.CreatedAt = row.CreatedAt.Time
+	}
+	if row.UpdatedAt.Valid {
+		t.UpdatedAt = row.UpdatedAt.Time
+	}
+	return t
+}
+
+func mapVehicleRow(row db.GetVehiclesByTransporterIDRow) *models.TransporterVehicle {
+	v := &models.TransporterVehicle{
+		ID:            int(row.ID),
+		TransporterID: int(row.TransporterID),
+		VehicleNumber: row.VehicleNumber,
+		VehicleType:   row.VehicleType.String,
+		DriverName:    row.DriverName.String,
+		DriverPhone1:  row.DriverPhone1.String,
+		DriverPhone2:  row.DriverPhone2.String,
+	}
+	if row.CreatedAt.Valid {
+		v.CreatedAt = row.CreatedAt.Time
+	}
+	return v
+}
+
+func mapGetVehicleByIDRow(row db.GetVehicleByIDRow) *models.TransporterVehicle {
+	v := &models.TransporterVehicle{
+		ID:            int(row.ID),
+		TransporterID: int(row.TransporterID),
+		VehicleNumber: row.VehicleNumber,
+		VehicleType:   row.VehicleType.String,
+		DriverName:    row.DriverName.String,
+		DriverPhone1:  row.DriverPhone1.String,
+		DriverPhone2:  row.DriverPhone2.String,
+	}
+	if row.CreatedAt.Valid {
+		v.CreatedAt = row.CreatedAt.Time
+	}
+	return v
+}
+
+// ensure time import is used (time.Time fields on models)
+var _ = time.Time{}

@@ -6,10 +6,105 @@ import (
 	"strings"
 	"time"
 
+	db "github.com/narendhupati/dc-management-tool/internal/database/sqlc"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
-// CreateDeliveryChallan creates a delivery challan with transit details, line items, and serial numbers in a transaction.
+// nullTimeFromDateStr parses an optional "YYYY-MM-DD" pointer into sql.NullTime.
+func nullTimeFromDateStr(s *string) sql.NullTime {
+	if s == nil || *s == "" {
+		return sql.NullTime{}
+	}
+	t, err := time.Parse("2006-01-02", *s)
+	if err != nil {
+		return sql.NullTime{}
+	}
+	return sql.NullTime{Time: t, Valid: true}
+}
+
+// mapGetDCRow maps a sqlc GetDeliveryChallanByIDRow to *models.DeliveryChallan.
+func mapGetDCRow(r db.GetDeliveryChallanByIDRow) *models.DeliveryChallan {
+	dc := &models.DeliveryChallan{
+		ID:              int(r.ID),
+		ProjectID:       int(r.ProjectID),
+		DCNumber:        r.DcNumber,
+		DCType:          r.DcType,
+		Status:          r.Status,
+		ShipToAddressID: int(r.ShipToAddressID),
+		CreatedBy:       int(r.CreatedBy),
+	}
+	if r.CreatedAt.Valid {
+		dc.CreatedAt = r.CreatedAt.Time
+	}
+	if r.UpdatedAt.Valid {
+		dc.UpdatedAt = r.UpdatedAt.Time
+	}
+	if r.TemplateID.Valid {
+		v := int(r.TemplateID.Int64)
+		dc.TemplateID = &v
+	}
+	if r.BillToAddressID.Valid {
+		v := int(r.BillToAddressID.Int64)
+		dc.BillToAddressID = &v
+	}
+	if r.ChallanDate.Valid {
+		s := r.ChallanDate.Time.Format("2006-01-02")
+		dc.ChallanDate = &s
+	}
+	if r.IssuedAt.Valid {
+		dc.IssuedAt = &r.IssuedAt.Time
+	}
+	if r.IssuedBy.Valid {
+		v := int(r.IssuedBy.Int64)
+		dc.IssuedBy = &v
+	}
+	if r.BundleID.Valid {
+		v := int(r.BundleID.Int64)
+		dc.BundleID = &v
+	}
+	if r.ShipmentGroupID.Valid {
+		v := int(r.ShipmentGroupID.Int64)
+		dc.ShipmentGroupID = &v
+	}
+	if r.BillFromAddressID.Valid {
+		v := int(r.BillFromAddressID.Int64)
+		dc.BillFromAddressID = &v
+	}
+	if r.DispatchFromAddressID.Valid {
+		v := int(r.DispatchFromAddressID.Int64)
+		dc.DispatchFromAddressID = &v
+	}
+	if r.TemplateName.Valid {
+		dc.TemplateName = r.TemplateName.String
+	}
+	return dc
+}
+
+// mapDCListRow builds a *models.DeliveryChallan from the common list-query columns.
+func mapDCListRow(id, projectID int64, dcNumber, dcType, status string, challanDate, createdAt, updatedAt sql.NullTime) *models.DeliveryChallan {
+	dc := &models.DeliveryChallan{
+		ID:        int(id),
+		ProjectID: int(projectID),
+		DCNumber:  dcNumber,
+		DCType:    dcType,
+		Status:    status,
+	}
+	if challanDate.Valid {
+		s := challanDate.Time.Format("2006-01-02")
+		dc.ChallanDate = &s
+	}
+	if createdAt.Valid {
+		dc.CreatedAt = createdAt.Time
+	}
+	if updatedAt.Valid {
+		dc.UpdatedAt = updatedAt.Time
+	}
+	return dc
+}
+
+// CreateDeliveryChallan creates a delivery challan with transit details, line items,
+// and serial numbers inside a single transaction.
+// sqlc-backed: InsertDeliveryChallan, InsertDCTransitDetails, InsertDCLineItem, InsertSerialNumber.
 func CreateDeliveryChallan(dc *models.DeliveryChallan, transitDetails *models.DCTransitDetails, lineItems []models.DCLineItem, serialNumbersByLine [][]string) error {
 	tx, err := DB.Begin()
 	if err != nil {
@@ -17,63 +112,78 @@ func CreateDeliveryChallan(dc *models.DeliveryChallan, transitDetails *models.DC
 	}
 	defer tx.Rollback()
 
-	// Insert delivery challan
-	result, err := tx.Exec(
-		`INSERT INTO delivery_challans (project_id, dc_number, dc_type, status, template_id, bill_to_address_id, ship_to_address_id, challan_date, created_by, shipment_group_id, bill_from_address_id, dispatch_from_address_id)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		dc.ProjectID, dc.DCNumber, dc.DCType, dc.Status,
-		dc.TemplateID, dc.BillToAddressID, dc.ShipToAddressID,
-		dc.ChallanDate, dc.CreatedBy,
-		dc.ShipmentGroupID, dc.BillFromAddressID, dc.DispatchFromAddressID,
-	)
+	q := db.New(tx)
+
+	// Insert delivery challan.
+	result, err := q.InsertDeliveryChallan(ctx(), db.InsertDeliveryChallanParams{
+		ProjectID:             int64(dc.ProjectID),
+		DcNumber:              dc.DCNumber,
+		DcType:                dc.DCType,
+		Status:                dc.Status,
+		TemplateID:            nullInt64FromPtr(dc.TemplateID),
+		BillToAddressID:       nullInt64FromPtr(dc.BillToAddressID),
+		ShipToAddressID:       int64(dc.ShipToAddressID),
+		ChallanDate:           nullTimeFromDateStr(dc.ChallanDate),
+		CreatedBy:             int64(dc.CreatedBy),
+		ShipmentGroupID:       nullInt64FromPtr(dc.ShipmentGroupID),
+		BillFromAddressID:     nullInt64FromPtr(dc.BillFromAddressID),
+		DispatchFromAddressID: nullInt64FromPtr(dc.DispatchFromAddressID),
+	})
 	if err != nil {
 		return fmt.Errorf("failed to insert delivery challan: %w", err)
 	}
 	dcID, _ := result.LastInsertId()
 	dc.ID = int(dcID)
 
-	// Insert transit details if provided
+	// Insert transit details if provided.
 	if transitDetails != nil {
 		transitDetails.DCID = dc.ID
-		_, err = tx.Exec(
-			`INSERT INTO dc_transit_details (dc_id, transporter_name, vehicle_number, eway_bill_number, notes)
-			 VALUES (?, ?, ?, ?, ?)`,
-			transitDetails.DCID, transitDetails.TransporterName, transitDetails.VehicleNumber,
-			transitDetails.EwayBillNumber, transitDetails.Notes,
-		)
+		err = q.InsertDCTransitDetails(ctx(), db.InsertDCTransitDetailsParams{
+			DcID:            int64(transitDetails.DCID),
+			TransporterName: nullStringFromStr(transitDetails.TransporterName),
+			VehicleNumber:   nullStringFromStr(transitDetails.VehicleNumber),
+			EwayBillNumber:  nullStringFromStr(transitDetails.EwayBillNumber),
+			Notes:           nullStringFromStr(transitDetails.Notes),
+		})
 		if err != nil {
 			return fmt.Errorf("failed to insert transit details: %w", err)
 		}
 	}
 
-	// Insert line items and serial numbers
+	// Insert line items and their serial numbers.
 	for i, item := range lineItems {
 		item.DCID = dc.ID
 		item.LineOrder = i + 1
 
-		liResult, err := tx.Exec(
-			`INSERT INTO dc_line_items (dc_id, product_id, quantity, rate, tax_percentage, taxable_amount, tax_amount, total_amount, line_order)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			item.DCID, item.ProductID, item.Quantity, item.Rate,
-			item.TaxPercentage, item.TaxableAmount, item.TaxAmount, item.TotalAmount, item.LineOrder,
-		)
+		liResult, err := q.InsertDCLineItem(ctx(), db.InsertDCLineItemParams{
+			DcID:          int64(item.DCID),
+			ProductID:     int64(item.ProductID),
+			Quantity:      int64(item.Quantity),
+			Rate:          nullFloat64(item.Rate),
+			TaxPercentage: nullFloat64(item.TaxPercentage),
+			TaxableAmount: nullFloat64(item.TaxableAmount),
+			TaxAmount:     nullFloat64(item.TaxAmount),
+			TotalAmount:   nullFloat64(item.TotalAmount),
+			LineOrder:     sql.NullInt64{Int64: int64(item.LineOrder), Valid: true},
+		})
 		if err != nil {
 			return fmt.Errorf("failed to insert line item %d: %w", i+1, err)
 		}
 		liID, _ := liResult.LastInsertId()
 		lineItems[i].ID = int(liID)
 
-		// Insert serial numbers for this line item
 		if i < len(serialNumbersByLine) {
 			for _, sn := range serialNumbersByLine[i] {
 				sn = strings.TrimSpace(sn)
 				if sn == "" {
 					continue
 				}
-				_, err = tx.Exec(
-					`INSERT INTO serial_numbers (project_id, line_item_id, serial_number, product_id) VALUES (?, ?, ?, ?)`,
-					dc.ProjectID, int(liID), sn, item.ProductID,
-				)
+				err = q.InsertSerialNumber(ctx(), db.InsertSerialNumberParams{
+					ProjectID:    int64(dc.ProjectID),
+					LineItemID:   liID,
+					SerialNumber: sn,
+					ProductID:    sql.NullInt64{Int64: int64(item.ProductID), Valid: true},
+				})
 				if err != nil {
 					return fmt.Errorf("failed to insert serial number '%s': %w", sn, err)
 				}
@@ -85,168 +195,103 @@ func CreateDeliveryChallan(dc *models.DeliveryChallan, transitDetails *models.DC
 }
 
 // GetDeliveryChallanByID fetches a delivery challan by ID.
+// sqlc-backed: GetDeliveryChallanByID.
 func GetDeliveryChallanByID(id int) (*models.DeliveryChallan, error) {
-	dc := &models.DeliveryChallan{}
-	var templateID sql.NullInt64
-	var billToID sql.NullInt64
-	var bundleID sql.NullInt64
-	var shipmentGroupID sql.NullInt64
-	var billFromID sql.NullInt64
-	var dispatchFromID sql.NullInt64
-	var challanDate sql.NullString
-	var issuedAt sql.NullTime
-	var issuedBy sql.NullInt64
-	var templateName sql.NullString
-
-	err := DB.QueryRow(
-		`SELECT d.id, d.project_id, d.dc_number, d.dc_type, d.status, d.template_id, d.bill_to_address_id,
-		        d.ship_to_address_id, d.challan_date, d.issued_at, d.issued_by, d.created_by, d.created_at, d.updated_at,
-		        d.bundle_id, d.shipment_group_id, d.bill_from_address_id, d.dispatch_from_address_id, t.name
-		 FROM delivery_challans d
-		 LEFT JOIN dc_templates t ON d.template_id = t.id
-		 WHERE d.id = ?`, id,
-	).Scan(
-		&dc.ID, &dc.ProjectID, &dc.DCNumber, &dc.DCType, &dc.Status,
-		&templateID, &billToID, &dc.ShipToAddressID,
-		&challanDate, &issuedAt, &issuedBy, &dc.CreatedBy,
-		&dc.CreatedAt, &dc.UpdatedAt,
-		&bundleID, &shipmentGroupID, &billFromID, &dispatchFromID, &templateName,
-	)
+	row, err := queries().GetDeliveryChallanByID(ctx(), int64(id))
 	if err != nil {
 		return nil, err
 	}
-
-	if templateID.Valid {
-		v := int(templateID.Int64)
-		dc.TemplateID = &v
-	}
-	if billToID.Valid {
-		v := int(billToID.Int64)
-		dc.BillToAddressID = &v
-	}
-	if challanDate.Valid {
-		dc.ChallanDate = &challanDate.String
-	}
-	if issuedAt.Valid {
-		dc.IssuedAt = &issuedAt.Time
-	}
-	if issuedBy.Valid {
-		v := int(issuedBy.Int64)
-		dc.IssuedBy = &v
-	}
-	if bundleID.Valid {
-		v := int(bundleID.Int64)
-		dc.BundleID = &v
-	}
-	if shipmentGroupID.Valid {
-		v := int(shipmentGroupID.Int64)
-		dc.ShipmentGroupID = &v
-	}
-	if billFromID.Valid {
-		v := int(billFromID.Int64)
-		dc.BillFromAddressID = &v
-	}
-	if dispatchFromID.Valid {
-		v := int(dispatchFromID.Int64)
-		dc.DispatchFromAddressID = &v
-	}
-	if templateName.Valid {
-		dc.TemplateName = templateName.String
-	}
-
-	return dc, nil
+	return mapGetDCRow(row), nil
 }
 
 // GetTransitDetailsByDCID fetches transit details for a DC.
+// sqlc-backed: GetTransitDetailsByDCID.
 func GetTransitDetailsByDCID(dcID int) (*models.DCTransitDetails, error) {
-	td := &models.DCTransitDetails{}
-	var transporterName, vehicleNumber, ewayBill, notes sql.NullString
-
-	err := DB.QueryRow(
-		`SELECT id, dc_id, transporter_name, vehicle_number, eway_bill_number, notes
-		 FROM dc_transit_details WHERE dc_id = ?`, dcID,
-	).Scan(&td.ID, &td.DCID, &transporterName, &vehicleNumber, &ewayBill, &notes)
+	row, err := queries().GetTransitDetailsByDCID(ctx(), int64(dcID))
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-
-	if transporterName.Valid {
-		td.TransporterName = transporterName.String
+	td := &models.DCTransitDetails{
+		ID:   int(row.ID),
+		DCID: int(row.DcID),
 	}
-	if vehicleNumber.Valid {
-		td.VehicleNumber = vehicleNumber.String
+	if row.TransporterName.Valid {
+		td.TransporterName = row.TransporterName.String
 	}
-	if ewayBill.Valid {
-		td.EwayBillNumber = ewayBill.String
+	if row.VehicleNumber.Valid {
+		td.VehicleNumber = row.VehicleNumber.String
 	}
-	if notes.Valid {
-		td.Notes = notes.String
+	if row.EwayBillNumber.Valid {
+		td.EwayBillNumber = row.EwayBillNumber.String
 	}
-
+	if row.Notes.Valid {
+		td.Notes = row.Notes.String
+	}
 	return td, nil
 }
 
 // GetLineItemsByDCID fetches all line items for a DC with product details joined.
+// sqlc-backed: GetLineItemsByDCID.
 func GetLineItemsByDCID(dcID int) ([]models.DCLineItem, error) {
-	query := `
-		SELECT li.id, li.dc_id, li.product_id, li.quantity, li.rate, li.tax_percentage,
-		       li.taxable_amount, li.tax_amount, li.total_amount, li.line_order,
-		       li.created_at, li.updated_at,
-		       p.item_name, p.item_description, COALESCE(p.hsn_code, ''), p.uom,
-		       COALESCE(p.brand_model, ''), p.gst_percentage
-		FROM dc_line_items li
-		INNER JOIN products p ON li.product_id = p.id
-		WHERE li.dc_id = ?
-		ORDER BY li.line_order
-	`
-
-	rows, err := DB.Query(query, dcID)
+	rows, err := queries().GetLineItemsByDCID(ctx(), int64(dcID))
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	var items []models.DCLineItem
-	for rows.Next() {
-		var li models.DCLineItem
-		err := rows.Scan(
-			&li.ID, &li.DCID, &li.ProductID, &li.Quantity, &li.Rate, &li.TaxPercentage,
-			&li.TaxableAmount, &li.TaxAmount, &li.TotalAmount, &li.LineOrder,
-			&li.CreatedAt, &li.UpdatedAt,
-			&li.ItemName, &li.ItemDescription, &li.HSNCode, &li.UoM,
-			&li.BrandModel, &li.GSTPercentage,
-		)
-		if err != nil {
-			return nil, err
+	for _, r := range rows {
+		li := models.DCLineItem{
+			ID:              int(r.ID),
+			DCID:            int(r.DcID),
+			ProductID:       int(r.ProductID),
+			Quantity:        int(r.Quantity),
+			ItemName:        r.ItemName,
+			ItemDescription: r.ItemDescription,
+			HSNCode:         r.HsnCode,
+			BrandModel:      r.BrandModel,
+		}
+		if r.Rate.Valid {
+			li.Rate = r.Rate.Float64
+		}
+		if r.TaxPercentage.Valid {
+			li.TaxPercentage = r.TaxPercentage.Float64
+		}
+		if r.TaxableAmount.Valid {
+			li.TaxableAmount = r.TaxableAmount.Float64
+		}
+		if r.TaxAmount.Valid {
+			li.TaxAmount = r.TaxAmount.Float64
+		}
+		if r.TotalAmount.Valid {
+			li.TotalAmount = r.TotalAmount.Float64
+		}
+		if r.LineOrder.Valid {
+			li.LineOrder = int(r.LineOrder.Int64)
+		}
+		if r.CreatedAt.Valid {
+			li.CreatedAt = r.CreatedAt.Time
+		}
+		if r.UpdatedAt.Valid {
+			li.UpdatedAt = r.UpdatedAt.Time
+		}
+		if r.Uom.Valid {
+			li.UoM = r.Uom.String
+		}
+		if r.GstPercentage.Valid {
+			li.GSTPercentage = r.GstPercentage.Float64
 		}
 		items = append(items, li)
 	}
-
 	return items, nil
 }
 
 // GetSerialNumbersByLineItemID fetches all serial numbers for a line item.
+// sqlc-backed: GetSerialNumbersByLineItemID.
 func GetSerialNumbersByLineItemID(lineItemID int) ([]string, error) {
-	rows, err := DB.Query(
-		`SELECT serial_number FROM serial_numbers WHERE line_item_id = ? ORDER BY id`, lineItemID,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var serials []string
-	for rows.Next() {
-		var sn string
-		if err := rows.Scan(&sn); err != nil {
-			return nil, err
-		}
-		serials = append(serials, sn)
-	}
-	return serials, nil
+	return queries().GetSerialNumbersByLineItemID(ctx(), int64(lineItemID))
 }
 
 // SerialConflict represents a serial number that conflicts with an existing one in the project.
@@ -260,6 +305,7 @@ type SerialConflict struct {
 
 // CheckSerialsInProject checks which serial numbers already exist in a project.
 // Returns conflicts with DC info. Optionally excludes a specific DC (for edit mode).
+// Hand-written SQL: dynamic IN clause with variable-length serial list cannot be handled by sqlc.
 func CheckSerialsInProject(projectID int, serials []string, excludeDCID *int) ([]SerialConflict, error) {
 	if len(serials) == 0 {
 		return nil, nil
@@ -306,6 +352,7 @@ func CheckSerialsInProject(projectID int, serials []string, excludeDCID *int) ([
 }
 
 // CheckSerialsInProjectByProduct checks serial uniqueness scoped to (project_id, product_id).
+// Hand-written SQL: dynamic IN clause with variable-length serial list cannot be handled by sqlc.
 func CheckSerialsInProjectByProduct(projectID, productID int, serials []string, excludeDCID *int) ([]SerialConflict, error) {
 	if len(serials) == 0 {
 		return nil, nil
@@ -352,7 +399,8 @@ func CheckSerialsInProjectByProduct(projectID, productID int, serials []string, 
 	return conflicts, nil
 }
 
-// DeleteDC deletes a DC and all associated line items and serial numbers in a transaction.
+// DeleteDC deletes a DC and all associated data inside a single transaction.
+// sqlc-backed: DeleteSerialNumbersByDCID, DeleteLineItemsByDCID, DeleteTransitDetailsByDCID, DeleteDeliveryChallan.
 func DeleteDC(dcID int) error {
 	tx, err := DB.Begin()
 	if err != nil {
@@ -360,24 +408,17 @@ func DeleteDC(dcID int) error {
 	}
 	defer tx.Rollback()
 
-	// Delete serial numbers (via line_item_id)
-	_, err = tx.Exec(`DELETE FROM serial_numbers WHERE line_item_id IN (SELECT id FROM dc_line_items WHERE dc_id = ?)`, dcID)
-	if err != nil {
+	q := db.New(tx)
+
+	if err := q.DeleteSerialNumbersByDCID(ctx(), int64(dcID)); err != nil {
 		return fmt.Errorf("failed to delete serial numbers: %w", err)
 	}
-
-	// Delete line items
-	_, err = tx.Exec(`DELETE FROM dc_line_items WHERE dc_id = ?`, dcID)
-	if err != nil {
+	if err := q.DeleteLineItemsByDCID(ctx(), int64(dcID)); err != nil {
 		return fmt.Errorf("failed to delete line items: %w", err)
 	}
-
-	// Delete transit details (may not exist for official DCs)
-	_, _ = tx.Exec(`DELETE FROM dc_transit_details WHERE dc_id = ?`, dcID)
-
-	// Delete DC
-	_, err = tx.Exec(`DELETE FROM delivery_challans WHERE id = ?`, dcID)
-	if err != nil {
+	// Transit details may not exist for official DCs — ignore the error.
+	_ = q.DeleteTransitDetailsByDCID(ctx(), int64(dcID))
+	if err := q.DeleteDeliveryChallan(ctx(), int64(dcID)); err != nil {
 		return fmt.Errorf("failed to delete DC: %w", err)
 	}
 
@@ -385,99 +426,71 @@ func DeleteDC(dcID int) error {
 }
 
 // GetDCsByProjectID fetches all DCs for a project.
+// sqlc-backed: GetDCsByProjectID (unfiltered) and GetDCsByProjectIDAndType (type-filtered).
 func GetDCsByProjectID(projectID int, dcType string) ([]*models.DeliveryChallan, error) {
-	query := `
-		SELECT dc.id, dc.project_id, dc.dc_number, dc.dc_type, dc.status,
-		       dc.challan_date, dc.created_at, dc.updated_at
-		FROM delivery_challans dc
-		WHERE dc.project_id = ?
-	`
-	args := []interface{}{projectID}
-
-	if dcType != "" {
-		query += " AND dc.dc_type = ?"
-		args = append(args, dcType)
-	}
-
-	query += " ORDER BY dc.created_at DESC"
-
-	rows, err := DB.Query(query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
 	var dcs []*models.DeliveryChallan
-	for rows.Next() {
-		dc := &models.DeliveryChallan{}
-		var challanDate sql.NullString
-		err := rows.Scan(
-			&dc.ID, &dc.ProjectID, &dc.DCNumber, &dc.DCType, &dc.Status,
-			&challanDate, &dc.CreatedAt, &dc.UpdatedAt,
-		)
+
+	if dcType == "" {
+		rows, err := queries().GetDCsByProjectID(ctx(), int64(projectID))
 		if err != nil {
 			return nil, err
 		}
-		if challanDate.Valid {
-			dc.ChallanDate = &challanDate.String
+		for _, r := range rows {
+			dcs = append(dcs, mapDCListRow(r.ID, r.ProjectID, r.DcNumber, r.DcType, r.Status, r.ChallanDate, r.CreatedAt, r.UpdatedAt))
 		}
-		dcs = append(dcs, dc)
+	} else {
+		rows, err := queries().GetDCsByProjectIDAndType(ctx(), db.GetDCsByProjectIDAndTypeParams{
+			ProjectID: int64(projectID),
+			DcType:    dcType,
+		})
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range rows {
+			dcs = append(dcs, mapDCListRow(r.ID, r.ProjectID, r.DcNumber, r.DcType, r.Status, r.ChallanDate, r.CreatedAt, r.UpdatedAt))
+		}
 	}
 
 	return dcs, nil
 }
 
 // IssueDC transitions a DC from draft to issued status.
+// sqlc-backed: IssueDC.
 func IssueDC(dcID int, userID int) error {
 	now := time.Now()
-	result, err := DB.Exec(
-		`UPDATE delivery_challans SET status = 'issued', issued_at = ?, issued_by = ?, updated_at = ? WHERE id = ? AND status = 'draft'`,
-		now, userID, now, dcID,
-	)
+	result, err := queries().IssueDC(ctx(), db.IssueDCParams{
+		IssuedAt:  sql.NullTime{Time: now, Valid: true},
+		IssuedBy:  sql.NullInt64{Int64: int64(userID), Valid: true},
+		UpdatedAt: sql.NullTime{Time: now, Valid: true},
+		ID:        int64(dcID),
+	})
 	if err != nil {
 		return fmt.Errorf("failed to issue DC: %w", err)
 	}
-	rows, _ := result.RowsAffected()
-	if rows == 0 {
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
 		return fmt.Errorf("DC not found or already issued")
 	}
 	return nil
 }
 
 // GetDCsByShipmentGroup fetches all DCs belonging to a shipment group.
+// sqlc-backed: GetDCsByShipmentGroup.
 func GetDCsByShipmentGroup(groupID int) ([]*models.DeliveryChallan, error) {
-	rows, err := DB.Query(
-		`SELECT dc.id, dc.project_id, dc.dc_number, dc.dc_type, dc.status,
-		        dc.challan_date, dc.created_at, dc.updated_at
-		 FROM delivery_challans dc
-		 WHERE dc.shipment_group_id = ?
-		 ORDER BY dc.dc_type DESC, dc.id`, groupID,
-	)
+	rows, err := queries().GetDCsByShipmentGroup(ctx(), sql.NullInt64{Int64: int64(groupID), Valid: true})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	var dcs []*models.DeliveryChallan
-	for rows.Next() {
-		dc := &models.DeliveryChallan{}
-		var challanDate sql.NullString
-		err := rows.Scan(
-			&dc.ID, &dc.ProjectID, &dc.DCNumber, &dc.DCType, &dc.Status,
-			&challanDate, &dc.CreatedAt, &dc.UpdatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		if challanDate.Valid {
-			dc.ChallanDate = &challanDate.String
-		}
-		dcs = append(dcs, dc)
+	for _, r := range rows {
+		dcs = append(dcs, mapDCListRow(r.ID, r.ProjectID, r.DcNumber, r.DcType, r.Status, r.ChallanDate, r.CreatedAt, r.UpdatedAt))
 	}
 	return dcs, nil
 }
 
 // GetAllAddressesByConfigID returns all addresses for a config (no pagination, for dropdowns).
+// Hand-written SQL: sqlc-generated SQL for this query is broken/truncated.
 func GetAllAddressesByConfigID(configID int) ([]*models.Address, error) {
 	rows, err := DB.Query(
 		`SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, created_at, updated_at

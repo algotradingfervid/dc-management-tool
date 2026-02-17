@@ -12,13 +12,11 @@ import (
 )
 
 const GetDCSummaryOfficialDraft = `-- name: GetDCSummaryOfficialDraft :one
-te <= ?;
-
 SELECT COUNT(*) AS official_draft_dcs
 FROM delivery_challans dc
 WHERE dc.project_id = ?
   AND dc.dc_type    = 'official'
-  AND dc.status     =
+  AND dc.status     = 'draft'
 `
 
 func (q *Queries) GetDCSummaryOfficialDraft(ctx context.Context, projectID int64) (int64, error) {
@@ -29,15 +27,13 @@ func (q *Queries) GetDCSummaryOfficialDraft(ctx context.Context, projectID int64
 }
 
 const GetDCSummaryOfficialDraftFiltered = `-- name: GetDCSummaryOfficialDraftFiltered :one
-'draft';
-
 SELECT COUNT(*) AS official_draft_dcs
 FROM delivery_challans dc
 WHERE dc.project_id    = ?
   AND dc.dc_type       = 'official'
   AND dc.status        = 'draft'
   AND dc.challan_date >= ?
-  AND dc.challan_d
+  AND dc.challan_date <= ?
 `
 
 type GetDCSummaryOfficialDraftFilteredParams struct {
@@ -54,13 +50,11 @@ func (q *Queries) GetDCSummaryOfficialDraftFiltered(ctx context.Context, arg Get
 }
 
 const GetDCSummaryOfficialIssued = `-- name: GetDCSummaryOfficialIssued :one
-te <= ?;
-
 SELECT COUNT(*) AS official_issued_dcs
 FROM delivery_challans dc
 WHERE dc.project_id = ?
   AND dc.dc_type    = 'official'
-  AND dc.status     =
+  AND dc.status     = 'issued'
 `
 
 func (q *Queries) GetDCSummaryOfficialIssued(ctx context.Context, projectID int64) (int64, error) {
@@ -71,15 +65,13 @@ func (q *Queries) GetDCSummaryOfficialIssued(ctx context.Context, projectID int6
 }
 
 const GetDCSummaryOfficialIssuedFiltered = `-- name: GetDCSummaryOfficialIssuedFiltered :one
-issued';
-
 SELECT COUNT(*) AS official_issued_dcs
 FROM delivery_challans dc
 WHERE dc.project_id    = ?
   AND dc.dc_type       = 'official'
   AND dc.status        = 'issued'
   AND dc.challan_date >= ?
-  AND dc.challan_d
+  AND dc.challan_date <= ?
 `
 
 type GetDCSummaryOfficialIssuedFilteredParams struct {
@@ -96,13 +88,11 @@ func (q *Queries) GetDCSummaryOfficialIssuedFiltered(ctx context.Context, arg Ge
 }
 
 const GetDCSummaryTotalItemsDispatched = `-- name: GetDCSummaryTotalItemsDispatched :one
-te <= ?;
-
 SELECT COALESCE(SUM(li.quantity), 0) AS total_items_dispatched
 FROM dc_line_items li
 INNER JOIN delivery_challans dc ON li.dc_id = dc.id
 WHERE dc.project_id = ?
-  AND dc.status     =
+  AND dc.status     = 'issued'
 `
 
 func (q *Queries) GetDCSummaryTotalItemsDispatched(ctx context.Context, projectID int64) (interface{}, error) {
@@ -113,15 +103,13 @@ func (q *Queries) GetDCSummaryTotalItemsDispatched(ctx context.Context, projectI
 }
 
 const GetDCSummaryTotalItemsDispatchedFiltered = `-- name: GetDCSummaryTotalItemsDispatchedFiltered :one
-issued';
-
 SELECT COALESCE(SUM(li.quantity), 0) AS total_items_dispatched
 FROM dc_line_items li
 INNER JOIN delivery_challans dc ON li.dc_id = dc.id
 WHERE dc.project_id    = ?
   AND dc.status        = 'issued'
   AND dc.challan_date >= ?
-  AND dc.challan_d
+  AND dc.challan_date <= ?
 `
 
 type GetDCSummaryTotalItemsDispatchedFilteredParams struct {
@@ -138,13 +126,11 @@ func (q *Queries) GetDCSummaryTotalItemsDispatchedFiltered(ctx context.Context, 
 }
 
 const GetDCSummaryTotalSerialsUsed = `-- name: GetDCSummaryTotalSerialsUsed :one
-te <= ?;
-
 SELECT COUNT(*) AS total_serials_used
 FROM serial_numbers sn
 INNER JOIN dc_line_items li ON sn.line_item_id = li.id
 INNER JOIN delivery_challans dc ON li.dc_id = dc.id
-WHERE dc.projec
+WHERE dc.project_id = ?
 `
 
 func (q *Queries) GetDCSummaryTotalSerialsUsed(ctx context.Context, projectID int64) (int64, error) {
@@ -155,15 +141,13 @@ func (q *Queries) GetDCSummaryTotalSerialsUsed(ctx context.Context, projectID in
 }
 
 const GetDCSummaryTotalSerialsUsedFiltered = `-- name: GetDCSummaryTotalSerialsUsedFiltered :one
-_id = ?;
-
 SELECT COUNT(*) AS total_serials_used
 FROM serial_numbers sn
 INNER JOIN dc_line_items li ON sn.line_item_id = li.id
 INNER JOIN delivery_challans dc ON li.dc_id = dc.id
 WHERE dc.project_id    = ?
   AND dc.challan_date >= ?
-  AND dc.challan_d
+  AND dc.challan_date <= ?
 `
 
 type GetDCSummaryTotalSerialsUsedFilteredParams struct {
@@ -186,7 +170,7 @@ SELECT COUNT(*) AS transit_draft_dcs
 FROM delivery_challans dc
 WHERE dc.project_id = ?
   AND dc.dc_type    = 'transit'
-  AND dc.status     =
+  AND dc.status     = 'draft'
 `
 
 // reports.sql
@@ -195,8 +179,8 @@ WHERE dc.project_id = ?
 // NOTE: The Go helper dateFilterSQL() builds WHERE clauses dynamically based on
 // whether startDate and/or endDate are non-nil. sqlc requires static SQL.
 // Strategy:
-//   - Unfiltered variant  — no date clause (suffix-less name)
-//   - Date-filtered variant — both bounds present (suffix "Filtered")
+//   - Unfiltered variant  - no date clause (suffix-less name)
+//   - Date-filtered variant - both bounds present (suffix "Filtered")
 //
 // For single-bound date ranges (start-only or end-only), the hand-written Go
 // queries in internal/database/reports.go remain appropriate.
@@ -215,15 +199,13 @@ func (q *Queries) GetDCSummaryTransitDraft(ctx context.Context, projectID int64)
 }
 
 const GetDCSummaryTransitDraftFiltered = `-- name: GetDCSummaryTransitDraftFiltered :one
-'draft';
-
 SELECT COUNT(*) AS transit_draft_dcs
 FROM delivery_challans dc
 WHERE dc.project_id    = ?
   AND dc.dc_type       = 'transit'
   AND dc.status        = 'draft'
   AND dc.challan_date >= ?
-  AND dc.challan_d
+  AND dc.challan_date <= ?
 `
 
 type GetDCSummaryTransitDraftFilteredParams struct {
@@ -240,13 +222,11 @@ func (q *Queries) GetDCSummaryTransitDraftFiltered(ctx context.Context, arg GetD
 }
 
 const GetDCSummaryTransitIssued = `-- name: GetDCSummaryTransitIssued :one
-te <= ?;
-
 SELECT COUNT(*) AS transit_issued_dcs
 FROM delivery_challans dc
 WHERE dc.project_id = ?
   AND dc.dc_type    = 'transit'
-  AND dc.status     =
+  AND dc.status     = 'issued'
 `
 
 func (q *Queries) GetDCSummaryTransitIssued(ctx context.Context, projectID int64) (int64, error) {
@@ -257,15 +237,13 @@ func (q *Queries) GetDCSummaryTransitIssued(ctx context.Context, projectID int64
 }
 
 const GetDCSummaryTransitIssuedFiltered = `-- name: GetDCSummaryTransitIssuedFiltered :one
-issued';
-
 SELECT COUNT(*) AS transit_issued_dcs
 FROM delivery_challans dc
 WHERE dc.project_id    = ?
   AND dc.dc_type       = 'transit'
   AND dc.status        = 'issued'
   AND dc.challan_date >= ?
-  AND dc.challan_d
+  AND dc.challan_date <= ?
 `
 
 type GetDCSummaryTransitIssuedFilteredParams struct {
@@ -282,8 +260,6 @@ func (q *Queries) GetDCSummaryTransitIssuedFiltered(ctx context.Context, arg Get
 }
 
 const GetDestinationDCs = `-- name: GetDestinationDCs :many
-mandal;
-
 
 SELECT
     dc.id,
@@ -300,7 +276,7 @@ WHERE dc.project_id = ?
   AND COALESCE(a.district_name, 'Unknown') = ?
   AND COALESCE(a.mandal_name,   'Unknown') = ?
 GROUP BY dc.id
-ORDER BY dc.challan_d
+ORDER BY dc.challan_date DESC
 `
 
 type GetDestinationDCsParams struct {
@@ -352,8 +328,6 @@ func (q *Queries) GetDestinationDCs(ctx context.Context, arg GetDestinationDCsPa
 }
 
 const GetDestinationDCsFiltered = `-- name: GetDestinationDCsFiltered :many
-te DESC;
-
 SELECT
     dc.id,
     dc.dc_number,
@@ -371,7 +345,7 @@ WHERE dc.project_id    = ?
   AND dc.challan_date >= ?
   AND dc.challan_date <= ?
 GROUP BY dc.id
-ORDER BY dc.challan_d
+ORDER BY dc.challan_date DESC
 `
 
 type GetDestinationDCsFilteredParams struct {
@@ -428,8 +402,6 @@ func (q *Queries) GetDestinationDCsFiltered(ctx context.Context, arg GetDestinat
 }
 
 const GetDestinationReport = `-- name: GetDestinationReport :many
-te <= ?;
-
 
 SELECT
     COALESCE(a.district_name, 'Unknown')  AS district,
@@ -447,7 +419,7 @@ LEFT JOIN (
 ) li_counts ON li_counts.dc_id = dc.id
 WHERE dc.project_id = ?
 GROUP BY COALESCE(a.district_name, 'Unknown'), COALESCE(a.mandal_name, 'Unknown')
-ORDER BY district
+ORDER BY district, mandal
 `
 
 type GetDestinationReportRow struct {
@@ -493,8 +465,6 @@ func (q *Queries) GetDestinationReport(ctx context.Context, projectID int64) ([]
 }
 
 const GetDestinationReportFiltered = `-- name: GetDestinationReportFiltered :many
-mandal;
-
 SELECT
     COALESCE(a.district_name, 'Unknown')  AS district,
     COALESCE(a.mandal_name,   'Unknown')  AS mandal,
@@ -513,7 +483,7 @@ WHERE dc.project_id    = ?
   AND dc.challan_date >= ?
   AND dc.challan_date <= ?
 GROUP BY COALESCE(a.district_name, 'Unknown'), COALESCE(a.mandal_name, 'Unknown')
-ORDER BY district
+ORDER BY district, mandal
 `
 
 type GetDestinationReportFilteredParams struct {
@@ -562,8 +532,6 @@ func (q *Queries) GetDestinationReportFiltered(ctx context.Context, arg GetDesti
 }
 
 const GetProductReport = `-- name: GetProductReport :many
-te DESC;
-
 
 SELECT
     COALESCE(p.item_name, 'Unknown')                                          AS product_name,
@@ -576,7 +544,7 @@ LEFT JOIN products p            ON li.product_id = p.id
 LEFT JOIN addresses a           ON dc.ship_to_address_id = a.id
 WHERE dc.project_id = ?
 GROUP BY li.product_id
-ORDER BY total_
+ORDER BY total_qty DESC
 `
 
 type GetProductReportRow struct {
@@ -618,8 +586,6 @@ func (q *Queries) GetProductReport(ctx context.Context, projectID int64) ([]GetP
 }
 
 const GetProductReportFiltered = `-- name: GetProductReportFiltered :many
-ty DESC;
-
 SELECT
     COALESCE(p.item_name, 'Unknown')                                          AS product_name,
     COALESCE(SUM(li.quantity), 0)                                             AS total_qty,
@@ -633,7 +599,7 @@ WHERE dc.project_id    = ?
   AND dc.challan_date >= ?
   AND dc.challan_date <= ?
 GROUP BY li.product_id
-ORDER BY total_
+ORDER BY total_qty DESC
 `
 
 type GetProductReportFilteredParams struct {
@@ -678,8 +644,6 @@ func (q *Queries) GetProductReportFiltered(ctx context.Context, arg GetProductRe
 }
 
 const GetSerialReportNoSearch = `-- name: GetSerialReportNoSearch :many
-ty DESC;
-
 
 SELECT
     sn.serial_number,
@@ -696,7 +660,7 @@ LEFT JOIN products p               ON li.product_id   = p.id
 LEFT JOIN dc_transit_details td    ON td.dc_id        = dc.id
 WHERE dc.project_id = ?
 ORDER BY sn.serial_number
-L
+LIMIT 500
 `
 
 type GetSerialReportNoSearchRow struct {
@@ -747,8 +711,6 @@ func (q *Queries) GetSerialReportNoSearch(ctx context.Context, projectID int64) 
 }
 
 const GetSerialReportNoSearchFiltered = `-- name: GetSerialReportNoSearchFiltered :many
-MIT 500;
-
 SELECT
     sn.serial_number,
     COALESCE(p.item_name, 'Unknown')          AS product_name,
@@ -766,7 +728,7 @@ WHERE dc.project_id    = ?
   AND dc.challan_date >= ?
   AND dc.challan_date <= ?
 ORDER BY sn.serial_number
-L
+LIMIT 500
 `
 
 type GetSerialReportNoSearchFilteredParams struct {
@@ -817,8 +779,6 @@ func (q *Queries) GetSerialReportNoSearchFiltered(ctx context.Context, arg GetSe
 }
 
 const GetSerialReportSingleSearch = `-- name: GetSerialReportSingleSearch :many
-MIT 500;
-
 SELECT
     sn.serial_number,
     COALESCE(p.item_name, 'Unknown')          AS product_name,
@@ -835,7 +795,7 @@ LEFT JOIN dc_transit_details td    ON td.dc_id        = dc.id
 WHERE dc.project_id          = ?
   AND sn.serial_number LIKE  ?
 ORDER BY sn.serial_number
-L
+LIMIT 500
 `
 
 type GetSerialReportSingleSearchParams struct {
@@ -886,8 +846,6 @@ func (q *Queries) GetSerialReportSingleSearch(ctx context.Context, arg GetSerial
 }
 
 const GetSerialReportSingleSearchFiltered = `-- name: GetSerialReportSingleSearchFiltered :many
-MIT 500;
-
 SELECT
     sn.serial_number,
     COALESCE(p.item_name, 'Unknown')          AS product_name,
@@ -906,7 +864,7 @@ WHERE dc.project_id          = ?
   AND dc.challan_date        <= ?
   AND sn.serial_number LIKE  ?
 ORDER BY sn.serial_number
-L
+LIMIT 500
 `
 
 type GetSerialReportSingleSearchFilteredParams struct {

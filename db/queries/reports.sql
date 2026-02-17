@@ -4,8 +4,8 @@
 -- NOTE: The Go helper dateFilterSQL() builds WHERE clauses dynamically based on
 -- whether startDate and/or endDate are non-nil. sqlc requires static SQL.
 -- Strategy:
---   • Unfiltered variant  — no date clause (suffix-less name)
---   • Date-filtered variant — both bounds present (suffix "Filtered")
+--   * Unfiltered variant  - no date clause (suffix-less name)
+--   * Date-filtered variant - both bounds present (suffix "Filtered")
 -- For single-bound date ranges (start-only or end-only), the hand-written Go
 -- queries in internal/database/reports.go remain appropriate.
 --
