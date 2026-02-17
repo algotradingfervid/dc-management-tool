@@ -56,8 +56,8 @@ type RecentDC struct {
 }
 
 // GetDashboardStats returns aggregate dashboard statistics for a project with optional date filtering.
-// Hand-written SQL throughout: sqlc-generated dashboard queries all have broken/truncated SQL strings.
-// The optional date filter (startDate, endDate) cannot be expressed as static SQL for sqlc anyway.
+// Hand-written SQL: GetDashboardStats supports single-bound date ranges (start-only or end-only)
+// which cannot be expressed as static sqlc queries; sqlc provides only no-filter and both-bounds variants.
 func GetDashboardStats(projectID int, startDate, endDate *time.Time) (*DashboardStats, error) {
 	stats := &DashboardStats{}
 
@@ -121,7 +121,8 @@ func GetDashboardStats(projectID int, startDate, endDate *time.Time) (*Dashboard
 }
 
 // GetRecentDCs returns the most recent delivery challans for a project.
-// Hand-written SQL: sqlc-generated SQL for GetRecentDCs is truncated.
+// Hand-written SQL: sqlc GetRecentDCsRow has ChallanDate/CreatedAt as time.Time, but these
+// columns are stored as TEXT and may be empty strings; scanning into string is safer.
 func GetRecentDCs(projectID int, limit int) ([]RecentDC, error) {
 	rows, err := DB.Query(`
 		SELECT
@@ -156,7 +157,8 @@ func GetRecentDCs(projectID int, limit int) ([]RecentDC, error) {
 }
 
 // GetRecentActivity returns the most recent activity items for a project dashboard.
-// Hand-written SQL: sqlc-generated SQL for GetRecentActivity is truncated.
+// Hand-written SQL: sqlc GetRecentActivityRow.Description is interface{} (computed column);
+// scanning created_at as string is safer given the TEXT-stored date format.
 func GetRecentActivity(projectID int, limit int) ([]RecentActivity, error) {
 	rows, err := DB.Query(`
 		SELECT id, 'dc' as entity_type, id as entity_id,

@@ -85,7 +85,7 @@ LEFT JOIN projects p          ON sg.project_id  = p.id
 LEFT JOIN delivery_challans tdc
        ON tdc.shipment_group_id = sg.id
       AND tdc.dc_type           = 'transit'
-WHERE sg.id =
+WHERE sg.id = ?
 `
 
 type GetShipmentGroupRow struct {
@@ -107,7 +107,7 @@ type GetShipmentGroupRow struct {
 }
 
 // =============================================================================
-// Reads — single group
+// Reads - single group
 // =============================================================================
 // Returns the group with joined template name, project name, transit DC info,
 // and a correlated sub-query for official DC count.
@@ -135,8 +135,6 @@ func (q *Queries) GetShipmentGroup(ctx context.Context, id int64) (GetShipmentGr
 }
 
 const GetShipmentGroupDCs = `-- name: GetShipmentGroupDCs :many
-ESC;
-
 SELECT
     dc.id,
     dc.project_id,
@@ -148,7 +146,7 @@ SELECT
     dc.updated_at
 FROM delivery_challans dc
 WHERE dc.shipment_group_id = ?
-ORDER BY dc.dc_type DESC, d
+ORDER BY dc.dc_type DESC, dc.id
 `
 
 type GetShipmentGroupDCsRow struct {
@@ -197,12 +195,10 @@ func (q *Queries) GetShipmentGroupDCs(ctx context.Context, shipmentGroupID sql.N
 }
 
 const GetShipmentGroupIDByDCID = `-- name: GetShipmentGroupIDByDCID :one
-?;
-
 SELECT shipment_group_id
 FROM delivery_challans
 WHERE id                  = ?
-  AND shipment_group_id IS NOT NU
+  AND shipment_group_id IS NOT NULL
 `
 
 // Fetches the shipment_group_id for a delivery challan (used by GetShipmentGroupByDCID
@@ -215,8 +211,6 @@ func (q *Queries) GetShipmentGroupIDByDCID(ctx context.Context, id int64) (sql.N
 }
 
 const GetShipmentGroupsByProjectID = `-- name: GetShipmentGroupsByProjectID :many
-L;
-
 
 SELECT
     sg.id,
@@ -244,7 +238,7 @@ LEFT JOIN delivery_challans tdc
        ON tdc.shipment_group_id = sg.id
       AND tdc.dc_type           = 'transit'
 WHERE sg.project_id = ?
-ORDER BY sg.created_at
+ORDER BY sg.created_at DESC
 `
 
 type GetShipmentGroupsByProjectIDRow struct {
@@ -265,7 +259,7 @@ type GetShipmentGroupsByProjectIDRow struct {
 }
 
 // =============================================================================
-// Reads — list
+// Reads - list
 // =============================================================================
 // Returns all shipment groups for a project with summary computed columns.
 func (q *Queries) GetShipmentGroupsByProjectID(ctx context.Context, projectID int64) ([]GetShipmentGroupsByProjectIDRow, error) {
@@ -307,15 +301,13 @@ func (q *Queries) GetShipmentGroupsByProjectID(ctx context.Context, projectID in
 }
 
 const IssueAllDCsInGroup = `-- name: IssueAllDCsInGroup :execresult
-= ?;
-
 UPDATE delivery_challans
 SET status     = 'issued',
     issued_at  = ?,
     issued_by  = ?,
     updated_at = ?
 WHERE shipment_group_id = ?
-  AND status            = 'dr
+  AND status            = 'draft'
 `
 
 type IssueAllDCsInGroupParams struct {
@@ -336,13 +328,11 @@ func (q *Queries) IssueAllDCsInGroup(ctx context.Context, arg IssueAllDCsInGroup
 }
 
 const UpdateShipmentGroupStatus = `-- name: UpdateShipmentGroupStatus :exec
-.id;
-
 
 UPDATE shipment_groups
 SET status     = ?,
     updated_at = ?
-WHERE id
+WHERE id = ?
 `
 
 type UpdateShipmentGroupStatusParams struct {

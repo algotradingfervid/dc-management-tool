@@ -145,7 +145,7 @@ ORDER BY id;
 
 -- name: CheckSingleSerialInProject :many
 -- NOTE: Single-serial variant of CheckSerialsInProject (variable IN list is not
--- statically analysable by sqlc — the multi-serial version stays in hand-written Go).
+-- statically analysable by sqlc - the multi-serial version stays in hand-written Go).
 -- This variant is useful for single-serial validation calls.
 SELECT
     sn.serial_number,
@@ -180,7 +180,7 @@ WHERE sn.project_id    = ?
   AND sn.serial_number = ?;
 
 -- =============================================================================
--- Addresses (dropdown helper — lives in delivery_challans.go in Go code)
+-- Addresses (dropdown helper - lives in delivery_challans.go in Go code)
 -- =============================================================================
 
 -- name: GetAllAddressesByConfigID :many

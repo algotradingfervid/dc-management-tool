@@ -23,7 +23,7 @@ INNER JOIN dc_line_items li ON sn.line_item_id = li.id
 INNER JOIN delivery_challans dc ON li.dc_id = dc.id
 INNER JOIN products p ON li.product_id = p.id
 WHERE sn.project_id    = ?
-  AND sn.serial_number =
+  AND sn.serial_number = ?
 `
 
 type CheckSingleSerialInProjectParams struct {
@@ -41,7 +41,7 @@ type CheckSingleSerialInProjectRow struct {
 }
 
 // NOTE: Single-serial variant of CheckSerialsInProject (variable IN list is not
-// statically analysable by sqlc — the multi-serial version stays in hand-written Go).
+// statically analysable by sqlc - the multi-serial version stays in hand-written Go).
 // This variant is useful for single-serial validation calls.
 func (q *Queries) CheckSingleSerialInProject(ctx context.Context, arg CheckSingleSerialInProjectParams) ([]CheckSingleSerialInProjectRow, error) {
 	rows, err := q.db.QueryContext(ctx, CheckSingleSerialInProject, arg.ProjectID, arg.SerialNumber)
@@ -74,8 +74,6 @@ func (q *Queries) CheckSingleSerialInProject(ctx context.Context, arg CheckSingl
 }
 
 const CheckSingleSerialInProjectByProduct = `-- name: CheckSingleSerialInProjectByProduct :many
-?;
-
 SELECT
     sn.serial_number,
     li.id AS line_item_id,
@@ -89,7 +87,7 @@ INNER JOIN delivery_challans dc ON li.dc_id = dc.id
 INNER JOIN products p ON li.product_id = p.id
 WHERE sn.project_id    = ?
   AND sn.product_id    = ?
-  AND sn.serial_number =
+  AND sn.serial_number = ?
 `
 
 type CheckSingleSerialInProjectByProductParams struct {
@@ -183,15 +181,13 @@ func (q *Queries) DeleteTransitDetailsByDCID(ctx context.Context, dcID int64) er
 }
 
 const GetAllAddressesByConfigID = `-- name: GetAllAddressesByConfigID :many
-?;
-
 
 SELECT
     id, config_id, address_data, district_name, mandal_name, mandal_code,
     created_at, updated_at
 FROM addresses
 WHERE config_id = ?
-ORDER B
+ORDER BY id
 `
 
 type GetAllAddressesByConfigIDRow struct {
@@ -206,7 +202,7 @@ type GetAllAddressesByConfigIDRow struct {
 }
 
 // =============================================================================
-// Addresses (dropdown helper — lives in delivery_challans.go in Go code)
+// Addresses (dropdown helper - lives in delivery_challans.go in Go code)
 // =============================================================================
 func (q *Queries) GetAllAddressesByConfigID(ctx context.Context, configID int64) ([]GetAllAddressesByConfigIDRow, error) {
 	rows, err := q.db.QueryContext(ctx, GetAllAddressesByConfigID, configID)

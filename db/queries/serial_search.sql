@@ -22,7 +22,7 @@
 -- that the canonical SQL is documented and version-controlled.
 
 -- =============================================================================
--- Single token — all projects
+-- Single token - all projects
 -- =============================================================================
 
 -- name: SearchSerialsSingleTermAllProjects :many
@@ -58,7 +58,7 @@ ORDER BY dc.challan_date DESC, sn.serial_number ASC
 LIMIT 200;
 
 -- =============================================================================
--- Single token — scoped to one project
+-- Single token - scoped to one project
 -- =============================================================================
 
 -- name: SearchSerialsSingleTermByProject :many
@@ -95,7 +95,7 @@ ORDER BY dc.challan_date DESC, sn.serial_number ASC
 LIMIT 200;
 
 -- =============================================================================
--- Two tokens — all projects
+-- Two tokens - all projects
 -- (Illustrates fixed-arity OR expansion; Go handles arbitrary arity.)
 -- =============================================================================
 
@@ -132,7 +132,7 @@ ORDER BY dc.challan_date DESC, sn.serial_number ASC
 LIMIT 200;
 
 -- =============================================================================
--- Two tokens — scoped to one project
+-- Two tokens - scoped to one project
 -- =============================================================================
 
 -- name: SearchSerialsTwoTermsByProject :many

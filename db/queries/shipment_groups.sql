@@ -19,7 +19,7 @@ INSERT INTO shipment_groups (
 ) VALUES (?, ?, ?, ?, ?, ?, ?);
 
 -- =============================================================================
--- Reads — single group
+-- Reads - single group
 -- =============================================================================
 
 -- name: GetShipmentGroup :one
@@ -63,7 +63,7 @@ WHERE id                  = ?
   AND shipment_group_id IS NOT NULL;
 
 -- =============================================================================
--- Reads — list
+-- Reads - list
 -- =============================================================================
 
 -- name: GetShipmentGroupsByProjectID :many

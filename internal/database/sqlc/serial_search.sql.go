@@ -42,7 +42,7 @@ LEFT JOIN products pr              ON li.product_id   = pr.id
 LEFT JOIN projects p               ON dc.project_id   = p.id
 WHERE sn.serial_number LIKE ?
 ORDER BY dc.challan_date DESC, sn.serial_number ASC
-LIMIT 2
+LIMIT 200
 `
 
 type SearchSerialsSingleTermAllProjectsRow struct {
@@ -81,7 +81,7 @@ type SearchSerialsSingleTermAllProjectsRow struct {
 // sqlc can generate useful helper types (SerialSearchResult row struct) and so
 // that the canonical SQL is documented and version-controlled.
 // =============================================================================
-// Single token — all projects
+// Single token - all projects
 // =============================================================================
 func (q *Queries) SearchSerialsSingleTermAllProjects(ctx context.Context, serialNumber string) ([]SearchSerialsSingleTermAllProjectsRow, error) {
 	rows, err := q.db.QueryContext(ctx, SearchSerialsSingleTermAllProjects, serialNumber)
@@ -118,8 +118,6 @@ func (q *Queries) SearchSerialsSingleTermAllProjects(ctx context.Context, serial
 }
 
 const SearchSerialsSingleTermByProject = `-- name: SearchSerialsSingleTermByProject :many
-0;
-
 
 SELECT
     sn.serial_number,
@@ -151,7 +149,7 @@ LEFT JOIN projects p               ON dc.project_id   = p.id
 WHERE sn.serial_number LIKE ?
   AND dc.project_id = ?
 ORDER BY dc.challan_date DESC, sn.serial_number ASC
-LIMIT
+LIMIT 200
 `
 
 type SearchSerialsSingleTermByProjectParams struct {
@@ -173,7 +171,7 @@ type SearchSerialsSingleTermByProjectRow struct {
 }
 
 // =============================================================================
-// Single token — scoped to one project
+// Single token - scoped to one project
 // =============================================================================
 func (q *Queries) SearchSerialsSingleTermByProject(ctx context.Context, arg SearchSerialsSingleTermByProjectParams) ([]SearchSerialsSingleTermByProjectRow, error) {
 	rows, err := q.db.QueryContext(ctx, SearchSerialsSingleTermByProject, arg.SerialNumber, arg.ProjectID)
@@ -210,8 +208,6 @@ func (q *Queries) SearchSerialsSingleTermByProject(ctx context.Context, arg Sear
 }
 
 const SearchSerialsTwoTermsAllProjects = `-- name: SearchSerialsTwoTermsAllProjects :many
-200;
-
 
 SELECT
     sn.serial_number,
@@ -242,7 +238,7 @@ LEFT JOIN products pr              ON li.product_id   = pr.id
 LEFT JOIN projects p               ON dc.project_id   = p.id
 WHERE (sn.serial_number LIKE ? OR sn.serial_number LIKE ?)
 ORDER BY dc.challan_date DESC, sn.serial_number ASC
-LIM
+LIMIT 200
 `
 
 type SearchSerialsTwoTermsAllProjectsParams struct {
@@ -264,7 +260,7 @@ type SearchSerialsTwoTermsAllProjectsRow struct {
 }
 
 // =============================================================================
-// Two tokens — all projects
+// Two tokens - all projects
 // (Illustrates fixed-arity OR expansion; Go handles arbitrary arity.)
 // =============================================================================
 func (q *Queries) SearchSerialsTwoTermsAllProjects(ctx context.Context, arg SearchSerialsTwoTermsAllProjectsParams) ([]SearchSerialsTwoTermsAllProjectsRow, error) {
@@ -302,8 +298,6 @@ func (q *Queries) SearchSerialsTwoTermsAllProjects(ctx context.Context, arg Sear
 }
 
 const SearchSerialsTwoTermsByProject = `-- name: SearchSerialsTwoTermsByProject :many
-T 200;
-
 
 SELECT
     sn.serial_number,
@@ -335,7 +329,7 @@ LEFT JOIN projects p               ON dc.project_id   = p.id
 WHERE (sn.serial_number LIKE ? OR sn.serial_number LIKE ?)
   AND dc.project_id = ?
 ORDER BY dc.challan_date DESC, sn.serial_number ASC
-L
+LIMIT 200
 `
 
 type SearchSerialsTwoTermsByProjectParams struct {
@@ -358,7 +352,7 @@ type SearchSerialsTwoTermsByProjectRow struct {
 }
 
 // =============================================================================
-// Two tokens — scoped to one project
+// Two tokens - scoped to one project
 // =============================================================================
 func (q *Queries) SearchSerialsTwoTermsByProject(ctx context.Context, arg SearchSerialsTwoTermsByProjectParams) ([]SearchSerialsTwoTermsByProjectRow, error) {
 	rows, err := q.db.QueryContext(ctx, SearchSerialsTwoTermsByProject, arg.SerialNumber, arg.SerialNumber_2, arg.ProjectID)

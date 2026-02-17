@@ -4,8 +4,8 @@
 -- NOTE: GetDashboardStats in Go builds optional date filters (challan_date >= ?,
 -- challan_date <= ?) dynamically. sqlc requires static SQL.
 -- Two variants are provided for each DC count query:
---   *          — no date filter
---   *Filtered  — both start and end date bound (most common production case)
+--   *          - no date filter
+--   *Filtered  - both start and end date bound (most common production case)
 -- For single-bound date ranges, hand-written Go queries remain appropriate.
 --
 -- GetDashboardStats also issues many small COUNT queries sequentially; those are
@@ -13,7 +13,7 @@
 -- and compose the DashboardStats struct.
 
 -- =============================================================================
--- Entity counts (no date filter — these never filter by date in the Go code)
+-- Entity counts (no date filter - these never filter by date in the Go code)
 -- =============================================================================
 
 -- name: CountProductsByProject :one
@@ -41,7 +41,7 @@ WHERE c.project_id   = ?
   AND c.address_type = 'ship_to';
 
 -- =============================================================================
--- DC counts — no date filter
+-- DC counts - no date filter
 -- =============================================================================
 
 -- name: CountDCsByProject :one
@@ -103,7 +103,7 @@ WHERE project_id = ?
   AND status     = 'issued';
 
 -- =============================================================================
--- DC counts — date-filtered variants (challan_date range)
+-- DC counts - date-filtered variants (challan_date range)
 -- =============================================================================
 
 -- name: CountDCsByProjectFiltered :one

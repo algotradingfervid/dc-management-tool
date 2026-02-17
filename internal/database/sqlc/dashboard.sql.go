@@ -12,13 +12,11 @@ import (
 )
 
 const CountBillToAddressesByProject = `-- name: CountBillToAddressesByProject :one
-d = ?;
-
 SELECT COUNT(*) AS total_bill_to_addresses
 FROM addresses a
 JOIN address_list_configs c ON a.config_id = c.id
 WHERE c.project_id   = ?
-  AND c.address_type = 'bi
+  AND c.address_type = 'bill_to'
 `
 
 func (q *Queries) CountBillToAddressesByProject(ctx context.Context, projectID int64) (int64, error) {
@@ -29,16 +27,14 @@ func (q *Queries) CountBillToAddressesByProject(ctx context.Context, projectID i
 }
 
 const CountDCsByProject = `-- name: CountDCsByProject :one
-p_to';
-
 
 SELECT COUNT(*) AS total_dcs
 FROM delivery_challans
-WHERE projec
+WHERE project_id = ?
 `
 
 // =============================================================================
-// DC counts — no date filter
+// DC counts - no date filter
 // =============================================================================
 func (q *Queries) CountDCsByProject(ctx context.Context, projectID int64) (int64, error) {
 	row := q.db.QueryRowContext(ctx, CountDCsByProject, projectID)
@@ -48,14 +44,12 @@ func (q *Queries) CountDCsByProject(ctx context.Context, projectID int64) (int64
 }
 
 const CountDCsByProjectFiltered = `-- name: CountDCsByProjectFiltered :one
-issued';
-
 
 SELECT COUNT(*) AS total_dcs
 FROM delivery_challans
 WHERE project_id  = ?
   AND challan_date >= ?
-  AND challan
+  AND challan_date <= ?
 `
 
 type CountDCsByProjectFilteredParams struct {
@@ -65,7 +59,7 @@ type CountDCsByProjectFilteredParams struct {
 }
 
 // =============================================================================
-// DC counts — date-filtered variants (challan_date range)
+// DC counts - date-filtered variants (challan_date range)
 // =============================================================================
 func (q *Queries) CountDCsByProjectFiltered(ctx context.Context, arg CountDCsByProjectFilteredParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, CountDCsByProjectFiltered, arg.ProjectID, arg.ChallanDate, arg.ChallanDate_2)
@@ -75,14 +69,12 @@ func (q *Queries) CountDCsByProjectFiltered(ctx context.Context, arg CountDCsByP
 }
 
 const CountDCsThisMonth = `-- name: CountDCsThisMonth :one
-date <= ?;
-
 
 SELECT COUNT(*) AS dcs_this_month
 FROM delivery_challans
 WHERE project_id   = ?
   AND challan_date >= ?
-  AND challan
+  AND challan_date <= ?
 `
 
 type CountDCsThisMonthParams struct {
@@ -102,12 +94,10 @@ func (q *Queries) CountDCsThisMonth(ctx context.Context, arg CountDCsThisMonthPa
 }
 
 const CountDraftDCsByProject = `-- name: CountDraftDCsByProject :one
-issued';
-
 SELECT COUNT(*) AS draft_dcs
 FROM delivery_challans
 WHERE project_id = ?
-  AND status     =
+  AND status     = 'draft'
 `
 
 // DraftDCs is intentionally not date-filtered in the Go code.
@@ -119,12 +109,10 @@ func (q *Queries) CountDraftDCsByProject(ctx context.Context, projectID int64) (
 }
 
 const CountIssuedDCsByProject = `-- name: CountIssuedDCsByProject :one
-ficial';
-
 SELECT COUNT(*) AS issued_dcs
 FROM delivery_challans
 WHERE project_id = ?
-  AND status     =
+  AND status     = 'issued'
 `
 
 func (q *Queries) CountIssuedDCsByProject(ctx context.Context, projectID int64) (int64, error) {
@@ -135,14 +123,12 @@ func (q *Queries) CountIssuedDCsByProject(ctx context.Context, projectID int64) 
 }
 
 const CountIssuedDCsByProjectFiltered = `-- name: CountIssuedDCsByProjectFiltered :one
-date <= ?;
-
 SELECT COUNT(*) AS issued_dcs
 FROM delivery_challans
 WHERE project_id  = ?
   AND status      = 'issued'
   AND challan_date >= ?
-  AND challan
+  AND challan_date <= ?
 `
 
 type CountIssuedDCsByProjectFilteredParams struct {
@@ -159,12 +145,10 @@ func (q *Queries) CountIssuedDCsByProjectFiltered(ctx context.Context, arg Count
 }
 
 const CountOfficialDCsByProject = `-- name: CountOfficialDCsByProject :one
-ransit';
-
 SELECT COUNT(*) AS official_dcs
 FROM delivery_challans
 WHERE project_id = ?
-  AND dc_type    = 'o
+  AND dc_type    = 'official'
 `
 
 func (q *Queries) CountOfficialDCsByProject(ctx context.Context, projectID int64) (int64, error) {
@@ -175,14 +159,12 @@ func (q *Queries) CountOfficialDCsByProject(ctx context.Context, projectID int64
 }
 
 const CountOfficialDCsByProjectFiltered = `-- name: CountOfficialDCsByProjectFiltered :one
-date <= ?;
-
 SELECT COUNT(*) AS official_dcs
 FROM delivery_challans
 WHERE project_id  = ?
   AND dc_type     = 'official'
   AND challan_date >= ?
-  AND challan
+  AND challan_date <= ?
 `
 
 type CountOfficialDCsByProjectFilteredParams struct {
@@ -199,13 +181,11 @@ func (q *Queries) CountOfficialDCsByProjectFiltered(ctx context.Context, arg Cou
 }
 
 const CountOfficialDraftDCsByProject = `-- name: CountOfficialDraftDCsByProject :one
-issued';
-
 SELECT COUNT(*) AS official_draft_dcs
 FROM delivery_challans
 WHERE project_id = ?
   AND dc_type    = 'official'
-  AND status     =
+  AND status     = 'draft'
 `
 
 func (q *Queries) CountOfficialDraftDCsByProject(ctx context.Context, projectID int64) (int64, error) {
@@ -216,15 +196,13 @@ func (q *Queries) CountOfficialDraftDCsByProject(ctx context.Context, projectID 
 }
 
 const CountOfficialDraftDCsByProjectFiltered = `-- name: CountOfficialDraftDCsByProjectFiltered :one
-date <= ?;
-
 SELECT COUNT(*) AS official_draft_dcs
 FROM delivery_challans
 WHERE project_id  = ?
   AND dc_type     = 'official'
   AND status      = 'draft'
   AND challan_date >= ?
-  AND challan
+  AND challan_date <= ?
 `
 
 type CountOfficialDraftDCsByProjectFilteredParams struct {
@@ -241,13 +219,11 @@ func (q *Queries) CountOfficialDraftDCsByProjectFiltered(ctx context.Context, ar
 }
 
 const CountOfficialIssuedDCsByProject = `-- name: CountOfficialIssuedDCsByProject :one
-'draft';
-
 SELECT COUNT(*) AS official_issued_dcs
 FROM delivery_challans
 WHERE project_id = ?
   AND dc_type    = 'official'
-  AND status     =
+  AND status     = 'issued'
 `
 
 func (q *Queries) CountOfficialIssuedDCsByProject(ctx context.Context, projectID int64) (int64, error) {
@@ -258,15 +234,13 @@ func (q *Queries) CountOfficialIssuedDCsByProject(ctx context.Context, projectID
 }
 
 const CountOfficialIssuedDCsByProjectFiltered = `-- name: CountOfficialIssuedDCsByProjectFiltered :one
-date <= ?;
-
 SELECT COUNT(*) AS official_issued_dcs
 FROM delivery_challans
 WHERE project_id  = ?
   AND dc_type     = 'official'
   AND status      = 'issued'
   AND challan_date >= ?
-  AND challan
+  AND challan_date <= ?
 `
 
 type CountOfficialIssuedDCsByProjectFilteredParams struct {
@@ -287,7 +261,7 @@ const CountProductsByProject = `-- name: CountProductsByProject :one
 
 SELECT COUNT(*) AS total_products
 FROM products
-WHERE project_
+WHERE project_id = ?
 `
 
 // dashboard.sql
@@ -296,8 +270,8 @@ WHERE project_
 // NOTE: GetDashboardStats in Go builds optional date filters (challan_date >= ?,
 // challan_date <= ?) dynamically. sqlc requires static SQL.
 // Two variants are provided for each DC count query:
-//   - — no date filter
-//     *Filtered  — both start and end date bound (most common production case)
+//   - - no date filter
+//     *Filtered  - both start and end date bound (most common production case)
 //
 // For single-bound date ranges, hand-written Go queries remain appropriate.
 //
@@ -305,7 +279,7 @@ WHERE project_
 // all represented here. The Go wrapper function continues to call them individually
 // and compose the DashboardStats struct.
 // =============================================================================
-// Entity counts (no date filter — these never filter by date in the Go code)
+// Entity counts (no date filter - these never filter by date in the Go code)
 // =============================================================================
 func (q *Queries) CountProductsByProject(ctx context.Context, projectID int64) (int64, error) {
 	row := q.db.QueryRowContext(ctx, CountProductsByProject, projectID)
@@ -315,12 +289,10 @@ func (q *Queries) CountProductsByProject(ctx context.Context, projectID int64) (
 }
 
 const CountSerialNumbersByProject = `-- name: CountSerialNumbersByProject :one
-date <= ?;
-
 
 SELECT COUNT(*) AS total_serial_numbers
 FROM serial_numbers
-WHERE proj
+WHERE project_id = ?
 `
 
 // =============================================================================
@@ -334,13 +306,11 @@ func (q *Queries) CountSerialNumbersByProject(ctx context.Context, projectID int
 }
 
 const CountShipToAddressesByProject = `-- name: CountShipToAddressesByProject :one
-l_to';
-
 SELECT COUNT(*) AS total_ship_to_addresses
 FROM addresses a
 JOIN address_list_configs c ON a.config_id = c.id
 WHERE c.project_id   = ?
-  AND c.address_type = 'sh
+  AND c.address_type = 'ship_to'
 `
 
 func (q *Queries) CountShipToAddressesByProject(ctx context.Context, projectID int64) (int64, error) {
@@ -351,11 +321,9 @@ func (q *Queries) CountShipToAddressesByProject(ctx context.Context, projectID i
 }
 
 const CountTemplatesByProject = `-- name: CountTemplatesByProject :one
-d = ?;
-
 SELECT COUNT(*) AS total_templates
 FROM dc_templates
-WHERE project_
+WHERE project_id = ?
 `
 
 func (q *Queries) CountTemplatesByProject(ctx context.Context, projectID int64) (int64, error) {
@@ -366,12 +334,10 @@ func (q *Queries) CountTemplatesByProject(ctx context.Context, projectID int64) 
 }
 
 const CountTransitDCsByProject = `-- name: CountTransitDCsByProject :one
-_id = ?;
-
 SELECT COUNT(*) AS transit_dcs
 FROM delivery_challans
 WHERE project_id = ?
-  AND dc_type    = '
+  AND dc_type    = 'transit'
 `
 
 func (q *Queries) CountTransitDCsByProject(ctx context.Context, projectID int64) (int64, error) {
@@ -382,14 +348,12 @@ func (q *Queries) CountTransitDCsByProject(ctx context.Context, projectID int64)
 }
 
 const CountTransitDCsByProjectFiltered = `-- name: CountTransitDCsByProjectFiltered :one
-date <= ?;
-
 SELECT COUNT(*) AS transit_dcs
 FROM delivery_challans
 WHERE project_id  = ?
   AND dc_type     = 'transit'
   AND challan_date >= ?
-  AND challan
+  AND challan_date <= ?
 `
 
 type CountTransitDCsByProjectFilteredParams struct {
@@ -406,13 +370,11 @@ func (q *Queries) CountTransitDCsByProjectFiltered(ctx context.Context, arg Coun
 }
 
 const CountTransitDraftDCsByProject = `-- name: CountTransitDraftDCsByProject :one
-'draft';
-
 SELECT COUNT(*) AS transit_draft_dcs
 FROM delivery_challans
 WHERE project_id = ?
   AND dc_type    = 'transit'
-  AND status     =
+  AND status     = 'draft'
 `
 
 func (q *Queries) CountTransitDraftDCsByProject(ctx context.Context, projectID int64) (int64, error) {
@@ -423,15 +385,13 @@ func (q *Queries) CountTransitDraftDCsByProject(ctx context.Context, projectID i
 }
 
 const CountTransitDraftDCsByProjectFiltered = `-- name: CountTransitDraftDCsByProjectFiltered :one
-date <= ?;
-
 SELECT COUNT(*) AS transit_draft_dcs
 FROM delivery_challans
 WHERE project_id  = ?
   AND dc_type     = 'transit'
   AND status      = 'draft'
   AND challan_date >= ?
-  AND challan
+  AND challan_date <= ?
 `
 
 type CountTransitDraftDCsByProjectFilteredParams struct {
@@ -448,13 +408,11 @@ func (q *Queries) CountTransitDraftDCsByProjectFiltered(ctx context.Context, arg
 }
 
 const CountTransitIssuedDCsByProject = `-- name: CountTransitIssuedDCsByProject :one
-'draft';
-
 SELECT COUNT(*) AS transit_issued_dcs
 FROM delivery_challans
 WHERE project_id = ?
   AND dc_type    = 'transit'
-  AND status     =
+  AND status     = 'issued'
 `
 
 func (q *Queries) CountTransitIssuedDCsByProject(ctx context.Context, projectID int64) (int64, error) {
@@ -465,15 +423,13 @@ func (q *Queries) CountTransitIssuedDCsByProject(ctx context.Context, projectID 
 }
 
 const CountTransitIssuedDCsByProjectFiltered = `-- name: CountTransitIssuedDCsByProjectFiltered :one
-date <= ?;
-
 SELECT COUNT(*) AS transit_issued_dcs
 FROM delivery_challans
 WHERE project_id  = ?
   AND dc_type     = 'transit'
   AND status      = 'issued'
   AND challan_date >= ?
-  AND challan
+  AND challan_date <= ?
 `
 
 type CountTransitIssuedDCsByProjectFilteredParams struct {
@@ -490,9 +446,6 @@ func (q *Queries) CountTransitIssuedDCsByProjectFiltered(ctx context.Context, ar
 }
 
 const GetRecentActivity = `-- name: GetRecentActivity :many
-C
-LIMIT ?;
-
 
 SELECT
     id,
@@ -505,7 +458,8 @@ SELECT
     project_id
 FROM delivery_challans
 WHERE project_id = ?
-ORDER BY created_at DE
+ORDER BY created_at DESC
+LIMIT ?
 `
 
 type GetRecentActivityParams struct {
@@ -560,8 +514,6 @@ func (q *Queries) GetRecentActivity(ctx context.Context, arg GetRecentActivityPa
 }
 
 const GetRecentDCs = `-- name: GetRecentDCs :many
-ct_id = ?;
-
 
 SELECT
     dc.id,
@@ -575,7 +527,8 @@ SELECT
 FROM delivery_challans dc
 LEFT JOIN projects p ON dc.project_id = p.id
 WHERE dc.project_id = ?
-ORDER BY dc.created_at DE
+ORDER BY dc.created_at DESC
+LIMIT ?
 `
 
 type GetRecentDCsParams struct {
