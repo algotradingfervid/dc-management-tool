@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -12,7 +13,7 @@ import (
 
 func ShowLogin(c *gin.Context) {
 	if userID := auth.GetUserID(c.Request); userID != 0 {
-		c.Redirect(http.StatusFound, "/")
+		redirectAfterLogin(c, userID)
 		return
 	}
 
@@ -50,6 +51,13 @@ func ProcessLogin(c *gin.Context) {
 		return
 	}
 
+	if !user.IsActive {
+		log.Printf("Deactivated user %s attempted login", username)
+		auth.SetFlash(c.Request, "error", "Your account has been deactivated")
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
 	if err := auth.RenewToken(c.Request); err != nil {
 		log.Printf("Failed to renew session token: %v", err)
 	}
@@ -58,7 +66,43 @@ func ProcessLogin(c *gin.Context) {
 	auth.SetFlash(c.Request, "success", "Login successful")
 
 	log.Printf("User %s logged in successfully", username)
-	c.Redirect(http.StatusFound, "/")
+	redirectAfterLogin(c, user.ID)
+}
+
+func RedirectToProject(c *gin.Context, userID int) {
+	redirectAfterLogin(c, userID)
+}
+
+func redirectAfterLogin(c *gin.Context, userID int) {
+	user, err := database.GetUserByID(userID)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/projects/new")
+		return
+	}
+
+	// If user has a last_project_id, go to that project's dashboard
+	if user.LastProjectID != nil {
+		// Verify the project still exists
+		_, err := database.GetProjectByID(*user.LastProjectID)
+		if err == nil {
+			c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/dashboard", *user.LastProjectID))
+			return
+		}
+	}
+
+	// Check if user has any accessible projects
+	projects, err := database.GetAccessibleProjects(user)
+	if err != nil || len(projects) == 0 {
+		if user.IsAdmin() {
+			c.Redirect(http.StatusFound, "/projects/new")
+		} else {
+			c.Redirect(http.StatusFound, "/projects/select")
+		}
+		return
+	}
+
+	// Has accessible projects but no last_project_id — go to first one
+	c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/dashboard", projects[0].ID))
 }
 
 func Logout(c *gin.Context) {

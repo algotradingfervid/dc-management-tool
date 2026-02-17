@@ -1,0 +1,151 @@
+{{ define "title" }}User Management{{ end }}
+
+{{ define "content" }}
+<div class="space-y-6">
+    {{ if .flashType }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            showToast('{{ .flashMessage }}', '{{ .flashType }}');
+        });
+    </script>
+    {{ end }}
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">User Management</h1>
+            <p class="text-sm text-gray-500 mt-1">Manage users and their project access</p>
+        </div>
+        <button onclick="openUserSlideOver()"
+            class="btn btn-primary text-sm inline-flex items-center">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Add User
+        </button>
+    </div>
+
+    <!-- Users Table -->
+    <div class="card overflow-hidden">
+        {{ if .users }}
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {{ range .users }}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center gap-3">
+                            <div class="h-9 w-9 rounded-full bg-brand-100 flex items-center justify-center shrink-0">
+                                <span class="text-brand-700 font-semibold text-sm">{{ userInitials .FullName }}</span>
+                            </div>
+                            <div>
+                                <div class="text-sm font-medium text-gray-900">{{ .FullName }}</div>
+                                <div class="text-xs text-gray-500">{{ .Username }} &middot; {{ .Email }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {{ if eq .Role "admin" }}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Admin</span>
+                        {{ else }}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">User</span>
+                        {{ end }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {{ if .IsActive }}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>
+                        {{ else }}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Inactive</span>
+                        {{ end }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ timeAgo .CreatedAt }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        <div class="flex items-center justify-end gap-2">
+                            <button onclick="editUser({{ .ID }})" class="text-brand-600 hover:text-brand-800 text-xs font-medium">Edit</button>
+                            <button onclick="resetPassword({{ .ID }})" class="text-gray-600 hover:text-gray-800 text-xs font-medium">Reset Password</button>
+                            <button hx-post="/admin/users/{{ .ID }}/toggle-status"
+                                    hx-headers='{"X-CSRF-Token": "{{ $.csrfToken }}"}'
+                                    class="text-xs font-medium {{ if .IsActive }}text-red-600 hover:text-red-800{{ else }}text-green-600 hover:text-green-800{{ end }}">
+                                {{ if .IsActive }}Deactivate{{ else }}Activate{{ end }}
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {{ end }}
+            </tbody>
+        </table>
+        {{ else }}
+        <div class="text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No users yet</h3>
+            <p class="mt-1 text-sm text-gray-500">Get started by creating your first user.</p>
+        </div>
+        {{ end }}
+    </div>
+</div>
+
+<!-- Slide-over for user form -->
+<div id="user-slideover" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/30" onclick="closeUserSlideOver()"></div>
+    <div class="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-xl overflow-y-auto">
+        <div id="user-form-container" class="p-6">
+            <!-- Form loaded via HTMX -->
+        </div>
+    </div>
+</div>
+
+<!-- Password Reset Modal -->
+<div id="password-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+    <div class="absolute inset-0 bg-black/30" onclick="closePasswordModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
+        <h3 class="text-lg font-semibold mb-4">Reset Password</h3>
+        <form id="password-form" hx-post="" hx-headers='{"X-CSRF-Token": "{{ .csrfToken }}"}'>
+            <input type="password" name="password" placeholder="New password (min 6 chars)" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm mb-4" required minlength="6">
+            <div class="flex gap-2 justify-end">
+                <button type="button" onclick="closePasswordModal()" class="btn btn-secondary text-sm">Cancel</button>
+                <button type="submit" class="btn btn-primary text-sm">Reset</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openUserSlideOver() {
+    document.getElementById('user-slideover').classList.remove('hidden');
+    htmx.ajax('GET', '/admin/users/new', '#user-form-container');
+}
+function editUser(uid) {
+    document.getElementById('user-slideover').classList.remove('hidden');
+    htmx.ajax('GET', '/admin/users/' + uid + '/edit', '#user-form-container');
+}
+function closeUserSlideOver() {
+    document.getElementById('user-slideover').classList.add('hidden');
+}
+function resetPassword(uid) {
+    document.getElementById('password-modal').classList.remove('hidden');
+    document.getElementById('password-form').setAttribute('hx-post', '/admin/users/' + uid + '/reset-password');
+    htmx.process(document.getElementById('password-form'));
+}
+function closePasswordModal() {
+    document.getElementById('password-modal').classList.add('hidden');
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeUserSlideOver();
+        closePasswordModal();
+    }
+});
+</script>
+{{ end }}

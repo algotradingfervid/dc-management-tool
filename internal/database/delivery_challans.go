@@ -19,11 +19,12 @@ func CreateDeliveryChallan(dc *models.DeliveryChallan, transitDetails *models.DC
 
 	// Insert delivery challan
 	result, err := tx.Exec(
-		`INSERT INTO delivery_challans (project_id, dc_number, dc_type, status, template_id, bill_to_address_id, ship_to_address_id, challan_date, created_by)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO delivery_challans (project_id, dc_number, dc_type, status, template_id, bill_to_address_id, ship_to_address_id, challan_date, created_by, shipment_group_id, bill_from_address_id, dispatch_from_address_id)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		dc.ProjectID, dc.DCNumber, dc.DCType, dc.Status,
 		dc.TemplateID, dc.BillToAddressID, dc.ShipToAddressID,
 		dc.ChallanDate, dc.CreatedBy,
+		dc.ShipmentGroupID, dc.BillFromAddressID, dc.DispatchFromAddressID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert delivery challan: %w", err)
@@ -70,8 +71,8 @@ func CreateDeliveryChallan(dc *models.DeliveryChallan, transitDetails *models.DC
 					continue
 				}
 				_, err = tx.Exec(
-					`INSERT INTO serial_numbers (project_id, line_item_id, serial_number) VALUES (?, ?, ?)`,
-					dc.ProjectID, int(liID), sn,
+					`INSERT INTO serial_numbers (project_id, line_item_id, serial_number, product_id) VALUES (?, ?, ?, ?)`,
+					dc.ProjectID, int(liID), sn, item.ProductID,
 				)
 				if err != nil {
 					return fmt.Errorf("failed to insert serial number '%s': %w", sn, err)
@@ -88,19 +89,28 @@ func GetDeliveryChallanByID(id int) (*models.DeliveryChallan, error) {
 	dc := &models.DeliveryChallan{}
 	var templateID sql.NullInt64
 	var billToID sql.NullInt64
+	var bundleID sql.NullInt64
+	var shipmentGroupID sql.NullInt64
+	var billFromID sql.NullInt64
+	var dispatchFromID sql.NullInt64
 	var challanDate sql.NullString
 	var issuedAt sql.NullTime
 	var issuedBy sql.NullInt64
+	var templateName sql.NullString
 
 	err := DB.QueryRow(
-		`SELECT id, project_id, dc_number, dc_type, status, template_id, bill_to_address_id,
-		        ship_to_address_id, challan_date, issued_at, issued_by, created_by, created_at, updated_at
-		 FROM delivery_challans WHERE id = ?`, id,
+		`SELECT d.id, d.project_id, d.dc_number, d.dc_type, d.status, d.template_id, d.bill_to_address_id,
+		        d.ship_to_address_id, d.challan_date, d.issued_at, d.issued_by, d.created_by, d.created_at, d.updated_at,
+		        d.bundle_id, d.shipment_group_id, d.bill_from_address_id, d.dispatch_from_address_id, t.name
+		 FROM delivery_challans d
+		 LEFT JOIN dc_templates t ON d.template_id = t.id
+		 WHERE d.id = ?`, id,
 	).Scan(
 		&dc.ID, &dc.ProjectID, &dc.DCNumber, &dc.DCType, &dc.Status,
 		&templateID, &billToID, &dc.ShipToAddressID,
 		&challanDate, &issuedAt, &issuedBy, &dc.CreatedBy,
 		&dc.CreatedAt, &dc.UpdatedAt,
+		&bundleID, &shipmentGroupID, &billFromID, &dispatchFromID, &templateName,
 	)
 	if err != nil {
 		return nil, err
@@ -123,6 +133,25 @@ func GetDeliveryChallanByID(id int) (*models.DeliveryChallan, error) {
 	if issuedBy.Valid {
 		v := int(issuedBy.Int64)
 		dc.IssuedBy = &v
+	}
+	if bundleID.Valid {
+		v := int(bundleID.Int64)
+		dc.BundleID = &v
+	}
+	if shipmentGroupID.Valid {
+		v := int(shipmentGroupID.Int64)
+		dc.ShipmentGroupID = &v
+	}
+	if billFromID.Valid {
+		v := int(billFromID.Int64)
+		dc.BillFromAddressID = &v
+	}
+	if dispatchFromID.Valid {
+		v := int(dispatchFromID.Int64)
+		dc.DispatchFromAddressID = &v
+	}
+	if templateName.Valid {
+		dc.TemplateName = templateName.String
 	}
 
 	return dc, nil
@@ -276,6 +305,53 @@ func CheckSerialsInProject(projectID int, serials []string, excludeDCID *int) ([
 	return conflicts, nil
 }
 
+// CheckSerialsInProjectByProduct checks serial uniqueness scoped to (project_id, product_id).
+func CheckSerialsInProjectByProduct(projectID, productID int, serials []string, excludeDCID *int) ([]SerialConflict, error) {
+	if len(serials) == 0 {
+		return nil, nil
+	}
+
+	placeholders := make([]string, len(serials))
+	args := make([]interface{}, 0, len(serials)+3)
+	args = append(args, projectID, productID)
+	for i, s := range serials {
+		placeholders[i] = "?"
+		args = append(args, s)
+	}
+
+	query := `
+		SELECT sn.serial_number, sn.line_item_id, dc.id, dc.dc_number, dc.status, p.item_name
+		FROM serial_numbers sn
+		INNER JOIN dc_line_items li ON sn.line_item_id = li.id
+		INNER JOIN delivery_challans dc ON li.dc_id = dc.id
+		INNER JOIN products p ON li.product_id = p.id
+		WHERE sn.project_id = ?
+		  AND sn.product_id = ?
+		  AND sn.serial_number IN (` + strings.Join(placeholders, ",") + `)`
+
+	if excludeDCID != nil {
+		query += " AND dc.id != ?"
+		args = append(args, *excludeDCID)
+	}
+
+	rows, err := DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var conflicts []SerialConflict
+	for rows.Next() {
+		var c SerialConflict
+		var lineItemID int
+		if err := rows.Scan(&c.SerialNumber, &lineItemID, &c.ExistingDCID, &c.DCNumber, &c.DCStatus, &c.ProductName); err != nil {
+			return nil, err
+		}
+		conflicts = append(conflicts, c)
+	}
+	return conflicts, nil
+}
+
 // DeleteDC deletes a DC and all associated line items and serial numbers in a transaction.
 func DeleteDC(dcID int) error {
 	tx, err := DB.Begin()
@@ -368,10 +444,43 @@ func IssueDC(dcID int, userID int) error {
 	return nil
 }
 
+// GetDCsByShipmentGroup fetches all DCs belonging to a shipment group.
+func GetDCsByShipmentGroup(groupID int) ([]*models.DeliveryChallan, error) {
+	rows, err := DB.Query(
+		`SELECT dc.id, dc.project_id, dc.dc_number, dc.dc_type, dc.status,
+		        dc.challan_date, dc.created_at, dc.updated_at
+		 FROM delivery_challans dc
+		 WHERE dc.shipment_group_id = ?
+		 ORDER BY dc.dc_type DESC, dc.id`, groupID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var dcs []*models.DeliveryChallan
+	for rows.Next() {
+		dc := &models.DeliveryChallan{}
+		var challanDate sql.NullString
+		err := rows.Scan(
+			&dc.ID, &dc.ProjectID, &dc.DCNumber, &dc.DCType, &dc.Status,
+			&challanDate, &dc.CreatedAt, &dc.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if challanDate.Valid {
+			dc.ChallanDate = &challanDate.String
+		}
+		dcs = append(dcs, dc)
+	}
+	return dcs, nil
+}
+
 // GetAllAddressesByConfigID returns all addresses for a config (no pagination, for dropdowns).
 func GetAllAddressesByConfigID(configID int) ([]*models.Address, error) {
 	rows, err := DB.Query(
-		`SELECT id, config_id, address_data, created_at, updated_at
+		`SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, created_at, updated_at
 		 FROM addresses WHERE config_id = ? ORDER BY id`, configID,
 	)
 	if err != nil {
@@ -382,7 +491,7 @@ func GetAllAddressesByConfigID(configID int) ([]*models.Address, error) {
 	var addresses []*models.Address
 	for rows.Next() {
 		a := &models.Address{}
-		if err := rows.Scan(&a.ID, &a.ConfigID, &a.DataJSON, &a.CreatedAt, &a.UpdatedAt); err != nil {
+		if err := rows.Scan(&a.ID, &a.ConfigID, &a.DataJSON, &a.DistrictName, &a.MandalName, &a.MandalCode, &a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, err
 		}
 		if err := a.ParseData(); err != nil {

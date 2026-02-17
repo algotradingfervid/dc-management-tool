@@ -22,9 +22,14 @@ func GetOrCreateAddressConfig(projectID int, addressType string) (*models.Addres
 	if err == sql.ErrNoRows {
 		// Create default config based on address type
 		var defaultCols []models.ColumnDefinition
-		if addressType == "ship_to" {
+		switch addressType {
+		case "ship_to":
 			defaultCols = models.DefaultShipToColumns()
-		} else {
+		case "bill_from":
+			defaultCols = models.DefaultBillFromColumns()
+		case "dispatch_from":
+			defaultCols = models.DefaultDispatchFromColumns()
+		default:
 			defaultCols = models.DefaultBillToColumns()
 		}
 		colJSON, _ := json.Marshal(defaultCols)
@@ -69,7 +74,7 @@ func BulkInsertAddresses(configID int, addresses []*models.Address) error {
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.Prepare(`INSERT INTO addresses (config_id, address_data) VALUES (?, ?)`)
+	stmt, err := tx.Prepare(`INSERT INTO addresses (config_id, address_data, district_name, mandal_name, mandal_code) VALUES (?, ?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
@@ -80,7 +85,7 @@ func BulkInsertAddresses(configID int, addresses []*models.Address) error {
 		if err != nil {
 			return fmt.Errorf("failed to serialize address data: %w", err)
 		}
-		_, err = stmt.Exec(configID, dataJSON)
+		_, err = stmt.Exec(configID, dataJSON, addr.DistrictName, addr.MandalName, addr.MandalCode)
 		if err != nil {
 			return fmt.Errorf("failed to insert address: %w", err)
 		}
@@ -109,8 +114,9 @@ func ListAddresses(configID, page, perPage int, search string) (*models.AddressP
 	var countQuery string
 	var countArgs []interface{}
 	if search != "" {
-		countQuery = `SELECT COUNT(*) FROM addresses WHERE config_id = ? AND address_data LIKE ?`
-		countArgs = []interface{}{configID, "%" + search + "%"}
+		searchPattern := "%" + search + "%"
+		countQuery = `SELECT COUNT(*) FROM addresses WHERE config_id = ? AND (address_data LIKE ? OR district_name LIKE ? OR mandal_name LIKE ? OR mandal_code LIKE ?)`
+		countArgs = []interface{}{configID, searchPattern, searchPattern, searchPattern, searchPattern}
 	} else {
 		countQuery = `SELECT COUNT(*) FROM addresses WHERE config_id = ?`
 		countArgs = []interface{}{configID}
@@ -125,12 +131,13 @@ func ListAddresses(configID, page, perPage int, search string) (*models.AddressP
 	var dataQuery string
 	var dataArgs []interface{}
 	if search != "" {
-		dataQuery = `SELECT id, config_id, address_data, created_at, updated_at
-			FROM addresses WHERE config_id = ? AND address_data LIKE ?
+		searchPattern := "%" + search + "%"
+		dataQuery = `SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, created_at, updated_at
+			FROM addresses WHERE config_id = ? AND (address_data LIKE ? OR district_name LIKE ? OR mandal_name LIKE ? OR mandal_code LIKE ?)
 			ORDER BY id DESC LIMIT ? OFFSET ?`
-		dataArgs = []interface{}{configID, "%" + search + "%", perPage, offset}
+		dataArgs = []interface{}{configID, searchPattern, searchPattern, searchPattern, searchPattern, perPage, offset}
 	} else {
-		dataQuery = `SELECT id, config_id, address_data, created_at, updated_at
+		dataQuery = `SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, created_at, updated_at
 			FROM addresses WHERE config_id = ?
 			ORDER BY id DESC LIMIT ? OFFSET ?`
 		dataArgs = []interface{}{configID, perPage, offset}
@@ -145,7 +152,7 @@ func ListAddresses(configID, page, perPage int, search string) (*models.AddressP
 	var addresses []*models.Address
 	for rows.Next() {
 		a := &models.Address{}
-		if err := rows.Scan(&a.ID, &a.ConfigID, &a.DataJSON, &a.CreatedAt, &a.UpdatedAt); err != nil {
+		if err := rows.Scan(&a.ID, &a.ConfigID, &a.DataJSON, &a.DistrictName, &a.MandalName, &a.MandalCode, &a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, err
 		}
 		if err := a.ParseData(); err != nil {
@@ -189,12 +196,15 @@ func CountAddresses(configID int) (int, error) {
 }
 
 // CreateAddress inserts a single address.
-func CreateAddress(configID int, data map[string]string) (int, error) {
+func CreateAddress(configID int, data map[string]string, districtName, mandalName, mandalCode string) (int, error) {
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
 		return 0, err
 	}
-	result, err := DB.Exec(`INSERT INTO addresses (config_id, address_data) VALUES (?, ?)`, configID, string(dataJSON))
+	result, err := DB.Exec(
+		`INSERT INTO addresses (config_id, address_data, district_name, mandal_name, mandal_code) VALUES (?, ?, ?, ?, ?)`,
+		configID, string(dataJSON), districtName, mandalName, mandalCode,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -206,9 +216,9 @@ func CreateAddress(configID int, data map[string]string) (int, error) {
 func GetAddress(addressID int) (*models.Address, error) {
 	a := &models.Address{}
 	err := DB.QueryRow(
-		`SELECT id, config_id, address_data, created_at, updated_at FROM addresses WHERE id = ?`,
+		`SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, created_at, updated_at FROM addresses WHERE id = ?`,
 		addressID,
-	).Scan(&a.ID, &a.ConfigID, &a.DataJSON, &a.CreatedAt, &a.UpdatedAt)
+	).Scan(&a.ID, &a.ConfigID, &a.DataJSON, &a.DistrictName, &a.MandalName, &a.MandalCode, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -219,14 +229,14 @@ func GetAddress(addressID int) (*models.Address, error) {
 }
 
 // UpdateAddress updates a single address's data.
-func UpdateAddress(addressID int, data map[string]string) error {
+func UpdateAddress(addressID int, data map[string]string, districtName, mandalName, mandalCode string) error {
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 	_, err = DB.Exec(
-		`UPDATE addresses SET address_data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		string(dataJSON), addressID,
+		`UPDATE addresses SET address_data = ?, district_name = ?, mandal_name = ?, mandal_code = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		string(dataJSON), districtName, mandalName, mandalCode, addressID,
 	)
 	return err
 }
@@ -241,4 +251,54 @@ func ValidateAddressData(data map[string]string, columns []models.ColumnDefiniti
 		}
 	}
 	return errs
+}
+
+// SearchAddressesForSelector returns addresses matching a search query for the HTMX selector component.
+func SearchAddressesForSelector(configID int, search string, addressType string, limit int) ([]*models.Address, error) {
+	if limit < 1 {
+		limit = 20
+	}
+
+	var query string
+	var args []interface{}
+
+	if search != "" {
+		searchPattern := "%" + search + "%"
+		if addressType == "ship_to" {
+			query = `SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, created_at, updated_at
+				FROM addresses WHERE config_id = ? AND (address_data LIKE ? OR district_name LIKE ? OR mandal_name LIKE ? OR mandal_code LIKE ?)
+				ORDER BY district_name, mandal_name LIMIT ?`
+			args = []interface{}{configID, searchPattern, searchPattern, searchPattern, searchPattern, limit}
+		} else {
+			query = `SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, created_at, updated_at
+				FROM addresses WHERE config_id = ? AND address_data LIKE ?
+				ORDER BY id LIMIT ?`
+			args = []interface{}{configID, searchPattern, limit}
+		}
+	} else {
+		query = `SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, created_at, updated_at
+			FROM addresses WHERE config_id = ?
+			ORDER BY id LIMIT ?`
+		args = []interface{}{configID, limit}
+	}
+
+	rows, err := DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var addresses []*models.Address
+	for rows.Next() {
+		a := &models.Address{}
+		if err := rows.Scan(&a.ID, &a.ConfigID, &a.DataJSON, &a.DistrictName, &a.MandalName, &a.MandalCode, &a.CreatedAt, &a.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if err := a.ParseData(); err != nil {
+			return nil, err
+		}
+		addresses = append(addresses, a)
+	}
+
+	return addresses, nil
 }

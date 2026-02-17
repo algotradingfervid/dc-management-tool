@@ -2,17 +2,23 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
+	"sort"
+	"strings"
 	"time"
 )
 
-// Address stores a single address with flexible JSON data.
+// Address stores a single address with flexible JSON data and optional fixed fields.
 type Address struct {
-	ID        int               `json:"id"`
-	ConfigID  int               `json:"config_id"`
-	Data      map[string]string `json:"-"`
-	DataJSON  string            `json:"-"` // raw JSON from DB
-	CreatedAt time.Time         `json:"created_at"`
-	UpdatedAt time.Time         `json:"updated_at"`
+	ID           int               `json:"id"`
+	ConfigID     int               `json:"config_id"`
+	Data         map[string]string `json:"-"`
+	DataJSON     string            `json:"-"` // raw JSON from DB
+	DistrictName string            `json:"district_name"` // fixed field for ship-to
+	MandalName   string            `json:"mandal_name"`   // fixed field for ship-to
+	MandalCode   string            `json:"mandal_code"`   // fixed field for ship-to
+	CreatedAt    time.Time         `json:"created_at"`
+	UpdatedAt    time.Time         `json:"updated_at"`
 }
 
 // ParseData deserializes the JSON data field.
@@ -31,6 +37,37 @@ func (a *Address) DataToJSON() (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+// DisplayName returns a human-readable label built from all address fields.
+func (a *Address) DisplayName() string {
+	var parts []string
+
+	// Fixed fields first
+	if a.DistrictName != "" {
+		parts = append(parts, a.DistrictName)
+	}
+	if a.MandalName != "" {
+		parts = append(parts, a.MandalName)
+	}
+
+	// Dynamic fields in sorted key order for consistency
+	keys := make([]string, 0, len(a.Data))
+	for k := range a.Data {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		v := strings.TrimSpace(a.Data[k])
+		if v != "" {
+			parts = append(parts, v)
+		}
+	}
+
+	if len(parts) == 0 {
+		return fmt.Sprintf("Address #%d", a.ID)
+	}
+	return strings.Join(parts, " | ")
 }
 
 // AddressPage represents a paginated list of addresses.

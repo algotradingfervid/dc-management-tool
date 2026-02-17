@@ -43,3 +43,12 @@ server
 .playwright-cli/
 transit-dc-print-test.pdf
 test_ship_to.csv
+
+# Parallel test results
+test-results/
+
+# Node
+node_modules/
+
+# Screenshots
+Screenshot *.png

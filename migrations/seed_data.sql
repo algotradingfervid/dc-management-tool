@@ -109,3 +109,8 @@ INSERT INTO serial_numbers (project_id, line_item_id, serial_number) VALUES
 
 -- Update project last DC numbers
 UPDATE projects SET last_transit_dc_number = 2, last_official_dc_number = 1 WHERE id = 1;
+
+-- Set last_project_id for users so root redirect works
+UPDATE users SET last_project_id = 1 WHERE username = 'admin';
+UPDATE users SET last_project_id = 1 WHERE username = 'john';
+UPDATE users SET last_project_id = 3 WHERE username = 'jane';

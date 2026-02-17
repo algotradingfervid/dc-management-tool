@@ -1,0 +1,132 @@
+{{ template "base" . }}
+
+{{ define "title" }}Shipment Group #{{ .group.ID }}{{ end }}
+
+{{ define "content" }}
+<div class="max-w-5xl mx-auto space-y-6">
+
+    {{ if .flashType }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            showToast('{{ .flashMessage }}', '{{ .flashType }}');
+        });
+    </script>
+    {{ end }}
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Shipment Group #{{ .group.ID }}</h1>
+            <div class="flex items-center gap-2 mt-1">
+                {{ if eq .group.Status "draft" }}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700">DRAFT</span>
+                {{ else }}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">ISSUED</span>
+                {{ end }}
+                <span class="text-sm text-gray-500">{{ .group.TemplateName }}</span>
+                <span class="text-sm text-gray-500">| {{ .group.NumSets }} set{{ if gt .group.NumSets 1 }}s{{ end }}</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            {{ if eq .group.Status "draft" }}
+            <button type="button" onclick="issueAllDCs()"
+                    class="btn bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2 rounded-lg font-medium">
+                Issue All DCs
+            </button>
+            {{ end }}
+            <a href="/projects/{{ .project.ID }}/shipments" class="btn btn-secondary text-sm">Back to Shipments</a>
+        </div>
+    </div>
+
+    <!-- Group Info -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-6">
+        <h2 class="text-base font-bold text-gray-800 mb-4">Group Details</h2>
+        <dl class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+            <div>
+                <dt class="text-gray-500">Template</dt>
+                <dd class="font-medium text-gray-900 mt-0.5">{{ .group.TemplateName }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Number of Sets</dt>
+                <dd class="font-medium text-gray-900 mt-0.5">{{ .group.NumSets }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Tax Type</dt>
+                <dd class="font-medium text-gray-900 mt-0.5">{{ if eq .group.TaxType "cgst_sgst" }}CGST+SGST{{ else }}IGST{{ end }}</dd>
+            </div>
+            <div>
+                <dt class="text-gray-500">Created</dt>
+                <dd class="font-medium text-gray-900 mt-0.5">{{ .group.CreatedAt.Format "02-Jan-2006" }}</dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Delivery Challans -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-base font-bold text-gray-800">Delivery Challans</h2>
+            <span class="text-xs text-gray-400">{{ len .dcs }} DC{{ if gt (len .dcs) 1 }}s{{ end }}</span>
+        </div>
+
+        <div class="space-y-3">
+            {{ range $index, $dc := .dcs }}
+            <div class="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        {{ if eq .DCType "transit" }}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Transit</span>
+                        {{ else }}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Official {{ add $index 0 }}</span>
+                        {{ end }}
+                        <a href="/projects/{{ $.project.ID }}/dcs/{{ .ID }}" class="text-brand-600 hover:text-brand-800 font-mono font-medium text-sm">
+                            {{ .DCNumber }}
+                        </a>
+                        {{ if eq .Status "draft" }}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Draft</span>
+                        {{ else }}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Issued</span>
+                        {{ end }}
+                    </div>
+                    <div class="flex items-center gap-2">
+                        {{ if .ChallanDate }}
+                        <span class="text-xs text-gray-500">{{ derefStr .ChallanDate }}</span>
+                        {{ end }}
+                        <a href="/projects/{{ $.project.ID }}/dcs/{{ .ID }}" class="text-sm text-brand-600 hover:text-brand-800 font-medium">View</a>
+                        {{ if eq .DCType "transit" }}
+                        <a href="/projects/{{ $.project.ID }}/dcs/{{ .ID }}/print" class="text-sm text-gray-500 hover:text-gray-700">Print</a>
+                        {{ else }}
+                        <a href="/projects/{{ $.project.ID }}/dcs/{{ .ID }}/official-print" class="text-sm text-gray-500 hover:text-gray-700">Print</a>
+                        {{ end }}
+                    </div>
+                </div>
+            </div>
+            {{ end }}
+        </div>
+    </div>
+</div>
+
+{{ if eq .group.Status "draft" }}
+<script>
+function issueAllDCs() {
+    if (!confirm('Issue all draft DCs in this shipment group? This action cannot be undone.')) return;
+
+    fetch('/projects/{{ .project.ID }}/shipments/{{ .group.ID }}/issue', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': '{{ .csrfField }}'.match(/value="([^"]+)"/)?.[1] || ''
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            showToast(data.error || 'Failed to issue DCs', 'error');
+        }
+    })
+    .catch(() => showToast('Failed to issue DCs', 'error'));
+}
+</script>
+{{ end }}
+{{ end }}

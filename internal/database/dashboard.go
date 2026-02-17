@@ -5,15 +5,41 @@ import (
 	"time"
 )
 
-// DashboardStats holds aggregate statistics for the dashboard
+// DashboardStats holds aggregate statistics for the project dashboard
 type DashboardStats struct {
-	TotalProjects int
-	TotalDCs      int
-	TransitDCs    int
-	OfficialDCs   int
-	IssuedDCs     int
-	DraftDCs      int
-	DCsThisMonth  int
+	// Entity counts
+	TotalProducts        int
+	TotalTemplates       int
+	TotalBillToAddresses int
+	TotalShipToAddresses int
+	// DC counts
+	TotalDCs     int
+	TransitDCs   int
+	OfficialDCs  int
+	IssuedDCs    int
+	DraftDCs     int
+	DCsThisMonth int
+
+	// Breakdown by type+status
+	TransitDCsDraft   int
+	TransitDCsIssued  int
+	OfficialDCsDraft  int
+	OfficialDCsIssued int
+
+	// Serial numbers
+	TotalSerialNumbers int
+}
+
+// RecentActivity represents a recent action for the dashboard activity feed
+type RecentActivity struct {
+	ID          int
+	EntityType  string // "dc", "product", "address"
+	EntityID    int
+	Title       string
+	Description string
+	Status      string
+	CreatedAt   time.Time
+	ProjectID   int
 }
 
 // RecentDC represents a recent delivery challan for the dashboard list
@@ -29,84 +55,77 @@ type RecentDC struct {
 	CreatedAt     string
 }
 
-// ProjectDCCount holds per-project DC breakdown
-type ProjectDCCount struct {
-	ProjectID   int
-	ProjectName string
-	TransitDCs  int
-	OfficialDCs int
-	TotalDCs    int
-}
-
-// GetDashboardStats returns aggregate dashboard statistics with optional date filtering
-func GetDashboardStats(startDate, endDate *time.Time) (*DashboardStats, error) {
+// GetDashboardStats returns aggregate dashboard statistics for a project with optional date filtering
+func GetDashboardStats(projectID int, startDate, endDate *time.Time) (*DashboardStats, error) {
 	stats := &DashboardStats{}
 
-	// Total projects (always unfiltered)
-	err := DB.QueryRow("SELECT COUNT(*) FROM projects").Scan(&stats.TotalProjects)
-	if err != nil {
-		return nil, err
-	}
-
-	// Build date filter clause
+	// Build date filter clause for DCs
 	dateFilter := ""
-	var args []interface{}
+	var dateArgs []interface{}
 	if startDate != nil {
 		dateFilter += " AND challan_date >= ?"
-		args = append(args, startDate.Format("2006-01-02"))
+		dateArgs = append(dateArgs, startDate.Format("2006-01-02"))
 	}
 	if endDate != nil {
 		dateFilter += " AND challan_date <= ?"
-		args = append(args, endDate.Format("2006-01-02"))
+		dateArgs = append(dateArgs, endDate.Format("2006-01-02"))
 	}
 
-	// Total DCs (with date filter)
-	err = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE 1=1"+dateFilter, args...).Scan(&stats.TotalDCs)
-	if err != nil {
-		return nil, err
+	// --- Entity counts ---
+
+	// Total Products
+	DB.QueryRow("SELECT COUNT(*) FROM products WHERE project_id = ?", projectID).Scan(&stats.TotalProducts)
+
+	// Total Templates
+	DB.QueryRow("SELECT COUNT(*) FROM dc_templates WHERE project_id = ?", projectID).Scan(&stats.TotalTemplates)
+
+	// Total Bill-to Addresses
+	DB.QueryRow(`SELECT COUNT(*) FROM addresses a
+		JOIN address_list_configs c ON a.config_id = c.id
+		WHERE c.project_id = ? AND c.address_type = 'bill_to'`, projectID).Scan(&stats.TotalBillToAddresses)
+
+	// Total Ship-to Addresses
+	DB.QueryRow(`SELECT COUNT(*) FROM addresses a
+		JOIN address_list_configs c ON a.config_id = c.id
+		WHERE c.project_id = ? AND c.address_type = 'ship_to'`, projectID).Scan(&stats.TotalShipToAddresses)
+
+	// --- DC counts ---
+	buildArgs := func(extra ...interface{}) []interface{} {
+		args := []interface{}{projectID}
+		args = append(args, extra...)
+		args = append(args, dateArgs...)
+		return args
 	}
 
-	// Transit DCs
-	err = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE dc_type='transit'"+dateFilter, args...).Scan(&stats.TransitDCs)
-	if err != nil {
-		return nil, err
-	}
+	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ?"+dateFilter, buildArgs()...).Scan(&stats.TotalDCs)
+	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='transit'"+dateFilter, buildArgs()...).Scan(&stats.TransitDCs)
+	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='official'"+dateFilter, buildArgs()...).Scan(&stats.OfficialDCs)
+	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND status='issued'"+dateFilter, buildArgs()...).Scan(&stats.IssuedDCs)
+	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND status='draft'", projectID).Scan(&stats.DraftDCs)
 
-	// Official DCs
-	err = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE dc_type='official'"+dateFilter, args...).Scan(&stats.OfficialDCs)
-	if err != nil {
-		return nil, err
-	}
+	// Breakdown by type+status
+	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='transit' AND status='draft'"+dateFilter, buildArgs()...).Scan(&stats.TransitDCsDraft)
+	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='transit' AND status='issued'"+dateFilter, buildArgs()...).Scan(&stats.TransitDCsIssued)
+	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='official' AND status='draft'"+dateFilter, buildArgs()...).Scan(&stats.OfficialDCsDraft)
+	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='official' AND status='issued'"+dateFilter, buildArgs()...).Scan(&stats.OfficialDCsIssued)
 
-	// Issued DCs
-	err = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE status='issued'"+dateFilter, args...).Scan(&stats.IssuedDCs)
-	if err != nil {
-		return nil, err
-	}
-
-	// Draft DCs (always unfiltered - global count)
-	err = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE status='draft'").Scan(&stats.DraftDCs)
-	if err != nil {
-		return nil, err
-	}
-
-	// DCs this month (always current month, unfiltered)
+	// DCs this month
 	now := time.Now()
 	firstDay := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 	lastDay := firstDay.AddDate(0, 1, -1)
-	err = DB.QueryRow(
-		"SELECT COUNT(*) FROM delivery_challans WHERE challan_date >= ? AND challan_date <= ?",
-		firstDay.Format("2006-01-02"), lastDay.Format("2006-01-02"),
+	DB.QueryRow(
+		"SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND challan_date >= ? AND challan_date <= ?",
+		projectID, firstDay.Format("2006-01-02"), lastDay.Format("2006-01-02"),
 	).Scan(&stats.DCsThisMonth)
-	if err != nil {
-		return nil, err
-	}
+
+	// Total serial numbers
+	DB.QueryRow("SELECT COUNT(*) FROM serial_numbers WHERE project_id = ?", projectID).Scan(&stats.TotalSerialNumbers)
 
 	return stats, nil
 }
 
-// GetRecentDCs returns the most recent delivery challans
-func GetRecentDCs(limit int) ([]RecentDC, error) {
+// GetRecentDCs returns the most recent delivery challans for a project
+func GetRecentDCs(projectID int, limit int) ([]RecentDC, error) {
 	rows, err := DB.Query(`
 		SELECT
 			dc.id, dc.dc_number, dc.dc_type,
@@ -116,9 +135,10 @@ func GetRecentDCs(limit int) ([]RecentDC, error) {
 			COALESCE(dc.created_at, '')
 		FROM delivery_challans dc
 		LEFT JOIN projects p ON dc.project_id = p.id
+		WHERE dc.project_id = ?
 		ORDER BY dc.created_at DESC
 		LIMIT ?
-	`, limit)
+	`, projectID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -138,33 +158,38 @@ func GetRecentDCs(limit int) ([]RecentDC, error) {
 	return results, nil
 }
 
-// GetProjectDCCounts returns per-project DC breakdown
-func GetProjectDCCounts() ([]ProjectDCCount, error) {
+// GetRecentActivity returns the most recent activity items for a project dashboard
+func GetRecentActivity(projectID int, limit int) ([]RecentActivity, error) {
 	rows, err := DB.Query(`
-		SELECT
-			p.id, p.name,
-			SUM(CASE WHEN dc.dc_type = 'transit' THEN 1 ELSE 0 END),
-			SUM(CASE WHEN dc.dc_type = 'official' THEN 1 ELSE 0 END),
-			COUNT(dc.id)
-		FROM projects p
-		LEFT JOIN delivery_challans dc ON dc.project_id = p.id
-		GROUP BY p.id, p.name
-		ORDER BY COUNT(dc.id) DESC
-		LIMIT 10
-	`)
+		SELECT id, 'dc' as entity_type, id as entity_id,
+			dc_number as title,
+			dc_type || ' DC ' || status as description,
+			status,
+			created_at,
+			project_id
+		FROM delivery_challans
+		WHERE project_id = ?
+		ORDER BY created_at DESC
+		LIMIT ?
+	`, projectID, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var results []ProjectDCCount
+	var activities []RecentActivity
 	for rows.Next() {
-		var pc ProjectDCCount
-		err := rows.Scan(&pc.ProjectID, &pc.ProjectName, &pc.TransitDCs, &pc.OfficialDCs, &pc.TotalDCs)
+		var a RecentActivity
+		var createdStr string
+		err := rows.Scan(&a.ID, &a.EntityType, &a.EntityID, &a.Title, &a.Description, &a.Status, &createdStr, &a.ProjectID)
 		if err != nil {
 			return nil, err
 		}
-		results = append(results, pc)
+		a.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdStr)
+		if a.CreatedAt.IsZero() {
+			a.CreatedAt, _ = time.Parse(time.RFC3339, createdStr)
+		}
+		activities = append(activities, a)
 	}
-	return results, nil
+	return activities, nil
 }

@@ -1,0 +1,37 @@
+{{ define "vehicle-list.html" }}
+{{ if .vehicles }}
+<div class="divide-y divide-gray-200">
+    {{ range .vehicles }}
+    <div class="px-6 py-3 flex items-center justify-between hover:bg-gray-50">
+        <div class="flex items-center gap-6">
+            <div>
+                <span class="text-sm font-medium text-gray-900">{{ .VehicleNumber }}</span>
+                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{{ .VehicleType }}</span>
+            </div>
+            {{ if .DriverName }}
+            <div class="text-sm text-gray-600">
+                <span class="font-medium">{{ .DriverName }}</span>
+                {{ if .DriverPhone1 }} &middot; {{ .DriverPhone1 }}{{ end }}
+                {{ if .DriverPhone2 }} &middot; {{ .DriverPhone2 }}{{ end }}
+            </div>
+            {{ end }}
+        </div>
+        <button hx-delete="/projects/{{ $.projectID }}/transporters/{{ $.transporterID }}/vehicles/{{ .ID }}"
+                hx-target="#vehicle-list"
+                hx-swap="innerHTML"
+                hx-headers='{"X-CSRF-Token": "{{ $.csrfToken }}"}'
+                hx-confirm="Remove this vehicle?"
+                class="text-red-600 hover:text-red-900">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+        </button>
+    </div>
+    {{ end }}
+</div>
+{{ else }}
+<div class="text-center py-8">
+    <p class="text-sm text-gray-500">No vehicles added yet. Use the form above to add vehicles.</p>
+</div>
+{{ end }}
+{{ end }}

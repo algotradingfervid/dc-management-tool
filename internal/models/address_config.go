@@ -12,6 +12,7 @@ type ColumnDefinition struct {
 	Required   bool   `json:"required"`
 	Type       string `json:"type,omitempty"`       // text, number, email, phone - defaults to text
 	Validation string `json:"validation,omitempty"` // regex pattern
+	Fixed      bool   `json:"fixed,omitempty"`      // true for ship-to district/mandal fields (not user-editable)
 }
 
 // AddressListConfig stores the column configuration for a project's address list.
@@ -75,6 +76,16 @@ func (c *AddressListConfig) ValidateColumns() map[string]string {
 	return errors
 }
 
+// FixedShipToColumns returns the fixed columns for ship-to addresses.
+// These are always present and cannot be removed by users.
+func FixedShipToColumns() []ColumnDefinition {
+	return []ColumnDefinition{
+		{Name: "District Name", Required: true, Type: "text", Fixed: true},
+		{Name: "Mandal/ULB Name", Required: true, Type: "text", Fixed: true},
+		{Name: "Mandal Code", Required: true, Type: "text", Fixed: true},
+	}
+}
+
 // DefaultBillToColumns returns default column definitions for bill-to addresses.
 func DefaultBillToColumns() []ColumnDefinition {
 	return []ColumnDefinition{
@@ -88,14 +99,44 @@ func DefaultBillToColumns() []ColumnDefinition {
 }
 
 // DefaultShipToColumns returns default column definitions for ship-to addresses.
+// Note: District Name, Mandal/ULB Name, and Mandal Code are fixed columns
+// stored in dedicated DB fields. The columns here are additional dynamic columns.
 func DefaultShipToColumns() []ColumnDefinition {
 	return []ColumnDefinition{
-		{Name: "District", Required: true, Type: "text"},
-		{Name: "SRO", Required: false, Type: "text"},
 		{Name: "Location", Required: true, Type: "text"},
 		{Name: "Location ID", Required: true, Type: "text"},
-		{Name: "Mandal/ULB", Required: false, Type: "text"},
+		{Name: "SRO", Required: false, Type: "text"},
 		{Name: "Secretariat Name", Required: true, Type: "text"},
 		{Name: "Secretariat Code", Required: true, Type: "text"},
+	}
+}
+
+// DefaultBillFromColumns returns default column definitions for bill-from addresses.
+func DefaultBillFromColumns() []ColumnDefinition {
+	return []ColumnDefinition{
+		{Name: "Company Name", Required: true, Type: "text"},
+		{Name: "Address Line 1", Required: true, Type: "text"},
+		{Name: "Address Line 2", Required: false, Type: "text"},
+		{Name: "City", Required: true, Type: "text"},
+		{Name: "State", Required: true, Type: "text"},
+		{Name: "PIN Code", Required: false, Type: "text"},
+		{Name: "GSTIN", Required: false, Type: "text"},
+		{Name: "Email", Required: false, Type: "text"},
+		{Name: "CIN No.", Required: false, Type: "text"},
+		{Name: "PAN", Required: false, Type: "text"},
+	}
+}
+
+// DefaultDispatchFromColumns returns default column definitions for dispatch-from addresses.
+func DefaultDispatchFromColumns() []ColumnDefinition {
+	return []ColumnDefinition{
+		{Name: "Company Name", Required: true, Type: "text"},
+		{Name: "Address Line 1", Required: true, Type: "text"},
+		{Name: "Address Line 2", Required: false, Type: "text"},
+		{Name: "City", Required: true, Type: "text"},
+		{Name: "State", Required: true, Type: "text"},
+		{Name: "PIN Code", Required: false, Type: "text"},
+		{Name: "Contact Person", Required: false, Type: "text"},
+		{Name: "Phone", Required: false, Type: "text"},
 	}
 }

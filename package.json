@@ -1,0 +1,12 @@
+{
+  "name": "dc-management-tool",
+  "private": true,
+  "scripts": {
+    "css:build": "npx @tailwindcss/cli -i ./static/css/tailwind-input.css -o ./static/css/tailwind-output.css --minify",
+    "css:watch": "npx @tailwindcss/cli -i ./static/css/tailwind-input.css -o ./static/css/tailwind-output.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "tailwindcss": "^4.1.0"
+  }
+}

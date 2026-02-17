@@ -1,0 +1,205 @@
+{{ define "title" }}Transporters - {{ .project.Name }}{{ end }}
+
+{{ define "content" }}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Transporters</h1>
+            <p class="text-sm text-gray-500 mt-1">Manage transport companies for {{ .project.Name }}</p>
+        </div>
+        <button onclick="openTransporterSlideOver()"
+            class="btn btn-primary text-sm inline-flex items-center">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Add Transporter
+        </button>
+    </div>
+
+    <!-- Search -->
+    <div class="card p-4">
+        <form method="GET" action="/projects/{{ .project.ID }}/transporters" class="flex gap-3">
+            <div class="flex-1">
+                <input type="text" name="search" value="{{ .search }}" placeholder="Search by company name, contact, phone, GST..."
+                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm">
+            </div>
+            <button type="submit" class="btn btn-secondary text-sm">Search</button>
+            {{ if .search }}
+            <a href="/projects/{{ .project.ID }}/transporters" class="btn btn-secondary text-sm">Clear</a>
+            {{ end }}
+        </form>
+    </div>
+
+    <!-- Transporters Table -->
+    <div class="card overflow-hidden">
+        <div id="transporters-table-container"
+             hx-get="/projects/{{ .project.ID }}/transporters"
+             hx-trigger="transporterChanged from:body"
+             hx-select="#transporters-table-container"
+             hx-swap="outerHTML">
+            {{ if .transporters }}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Person</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicles</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {{ range .transporters }}
+                        <tr class="hover:bg-gray-50" id="transporter-row-{{ .ID }}">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <a href="/projects/{{ .ProjectID }}/transporters/{{ .ID }}" class="text-sm font-medium text-brand-600 hover:text-brand-900">{{ .CompanyName }}</a>
+                                {{ if .GSTNumber }}
+                                <div class="text-xs text-gray-500">GST: {{ .GSTNumber }}</div>
+                                {{ end }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ if .ContactPerson }}{{ .ContactPerson }}{{ else }}<span class="text-gray-400">-</span>{{ end }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ if .Phone }}{{ .Phone }}{{ else }}<span class="text-gray-400">-</span>{{ end }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                {{ if .Vehicles }}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{{ len .Vehicles }} vehicle{{ if gt (len .Vehicles) 1 }}s{{ end }}</span>
+                                {{ else }}
+                                    <span class="text-gray-400">None</span>
+                                {{ end }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ if .IsActive }}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>
+                                {{ else }}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Inactive</span>
+                                {{ end }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                                <a href="/projects/{{ .ProjectID }}/transporters/{{ .ID }}" class="text-brand-600 hover:text-brand-900 mr-3" title="View Details">
+                                    <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                </a>
+                                <button onclick="editTransporter({{ .ProjectID }}, {{ .ID }})"
+                                    class="text-brand-600 hover:text-brand-900 mr-3" title="Edit">
+                                    <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </button>
+                                <button onclick="toggleTransporterStatus({{ .ProjectID }}, {{ .ID }}, {{ .IsActive }})"
+                                    class="{{ if .IsActive }}text-amber-600 hover:text-amber-900{{ else }}text-green-600 hover:text-green-900{{ end }}" title="{{ if .IsActive }}Deactivate{{ else }}Activate{{ end }}">
+                                    {{ if .IsActive }}
+                                    <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                    </svg>
+                                    {{ else }}
+                                    <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    {{ end }}
+                                </button>
+                            </td>
+                        </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {{ if gt .transporterPage.TotalPages 1 }}
+            <div class="px-6 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                <div class="text-sm text-gray-600">
+                    Showing {{ add (mul (sub .transporterPage.CurrentPage 1) .transporterPage.PerPage) 1 }}-{{ if gt (mul .transporterPage.CurrentPage .transporterPage.PerPage) .transporterPage.TotalCount }}{{ .transporterPage.TotalCount }}{{ else }}{{ mul .transporterPage.CurrentPage .transporterPage.PerPage }}{{ end }} of {{ .transporterPage.TotalCount }}
+                </div>
+                <div class="flex gap-2">
+                    {{ if gt .transporterPage.CurrentPage 1 }}
+                    <a href="/projects/{{ .project.ID }}/transporters?page={{ sub .transporterPage.CurrentPage 1 }}{{ if .search }}&search={{ .search }}{{ end }}" class="btn btn-secondary text-sm">Previous</a>
+                    {{ end }}
+                    {{ if lt .transporterPage.CurrentPage .transporterPage.TotalPages }}
+                    <a href="/projects/{{ .project.ID }}/transporters?page={{ add .transporterPage.CurrentPage 1 }}{{ if .search }}&search={{ .search }}{{ end }}" class="btn btn-secondary text-sm">Next</a>
+                    {{ end }}
+                </div>
+            </div>
+            {{ end }}
+            {{ else }}
+            <div class="text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No transporters</h3>
+                <p class="mt-1 text-sm text-gray-500">Get started by adding a transport company.</p>
+                <div class="mt-4">
+                    <button onclick="openTransporterSlideOver()" class="btn btn-primary text-sm">
+                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Add Transporter
+                    </button>
+                </div>
+            </div>
+            {{ end }}
+        </div>
+    </div>
+</div>
+
+<!-- Slide-over Panel -->
+<div id="transporter-slideover" class="hidden fixed inset-0 z-50">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 transition-opacity" onclick="closeTransporterSlideOver()"></div>
+    <!-- Panel -->
+    <div class="absolute inset-y-0 right-0 max-w-md w-full bg-white shadow-xl transform transition-transform duration-300 translate-x-0">
+        <div id="transporter-form-container" class="h-full overflow-y-auto">
+            <!-- Form loaded here via HTMX -->
+        </div>
+    </div>
+</div>
+
+<script>
+var csrfToken = '{{ .csrfToken }}';
+
+function openTransporterSlideOver() {
+    var el = document.getElementById('transporter-slideover');
+    el.classList.remove('hidden');
+    htmx.ajax('GET', '/projects/{{ .project.ID }}/transporters/new', {target: '#transporter-form-container', swap: 'innerHTML'});
+}
+
+function editTransporter(projectID, transporterID) {
+    var el = document.getElementById('transporter-slideover');
+    el.classList.remove('hidden');
+    htmx.ajax('GET', '/projects/' + projectID + '/transporters/' + transporterID + '/edit', {target: '#transporter-form-container', swap: 'innerHTML'});
+}
+
+function closeTransporterSlideOver() {
+    document.getElementById('transporter-slideover').classList.add('hidden');
+}
+
+function toggleTransporterStatus(projectID, transporterID, isActive) {
+    var action = isActive ? 'deactivate' : 'activate';
+    if (!confirm('Are you sure you want to ' + action + ' this transporter?')) return;
+
+    fetch('/projects/' + projectID + '/transporters/' + transporterID + '/toggle-status', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-Token': csrfToken,
+            'Content-Type': 'application/json'
+        }
+    }).then(function(resp) {
+        if (resp.ok) {
+            showToast('Transporter ' + action + 'd successfully', 'success');
+            htmx.trigger(document.body, 'transporterChanged');
+        } else {
+            showToast('Failed to ' + action + ' transporter', 'error');
+        }
+    }).catch(function() {
+        showToast('Failed to ' + action + ' transporter', 'error');
+    });
+}
+
+document.body.addEventListener('transporterChanged', function() {
+    closeTransporterSlideOver();
+});
+</script>
+{{ end }}

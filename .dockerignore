@@ -1,0 +1,14 @@
+node_modules/
+data/
+testing-plans/
+.git/
+.claude/
+bin/
+tmp/
+test-results/
+plans/
+.DS_Store
+*.db
+*.db-shm
+*.db-wal
+*.log

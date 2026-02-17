@@ -54,6 +54,7 @@ func NewTemplateRenderer(templatesDir string, funcMap template.FuncMap) (*Templa
 		filepath.Join(templatesDir, "partials", "sidebar.html"),
 		filepath.Join(templatesDir, "partials", "topbar.html"),
 		filepath.Join(templatesDir, "partials", "breadcrumb.html"),
+		filepath.Join(templatesDir, "partials", "wizard_steps.html"),
 	}
 
 	// Parse page templates (use layout) - top level
@@ -74,30 +75,27 @@ func NewTemplateRenderer(templatesDir string, funcMap template.FuncMap) (*Templa
 		entryNames[name] = "base"
 	}
 
-	// Parse page templates in subdirectories (e.g., pages/projects/*.html)
-	subDirs, _ := filepath.Glob(filepath.Join(templatesDir, "pages", "*"))
-	for _, subDir := range subDirs {
-		info, err := os.Stat(subDir)
-		if err != nil || !info.IsDir() {
-			continue
+	// Parse page templates in subdirectories (e.g., pages/projects/*.html, pages/admin/users/*.html)
+	pagesDir := filepath.Join(templatesDir, "pages")
+	filepath.Walk(pagesDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() || filepath.Ext(path) != ".html" {
+			return nil
 		}
-		subPages, err := filepath.Glob(filepath.Join(subDir, "*.html"))
+		rel, _ := filepath.Rel(pagesDir, path)
+		// Skip top-level files (already handled above)
+		if filepath.Dir(rel) == "." {
+			return nil
+		}
+		name := rel // e.g. "admin/users/list.html"
+		files := append(append([]string{}, sharedFiles...), path)
+		t, err := template.New("").Funcs(funcMap).ParseFiles(files...)
 		if err != nil {
-			continue
+			return err
 		}
-		dirName := filepath.Base(subDir)
-		for _, page := range subPages {
-			name := dirName + "/" + filepath.Base(page)
-			files := append(append([]string{}, sharedFiles...), page)
-
-			t, err := template.New("").Funcs(funcMap).ParseFiles(files...)
-			if err != nil {
-				return nil, err
-			}
-			templates[name] = t
-			entryNames[name] = "base"
-		}
-	}
+		templates[name] = t
+		entryNames[name] = "base"
+		return nil
+	})
 
 	// Parse standalone templates
 	standaloneFiles, err := filepath.Glob(filepath.Join(templatesDir, "standalone", "*.html"))
@@ -117,35 +115,21 @@ func NewTemplateRenderer(templatesDir string, funcMap template.FuncMap) (*Templa
 	}
 
 	// Parse HTMX partial templates (rendered without layout)
-	htmxDirs, _ := filepath.Glob(filepath.Join(templatesDir, "htmx", "*"))
-	for _, htmxDir := range htmxDirs {
-		info, err := os.Stat(htmxDir)
-		if err != nil || !info.IsDir() {
-			// It's a file directly in htmx/
-			name := "htmx/" + filepath.Base(htmxDir)
-			t, err := template.New("").Funcs(funcMap).ParseFiles(htmxDir)
-			if err != nil {
-				return nil, err
-			}
-			templates[name] = t
-			entryNames[name] = filepath.Base(htmxDir)
-			continue
+	htmxBaseDir := filepath.Join(templatesDir, "htmx")
+	filepath.Walk(htmxBaseDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() || filepath.Ext(path) != ".html" {
+			return nil
 		}
-		htmxFiles, err := filepath.Glob(filepath.Join(htmxDir, "*.html"))
-		if err != nil {
-			continue
+		rel, _ := filepath.Rel(htmxBaseDir, path)
+		name := "htmx/" + rel
+		t, parseErr := template.New("").Funcs(funcMap).ParseFiles(path)
+		if parseErr != nil {
+			return parseErr
 		}
-		dirName := filepath.Base(htmxDir)
-		for _, htmxFile := range htmxFiles {
-			name := "htmx/" + dirName + "/" + filepath.Base(htmxFile)
-			t, err := template.New("").Funcs(funcMap).ParseFiles(htmxFile)
-			if err != nil {
-				return nil, err
-			}
-			templates[name] = t
-			entryNames[name] = filepath.Base(htmxFile)
-		}
-	}
+		templates[name] = t
+		entryNames[name] = filepath.Base(path)
+		return nil
+	})
 
 	return &TemplateRenderer{templates: templates, entryNames: entryNames}, nil
 }

@@ -1,0 +1,73 @@
+{{ define "title" }}Reports - DC Management Tool{{ end }}
+
+{{ define "content" }}
+<div class="space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Reports</h1>
+        <p class="text-sm text-gray-500 mt-1">View and export delivery challan reports for this project.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- DC Summary -->
+        <a href="{{ .basePath }}/dc-summary" class="card hover:shadow-md transition-shadow group">
+            <div class="flex items-start gap-4">
+                <div class="p-3 rounded-lg bg-brand-50 text-brand-600 group-hover:bg-brand-100">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-900">DC Summary</h3>
+                    <p class="text-sm text-gray-500 mt-1">Overview of all bundles, transit/official DCs, items dispatched, and serial numbers used.</p>
+                </div>
+            </div>
+        </a>
+
+        <!-- Destination Report -->
+        <a href="{{ .basePath }}/destination" class="card hover:shadow-md transition-shadow group">
+            <div class="flex items-start gap-4">
+                <div class="p-3 rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-900">Destination Report</h3>
+                    <p class="text-sm text-gray-500 mt-1">Breakdown by district and mandal with DC counts and item totals. Click to drill down.</p>
+                </div>
+            </div>
+        </a>
+
+        <!-- Product Report -->
+        <a href="{{ .basePath }}/product" class="card hover:shadow-md transition-shadow group">
+            <div class="flex items-start gap-4">
+                <div class="p-3 rounded-lg bg-amber-50 text-amber-600 group-hover:bg-amber-100">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-900">Product Report</h3>
+                    <p class="text-sm text-gray-500 mt-1">Product-wise breakdown showing total quantities dispatched, DC count, and destinations.</p>
+                </div>
+            </div>
+        </a>
+
+        <!-- Serial Number Report -->
+        <a href="{{ .basePath }}/serial" class="card hover:shadow-md transition-shadow group">
+            <div class="flex items-start gap-4">
+                <div class="p-3 rounded-lg bg-purple-50 text-purple-600 group-hover:bg-purple-100">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-900">Serial Number Report</h3>
+                    <p class="text-sm text-gray-500 mt-1">Search and export serial numbers with product, DC, date, and vehicle details.</p>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+{{ end }}

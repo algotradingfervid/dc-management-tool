@@ -1,0 +1,116 @@
+x-app-base: &app-base
+  build:
+    context: .
+    dockerfile: Dockerfile
+  environment:
+    APP_ENV: development
+    SESSION_SECRET: docker-test-secret
+  restart: "no"
+
+services:
+  app-1:
+    <<: *app-base
+    container_name: dc-test-1
+    environment:
+      APP_ENV: development
+      SESSION_SECRET: docker-test-secret
+      SERVER_ADDRESS: ":8081"
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8081/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    volumes:
+      - data-1:/app/data
+      - uploads-1:/app/static/uploads
+
+  app-2:
+    <<: *app-base
+    container_name: dc-test-2
+    environment:
+      APP_ENV: development
+      SESSION_SECRET: docker-test-secret
+      SERVER_ADDRESS: ":8082"
+    ports:
+      - "8082:8082"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8082/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    volumes:
+      - data-2:/app/data
+      - uploads-2:/app/static/uploads
+
+  app-3:
+    <<: *app-base
+    container_name: dc-test-3
+    environment:
+      APP_ENV: development
+      SESSION_SECRET: docker-test-secret
+      SERVER_ADDRESS: ":8083"
+    ports:
+      - "8083:8083"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8083/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    volumes:
+      - data-3:/app/data
+      - uploads-3:/app/static/uploads
+
+  app-4:
+    <<: *app-base
+    container_name: dc-test-4
+    environment:
+      APP_ENV: development
+      SESSION_SECRET: docker-test-secret
+      SERVER_ADDRESS: ":8084"
+    ports:
+      - "8084:8084"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8084/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    volumes:
+      - data-4:/app/data
+      - uploads-4:/app/static/uploads
+
+  app-5:
+    <<: *app-base
+    container_name: dc-test-5
+    environment:
+      APP_ENV: development
+      SESSION_SECRET: docker-test-secret
+      SERVER_ADDRESS: ":8085"
+    ports:
+      - "8085:8085"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8085/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    volumes:
+      - data-5:/app/data
+      - uploads-5:/app/static/uploads
+
+volumes:
+  data-1:
+  data-2:
+  data-3:
+  data-4:
+  data-5:
+  uploads-1:
+  uploads-2:
+  uploads-3:
+  uploads-4:
+  uploads-5:

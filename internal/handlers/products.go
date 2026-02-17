@@ -1,9 +1,13 @@
 package handlers
 
 import (
+	"encoding/csv"
 	"fmt"
+	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -13,6 +17,7 @@ import (
 	"github.com/narendhupati/dc-management-tool/internal/database"
 	"github.com/narendhupati/dc-management-tool/internal/helpers"
 	"github.com/narendhupati/dc-management-tool/internal/models"
+	"github.com/xuri/excelize/v2"
 )
 
 func ListProducts(c *gin.Context) {
@@ -31,10 +36,15 @@ func ListProducts(c *gin.Context) {
 		return
 	}
 
-	products, err := database.GetProductsByProjectID(projectID)
+	search := c.Query("search")
+	sortBy := c.DefaultQuery("sort", "item_name")
+	sortDir := c.DefaultQuery("dir", "asc")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+
+	productPage, err := database.SearchProducts(projectID, search, sortBy, sortDir, page, 20)
 	if err != nil {
 		log.Printf("Error fetching products: %v", err)
-		products = []*models.Product{}
+		productPage = &models.ProductPage{Products: []*models.Product{}, CurrentPage: 1, TotalPages: 1, PerPage: 20}
 	}
 
 	flashType, flashMessage := auth.PopFlash(c.Request)
@@ -45,18 +55,35 @@ func ListProducts(c *gin.Context) {
 		helpers.Breadcrumb{Title: "Products", URL: ""},
 	)
 
-	c.HTML(http.StatusOK, "products/list.html", gin.H{
-		"user":         user,
-		"currentPath":  c.Request.URL.Path,
-		"breadcrumbs":  breadcrumbs,
-		"project":      project,
-		"products":     products,
-		"activeTab":    "products",
-		"flashType":    flashType,
-		"flashMessage": flashMessage,
-		"csrfToken":    csrf.Token(c.Request),
-		"csrfField":    csrf.TemplateField(c.Request),
-	})
+	// Get product count for sidebar badge
+	productCount, _ := c.Get("productCount")
+
+	data := gin.H{
+		"user":           user,
+		"currentPath":    c.Request.URL.Path,
+		"breadcrumbs":    breadcrumbs,
+		"project":        project,
+		"currentProject": project,
+		"productCount":   productCount,
+		"productPage":    productPage,
+		"products":       productPage.Products,
+		"search":         search,
+		"sortBy":         sortBy,
+		"sortDir":        sortDir,
+		"activeTab":      "products",
+		"flashType":      flashType,
+		"flashMessage":   flashMessage,
+		"csrfToken":      csrf.Token(c.Request),
+		"csrfField":      csrf.TemplateField(c.Request),
+	}
+
+	// If HTMX request for table only, return partial
+	if c.GetHeader("HX-Request") == "true" && c.Query("partial") == "true" {
+		c.HTML(http.StatusOK, "htmx/products/table.html", data)
+		return
+	}
+
+	c.HTML(http.StatusOK, "products/list.html", data)
 }
 
 func ShowAddProductForm(c *gin.Context) {
@@ -128,6 +155,22 @@ func CreateProductHandler(c *gin.Context) {
 			"errors":    errors,
 			"isEdit":    false,
 			"csrfField": csrf.TemplateField(c.Request),
+		})
+		return
+	}
+
+	saveAndAdd := c.PostForm("save_and_add") == "true"
+
+	if saveAndAdd {
+		// Return a fresh form for adding another product
+		c.Header("HX-Trigger", "productChanged")
+		c.HTML(http.StatusOK, "htmx/products/form.html", gin.H{
+			"projectID":    projectID,
+			"product":      &models.Product{UoM: "Nos"},
+			"errors":       map[string]string{},
+			"isEdit":       false,
+			"csrfField":    csrf.TemplateField(c.Request),
+			"successMessage": "Product added! Add another below.",
 		})
 		return
 	}
@@ -270,4 +313,243 @@ func DeleteProductHandler(c *gin.Context) {
 
 	c.Header("HX-Trigger", "productChanged")
 	c.String(http.StatusOK, "")
+}
+
+func BulkDeleteProductsHandler(c *gin.Context) {
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		return
+	}
+
+	idsStr := c.PostForm("ids")
+	if idsStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No products selected"})
+		return
+	}
+
+	var ids []int
+	for _, s := range strings.Split(idsStr, ",") {
+		id, err := strconv.Atoi(strings.TrimSpace(s))
+		if err == nil {
+			ids = append(ids, id)
+		}
+	}
+
+	if len(ids) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No valid product IDs"})
+		return
+	}
+
+	deleted, errs := database.BulkDeleteProducts(ids, projectID)
+
+	c.Header("HX-Trigger", "productChanged")
+	if len(errs) > 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"deleted": deleted,
+			"errors":  errs,
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"deleted": deleted})
+}
+
+func ImportProductsHandler(c *gin.Context) {
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		return
+	}
+
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		c.Header("HX-Trigger", "importError")
+		c.HTML(http.StatusOK, "htmx/products/import-result.html", gin.H{
+			"error": "Please select a file to upload",
+		})
+		return
+	}
+	defer file.Close()
+
+	if header.Size > 10*1024*1024 {
+		c.Header("HX-Trigger", "importError")
+		c.HTML(http.StatusOK, "htmx/products/import-result.html", gin.H{
+			"error": "File size must be less than 10MB",
+		})
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+
+	var rows [][]string
+	var headers []string
+
+	switch ext {
+	case ".csv":
+		rows, headers, err = parseProductCSV(file)
+	case ".xlsx", ".xls":
+		rows, headers, err = parseProductExcel(file, header)
+	default:
+		c.HTML(http.StatusOK, "htmx/products/import-result.html", gin.H{
+			"error": "Only CSV and Excel (.xlsx) files are supported",
+		})
+		return
+	}
+
+	if err != nil {
+		c.HTML(http.StatusOK, "htmx/products/import-result.html", gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if len(rows) == 0 {
+		c.HTML(http.StatusOK, "htmx/products/import-result.html", gin.H{
+			"error": "File contains no data rows",
+		})
+		return
+	}
+
+	// Auto-map columns
+	colMap := autoMapProductColumns(headers)
+
+	result := &models.ProductImportResult{TotalRows: len(rows)}
+
+	for i, row := range rows {
+		product := mapRowToProduct(row, colMap, projectID)
+		errs := product.Validate()
+
+		if _, ok := errs["item_name"]; !ok && product.ItemName != "" {
+			unique, _ := database.CheckProductNameUnique(projectID, product.ItemName, 0)
+			if !unique {
+				errs["item_name"] = "Duplicate name"
+			}
+		}
+
+		if len(errs) > 0 {
+			result.Failed++
+			for field, msg := range errs {
+				result.Errors = append(result.Errors, models.ProductImportError{
+					Row:   i + 2,
+					Field: field,
+					Error: msg,
+				})
+			}
+			continue
+		}
+
+		if err := database.CreateProductRecord(product); err != nil {
+			result.Failed++
+			result.Errors = append(result.Errors, models.ProductImportError{
+				Row:   i + 2,
+				Error: "Failed to save: " + err.Error(),
+			})
+			continue
+		}
+		result.Successful++
+	}
+
+	c.Header("HX-Trigger", "productChanged")
+	c.HTML(http.StatusOK, "htmx/products/import-result.html", gin.H{
+		"result": result,
+	})
+}
+
+func DownloadProductImportTemplate(c *gin.Context) {
+	header := []string{"Item Name", "Description", "HSN Code", "UoM", "Brand/Model", "Per Unit Price", "GST %"}
+	example := []string{"Solar Panel 400W", "Monocrystalline 400W solar panel", "85414011", "Nos", "Tata Power Solar", "10000.00", "18"}
+
+	c.Header("Content-Type", "text/csv")
+	c.Header("Content-Disposition", "attachment; filename=product_import_template.csv")
+
+	writer := csv.NewWriter(c.Writer)
+	writer.Write(header)
+	writer.Write(example)
+	writer.Flush()
+}
+
+func parseProductCSV(file io.Reader) ([][]string, []string, error) {
+	reader := csv.NewReader(file)
+	allRows, err := reader.ReadAll()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse CSV: %v", err)
+	}
+	if len(allRows) < 2 {
+		return nil, nil, nil
+	}
+	return allRows[1:], allRows[0], nil
+}
+
+func parseProductExcel(file io.Reader, header *multipart.FileHeader) ([][]string, []string, error) {
+	f, err := excelize.OpenReader(file)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to open Excel file: %v", err)
+	}
+	defer f.Close()
+
+	sheets := f.GetSheetList()
+	if len(sheets) == 0 {
+		return nil, nil, fmt.Errorf("Excel file has no sheets")
+	}
+
+	allRows, err := f.GetRows(sheets[0])
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read sheet: %v", err)
+	}
+	if len(allRows) < 2 {
+		return nil, nil, nil
+	}
+	return allRows[1:], allRows[0], nil
+}
+
+func autoMapProductColumns(headers []string) map[string]int {
+	colMap := make(map[string]int)
+	for i, h := range headers {
+		h = strings.ToLower(strings.TrimSpace(h))
+		switch {
+		case strings.Contains(h, "item") && strings.Contains(h, "name"):
+			colMap["item_name"] = i
+		case strings.Contains(h, "description") || strings.Contains(h, "desc"):
+			colMap["item_description"] = i
+		case strings.Contains(h, "hsn"):
+			colMap["hsn_code"] = i
+		case strings.Contains(h, "uom") || strings.Contains(h, "unit"):
+			colMap["uom"] = i
+		case strings.Contains(h, "brand") || strings.Contains(h, "model"):
+			colMap["brand_model"] = i
+		case strings.Contains(h, "price") || strings.Contains(h, "rate"):
+			colMap["per_unit_price"] = i
+		case strings.Contains(h, "gst"):
+			colMap["gst_percentage"] = i
+		}
+	}
+	return colMap
+}
+
+func mapRowToProduct(row []string, colMap map[string]int, projectID int) *models.Product {
+	getVal := func(key string) string {
+		if idx, ok := colMap[key]; ok && idx < len(row) {
+			return strings.TrimSpace(row[idx])
+		}
+		return ""
+	}
+
+	price, _ := strconv.ParseFloat(getVal("per_unit_price"), 64)
+	gst, _ := strconv.ParseFloat(getVal("gst_percentage"), 64)
+
+	uom := getVal("uom")
+	if uom == "" {
+		uom = "Nos"
+	}
+
+	return &models.Product{
+		ProjectID:       projectID,
+		ItemName:        getVal("item_name"),
+		ItemDescription: getVal("item_description"),
+		HSNCode:         getVal("hsn_code"),
+		UoM:             uom,
+		BrandModel:      getVal("brand_model"),
+		PerUnitPrice:    price,
+		GSTPercentage:   gst,
+	}
 }

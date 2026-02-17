@@ -29,7 +29,7 @@
         <div>
             <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Template Name <span class="text-red-500">*</span></label>
             <input type="text" id="name" name="name" value="{{ .template.Name }}"
-                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm {{ if index .errors "name" }}border-red-300{{ end }}"
+                class="form-input w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm {{ if index .errors "name" }}border-red-300{{ end }}"
                 placeholder="e.g., Standard Secretariat Kit" maxlength="100">
             {{ if index .errors "name" }}
             <p class="mt-1 text-xs text-red-500">{{ index .errors "name" }}</p>
@@ -40,7 +40,7 @@
         <div>
             <label for="purpose" class="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
             <textarea id="purpose" name="purpose" rows="2"
-                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm {{ if index .errors "purpose" }}border-red-300{{ end }}"
+                class="form-input w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm {{ if index .errors "purpose" }}border-red-300{{ end }}"
                 placeholder="Describe the purpose of this template" maxlength="500">{{ .template.Purpose }}</textarea>
             {{ if index .errors "purpose" }}
             <p class="mt-1 text-xs text-red-500">{{ index .errors "purpose" }}</p>
@@ -70,10 +70,10 @@
             <div class="border border-gray-200 rounded-lg max-h-64 overflow-y-auto" id="product-list">
                 {{ if .products }}
                 {{ range .products }}
-                <label class="product-item flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0" data-name="{{ .ItemName }}">
+                <label class="product-item flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0" data-name="{{ .ItemName }}" data-product-id="{{ .ID }}" draggable="false">
                     <input type="checkbox" name="product_ids" value="{{ .ID }}"
                         class="product-checkbox mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                        onchange="updateSelectedCount(); toggleQuantity(this, {{ .ID }})"
+                        onchange="onProductToggle(this, {{ .ID }})"
                         {{ if index $.selectedProducts .ID }}checked{{ end }}>
                     <div class="flex-1 min-w-0">
                         <div class="text-sm font-medium text-gray-900">{{ .ItemName }}</div>
@@ -86,11 +86,23 @@
                         <input type="number" name="quantity_{{ .ID }}" min="1" value="{{ if index $.selectedProducts .ID }}{{ index $.selectedProducts .ID }}{{ else }}1{{ end }}"
                             class="w-16 rounded border-gray-300 text-sm text-right py-0.5 px-1" onclick="event.stopPropagation()">
                     </div>
+                    <div class="drag-handle hidden cursor-grab text-gray-400 hover:text-gray-600 mt-0.5" title="Drag to reorder">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
+                        </svg>
+                    </div>
                 </label>
                 {{ end }}
                 {{ else }}
                 <p class="text-sm text-gray-500 text-center py-4">No products in this project. Add products first.</p>
                 {{ end }}
+            </div>
+
+            <!-- Selected products reorder area -->
+            <div id="reorder-section" class="hidden mt-3">
+                <p class="text-xs text-gray-500 mb-1">Drag to reorder selected products:</p>
+                <div id="reorder-list" class="border border-gray-200 rounded-lg divide-y divide-gray-100">
+                </div>
             </div>
         </div>
 
@@ -109,9 +121,10 @@ function updateSelectedCount() {
     var checked = document.querySelectorAll('.product-checkbox:checked').length;
     var el = document.getElementById('selected-count');
     if (el) el.textContent = '(' + checked + ' selected)';
+    updateReorderSection();
 }
 
-function toggleQuantity(checkbox, productId) {
+function onProductToggle(checkbox, productId) {
     var wrap = document.getElementById('qty-wrap-' + productId);
     if (wrap) {
         if (checkbox.checked) {
@@ -120,6 +133,7 @@ function toggleQuantity(checkbox, productId) {
             wrap.classList.add('hidden');
         }
     }
+    updateSelectedCount();
 }
 
 function filterProducts(query) {
@@ -149,6 +163,102 @@ function deselectAllProducts() {
         if (wrap) wrap.classList.add('hidden');
     });
     updateSelectedCount();
+}
+
+function updateReorderSection() {
+    var section = document.getElementById('reorder-section');
+    var list = document.getElementById('reorder-list');
+    var checked = document.querySelectorAll('.product-checkbox:checked');
+
+    if (checked.length < 2) {
+        section.classList.add('hidden');
+        return;
+    }
+
+    section.classList.remove('hidden');
+    list.innerHTML = '';
+
+    checked.forEach(function(cb) {
+        var item = cb.closest('.product-item');
+        var name = item.getAttribute('data-name');
+        var pid = cb.value;
+
+        var row = document.createElement('div');
+        row.className = 'reorder-item flex items-center gap-2 px-3 py-2 bg-white hover:bg-gray-50 cursor-grab';
+        row.setAttribute('draggable', 'true');
+        row.setAttribute('data-product-id', pid);
+        row.innerHTML = '<svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/></svg>' +
+            '<span class="text-sm text-gray-700 flex-1">' + name + '</span>' +
+            '<input type="hidden" name="product_ids" value="' + pid + '" class="reorder-hidden-input" disabled>';
+
+        row.addEventListener('dragstart', handleDragStart);
+        row.addEventListener('dragover', handleDragOver);
+        row.addEventListener('drop', handleDrop);
+        row.addEventListener('dragend', handleDragEnd);
+
+        list.appendChild(row);
+    });
+
+    // When reorder section is visible, use its order for form submission
+    syncFormOrder();
+}
+
+var dragSrcEl = null;
+
+function handleDragStart(e) {
+    dragSrcEl = this;
+    this.style.opacity = '0.4';
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.innerHTML);
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    this.classList.add('bg-brand-50', 'border-brand-200');
+}
+
+function handleDrop(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    this.classList.remove('bg-brand-50', 'border-brand-200');
+
+    if (dragSrcEl !== this) {
+        var list = this.parentNode;
+        var allItems = Array.from(list.children);
+        var srcIdx = allItems.indexOf(dragSrcEl);
+        var dstIdx = allItems.indexOf(this);
+
+        if (srcIdx < dstIdx) {
+            list.insertBefore(dragSrcEl, this.nextSibling);
+        } else {
+            list.insertBefore(dragSrcEl, this);
+        }
+        syncFormOrder();
+    }
+}
+
+function handleDragEnd() {
+    this.style.opacity = '1';
+    document.querySelectorAll('.reorder-item').forEach(function(item) {
+        item.classList.remove('bg-brand-50', 'border-brand-200');
+    });
+}
+
+function syncFormOrder() {
+    // Reorder the checkboxes in the product list to match reorder list order
+    var reorderItems = document.querySelectorAll('.reorder-item');
+    if (reorderItems.length === 0) return;
+
+    // Uncheck and re-check in the right order by reordering the DOM
+    var productList = document.getElementById('product-list');
+    reorderItems.forEach(function(item) {
+        var pid = item.getAttribute('data-product-id');
+        var label = productList.querySelector('[data-product-id="' + pid + '"]');
+        if (label) {
+            productList.appendChild(label);
+        }
+    });
 }
 
 // Initialize count on load

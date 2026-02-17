@@ -96,6 +96,22 @@
                 <h2 class="text-center text-base sm:text-lg font-bold text-gray-900 uppercase tracking-widest">Delivery Challan</h2>
             </div>
 
+            <!-- Copy Indicators -->
+            <div class="flex items-center justify-end gap-6 mb-4 text-xs text-gray-600">
+                <label class="flex items-center gap-1.5">
+                    <input type="checkbox" checked disabled class="w-3.5 h-3.5 accent-gray-800">
+                    <span class="font-medium">Original</span>
+                </label>
+                <label class="flex items-center gap-1.5">
+                    <input type="checkbox" checked disabled class="w-3.5 h-3.5 accent-gray-800">
+                    <span class="font-medium">Duplicate</span>
+                </label>
+                <label class="flex items-center gap-1.5">
+                    <input type="checkbox" checked disabled class="w-3.5 h-3.5 accent-gray-800">
+                    <span class="font-medium">Triplicate</span>
+                </label>
+            </div>
+
             <!-- DC Meta Info -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 mb-6 text-sm">
                 <div class="flex gap-2">
@@ -144,7 +160,12 @@
                         <span class="text-gray-800">{{ .project.Name }}{{ if .project.Description }} &mdash; {{ .project.Description }}{{ end }}</span>
                     </div>
                 {{ end }}
-                {{ if .dc.TemplateName }}
+                {{ if .project.PurposeText }}
+                <div>
+                    <span class="text-gray-500 font-medium">Purpose: </span>
+                    <span class="font-semibold text-gray-900 uppercase">{{ .project.PurposeText }}</span>
+                </div>
+                {{ else if .dc.TemplateName }}
                 <div>
                     <span class="text-gray-500 font-medium">Purpose: </span>
                     <span class="font-semibold text-gray-900 uppercase">{{ .dc.TemplateName }}</span>

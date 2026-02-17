@@ -1,0 +1,33 @@
+{{ define "address-selector-results.html" }}
+{{ if .addresses }}
+<ul class="divide-y divide-gray-100">
+    {{ range .addresses }}
+    <li class="px-3 py-2 hover:bg-brand-50 cursor-pointer address-option"
+        data-address-id="{{ .ID }}"
+        data-district="{{ .DistrictName }}"
+        data-mandal="{{ .MandalName }}"
+        data-mandal-code="{{ .MandalCode }}"
+        data-address-json="{{ toJSON .Data }}"
+        onclick="selectAddress(this)">
+        {{ if eq $.addressType "ship_to" }}
+        <div class="text-sm font-medium text-gray-900">{{ .DistrictName }} - {{ .MandalName }}</div>
+        <div class="text-xs text-gray-500">Code: {{ .MandalCode }}{{ range $k, $v := .Data }}{{ if $v }} | {{ $k }}: {{ $v }}{{ end }}{{ end }}</div>
+        {{ else }}
+        <div class="text-sm font-medium text-gray-900">
+            {{ $first := true }}
+            {{ range $.columns }}
+                {{ $val := mapGet $.Data .Name }}
+                {{ if and $val $first }}{{ $val }}{{ $first = false }}{{ end }}
+            {{ end }}
+        </div>
+        <div class="text-xs text-gray-500">
+            {{ range $k, $v := .Data }}{{ if $v }}{{ $k }}: {{ $v }} | {{ end }}{{ end }}
+        </div>
+        {{ end }}
+    </li>
+    {{ end }}
+</ul>
+{{ else }}
+<div class="px-3 py-4 text-sm text-gray-500 text-center">No addresses found</div>
+{{ end }}
+{{ end }}

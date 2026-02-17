@@ -13,6 +13,7 @@ import (
 // SerialValidationRequest is the JSON body for the validation endpoint.
 type SerialValidationRequest struct {
 	ProjectID     int    `json:"project_id"`
+	ProductID     int    `json:"product_id"`
 	SerialNumbers string `json:"serial_numbers"` // newline-separated
 	ExcludeDCID   *int   `json:"exclude_dc_id"`
 }
@@ -67,8 +68,14 @@ func ValidateSerialNumbers(c *gin.Context) {
 		unique = append(unique, s)
 	}
 
-	// Check against database
-	conflicts, err := database.CheckSerialsInProject(req.ProjectID, unique, req.ExcludeDCID)
+	// Check against database (per-product if product_id specified)
+	var conflicts []database.SerialConflict
+	var err error
+	if req.ProductID > 0 {
+		conflicts, err = database.CheckSerialsInProjectByProduct(req.ProjectID, req.ProductID, unique, req.ExcludeDCID)
+	} else {
+		conflicts, err = database.CheckSerialsInProject(req.ProjectID, unique, req.ExcludeDCID)
+	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to validate serial numbers"})
 		return
@@ -128,15 +135,18 @@ func IssueDCHandler(c *gin.Context) {
 		return
 	}
 
-	for _, li := range lineItems {
-		serials, _ := database.GetSerialNumbersByLineItemID(li.ID)
-		if len(serials) == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "All line items must have serial numbers before issuing"})
-			return
-		}
-		if len(serials) != li.Quantity {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Serial number count must match quantity for all line items"})
-			return
+	// Serial numbers are required for transit DCs only
+	if dc.DCType == "transit" {
+		for _, li := range lineItems {
+			serials, _ := database.GetSerialNumbersByLineItemID(li.ID)
+			if len(serials) == 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "All line items must have serial numbers before issuing"})
+				return
+			}
+			if len(serials) != li.Quantity {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Serial number count must match quantity for all line items"})
+				return
+			}
 		}
 	}
 
@@ -168,6 +178,11 @@ func DeleteDCHandler(c *gin.Context) {
 	dc, err := database.GetDeliveryChallanByID(dcID)
 	if err != nil || dc.ProjectID != projectID {
 		c.JSON(http.StatusNotFound, gin.H{"error": "DC not found"})
+		return
+	}
+
+	if dc.Status != "draft" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Only draft DCs can be deleted"})
 		return
 	}
 

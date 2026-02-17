@@ -22,6 +22,14 @@ type DeliveryChallan struct {
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 
+	// Optional bundle reference
+	BundleID              *int `json:"bundle_id"`
+
+	// Shipment group fields
+	ShipmentGroupID       *int `json:"shipment_group_id"`
+	BillFromAddressID     *int `json:"bill_from_address_id"`
+	DispatchFromAddressID *int `json:"dispatch_from_address_id"`
+
 	// Computed/joined fields
 	ProjectName     string `json:"project_name"`
 	TemplateName    string `json:"template_name"`

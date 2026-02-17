@@ -59,3 +59,30 @@ func (p *Product) Validate() map[string]string {
 
 	return errors
 }
+
+// ProductPage holds paginated product results.
+type ProductPage struct {
+	Products    []*Product `json:"products"`
+	CurrentPage int        `json:"current_page"`
+	PerPage     int        `json:"per_page"`
+	TotalCount  int        `json:"total_count"`
+	TotalPages  int        `json:"total_pages"`
+	Search      string     `json:"search"`
+	SortBy      string     `json:"sort_by"`
+	SortDir     string     `json:"sort_dir"`
+}
+
+// ProductImportResult holds the result of a bulk product import.
+type ProductImportResult struct {
+	TotalRows  int                  `json:"total_rows"`
+	Successful int                  `json:"successful"`
+	Failed     int                  `json:"failed"`
+	Errors     []ProductImportError `json:"errors,omitempty"`
+}
+
+// ProductImportError describes a validation error for a specific row.
+type ProductImportError struct {
+	Row   int    `json:"row"`
+	Field string `json:"field"`
+	Error string `json:"error"`
+}

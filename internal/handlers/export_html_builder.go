@@ -308,6 +308,13 @@ func buildOfficialPrintHTML(project *models.Project, dc *models.DeliveryChallan,
 	// DC Title
 	b.WriteString(`<div style="border-top:2px solid #1f2937;border-bottom:2px solid #1f2937;padding:8px 0;" class="text-center mb-6"><h2 class="text-base font-bold uppercase tracking-widest">Delivery Challan</h2></div>`)
 
+	// Copy indicators
+	b.WriteString(`<div style="display:flex;justify-content:flex-end;gap:24px;margin-bottom:16px;" class="text-xs text-gray-600">
+		<span>&#9745; Original</span>
+		<span>&#9745; Duplicate</span>
+		<span>&#9745; Triplicate</span>
+	</div>`)
+
 	// DC meta
 	b.WriteString(`<div class="grid-2 mb-6 text-sm">`)
 	b.WriteString(fmt.Sprintf(`<div><span class="text-gray-500 font-semibold">DC No: </span><span class="font-mono font-semibold">%s</span></div>`, esc(dc.DCNumber)))
@@ -339,6 +346,11 @@ func buildOfficialPrintHTML(project *models.Project, dc *models.DeliveryChallan,
 		}
 		b.WriteString(fmt.Sprintf(`<div class="mb-1"><span class="text-gray-500 font-semibold">Project: </span><span>%s</span></div>`, esc(project.Name)))
 		b.WriteString(`</div>`)
+	}
+
+	// Purpose
+	if project != nil && project.PurposeText != "" {
+		b.WriteString(fmt.Sprintf(`<div class="mb-4 text-sm"><span class="text-gray-500 font-semibold">Purpose: </span><span class="font-semibold uppercase">%s</span></div>`, esc(project.PurposeText)))
 	}
 
 	// Issued To

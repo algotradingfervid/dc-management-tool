@@ -1,0 +1,123 @@
+{{ template "base" . }}
+
+{{ define "title" }}New Shipment - Step 3{{ end }}
+
+{{ define "content" }}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6">Create New Shipment - Step 3: Serial Numbers</h1>
+
+    <form method="POST" action="/projects/{{ .project.ID }}/shipments/new/step4">
+        {{ .csrfField }}
+
+        <!-- Carry forward all previous data -->
+        <input type="hidden" name="template_id" value="{{ .templateID }}">
+        <input type="hidden" name="num_sets" value="{{ .numSets }}">
+        <input type="hidden" name="challan_date" value="{{ .challanDate }}">
+        <input type="hidden" name="transporter_name" value="{{ .transporterName }}">
+        <input type="hidden" name="vehicle_number" value="{{ .vehicleNumber }}">
+        <input type="hidden" name="eway_bill_number" value="{{ .ewayBillNumber }}">
+        <input type="hidden" name="docket_number" value="{{ .docketNumber }}">
+        <input type="hidden" name="tax_type" value="{{ .taxType }}">
+        <input type="hidden" name="reverse_charge" value="{{ .reverseCharge }}">
+        <input type="hidden" name="bill_from_address_id" value="{{ .billFromAddressID }}">
+        <input type="hidden" name="dispatch_from_address_id" value="{{ .dispatchFromAddressID }}">
+        <input type="hidden" name="bill_to_address_id" value="{{ .billToAddressID }}">
+        <input type="hidden" name="transit_ship_to_address_id" value="{{ .transitShipToAddrID }}">
+        {{ range .shipToAddressIDs }}
+        <input type="hidden" name="ship_to_address_ids" value="{{ . }}">
+        {{ end }}
+
+        <div class="bg-white shadow rounded-lg p-6 space-y-6">
+            {{ range .products }}
+            {{ $productID := .ID }}
+            {{ $total := mul .DefaultQuantity $.numSets }}
+            <div class="border rounded-lg p-4" data-product-id="{{ .ID }}" data-expected="{{ $total }}">
+                <h3 class="font-medium text-lg">{{ .ItemName }}</h3>
+                <p class="text-sm text-gray-500">Qty per set: {{ .DefaultQuantity }} | Total: {{ $total }}</p>
+
+                <div class="mt-3">
+                    <label class="block text-sm font-medium text-gray-700">All Serial Numbers (one per line)</label>
+                    <textarea name="serials_{{ .ID }}" rows="4"
+                        data-serial-input="{{ .ID }}"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm font-mono text-sm"
+                        placeholder="Enter serial numbers, one per line..."></textarea>
+                    <p class="text-xs mt-1" data-serial-count="{{ .ID }}">
+                        <span class="serial-entered">0</span> / {{ $total }} serial numbers entered
+                    </p>
+                </div>
+
+                {{ range $.shipToAddresses }}
+                <div class="mt-3">
+                    <label class="block text-sm font-medium text-gray-700">Assign to: {{ .DisplayName }}</label>
+                    <textarea name="assign_{{ $productID }}_{{ .ID }}" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm font-mono text-sm" placeholder="Assigned serial numbers..."></textarea>
+                </div>
+                {{ end }}
+            </div>
+            {{ end }}
+        </div>
+
+        <div id="serial-errors" class="hidden mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"></div>
+
+        <div class="mt-6 flex justify-end">
+            <button type="submit" id="step3-submit" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">
+                Next: Review →
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+(function() {
+    // Live serial count feedback
+    document.querySelectorAll('[data-serial-input]').forEach(function(textarea) {
+        var productId = textarea.getAttribute('data-serial-input');
+        var countEl = document.querySelector('[data-serial-count="' + productId + '"]');
+        var container = textarea.closest('[data-product-id]');
+        var expected = parseInt(container.getAttribute('data-expected'));
+
+        textarea.addEventListener('input', function() {
+            var lines = this.value.split('\n').filter(function(l) { return l.trim() !== ''; });
+            var enteredSpan = countEl.querySelector('.serial-entered');
+            enteredSpan.textContent = lines.length;
+
+            if (lines.length === expected) {
+                countEl.className = 'text-xs mt-1 text-green-600 font-medium';
+            } else if (lines.length > expected) {
+                countEl.className = 'text-xs mt-1 text-red-600 font-medium';
+            } else {
+                countEl.className = 'text-xs mt-1 text-gray-500';
+            }
+        });
+    });
+
+    // Validate on submit
+    document.getElementById('step3-submit').addEventListener('click', function(e) {
+        var errors = [];
+        document.querySelectorAll('[data-product-id]').forEach(function(block) {
+            var expected = parseInt(block.getAttribute('data-expected'));
+            var productName = block.querySelector('h3').textContent;
+            var textarea = block.querySelector('[data-serial-input]');
+            var lines = textarea.value.split('\n').filter(function(l) { return l.trim() !== ''; });
+
+            if (lines.length !== expected) {
+                errors.push(productName + ': expected ' + expected + ' serials, got ' + lines.length);
+                textarea.classList.add('border-red-500');
+            } else {
+                textarea.classList.remove('border-red-500');
+            }
+        });
+
+        var errorDiv = document.getElementById('serial-errors');
+        if (errors.length > 0) {
+            e.preventDefault();
+            errorDiv.innerHTML = '<strong>Please fix serial number counts:</strong><ul class="list-disc ml-4 mt-1">' +
+                errors.map(function(err) { return '<li>' + err + '</li>'; }).join('') + '</ul>';
+            errorDiv.classList.remove('hidden');
+            errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            errorDiv.classList.add('hidden');
+        }
+    });
+})();
+</script>
+{{ end }}

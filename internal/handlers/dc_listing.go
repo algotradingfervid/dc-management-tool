@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -9,15 +10,19 @@ import (
 	"github.com/narendhupati/dc-management-tool/internal/auth"
 	"github.com/narendhupati/dc-management-tool/internal/database"
 	"github.com/narendhupati/dc-management-tool/internal/helpers"
+	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
-// ListAllDeliveryChallans shows all DCs across all projects with filters, sorting, and pagination.
+// ListAllDeliveryChallans shows all DCs for the current project with filters, sorting, and pagination.
 func ListAllDeliveryChallans(c *gin.Context) {
 	user := auth.GetCurrentUser(c)
+	project := c.MustGet("currentProject").(*models.Project)
 
-	// Parse filters
+	projectIDStr := strconv.Itoa(project.ID)
+
+	// Parse filters — force project filter to current project
 	filters := database.DCListFilters{
-		ProjectID: c.DefaultQuery("project", "all"),
+		ProjectID: projectIDStr,
 		DCType:    c.DefaultQuery("type", "all"),
 		Status:    c.DefaultQuery("status", "all"),
 		DateFrom:  c.Query("date_from"),
@@ -39,34 +44,32 @@ func ListAllDeliveryChallans(c *gin.Context) {
 	if err != nil {
 		log.Printf("Error fetching DCs: %v", err)
 		c.HTML(http.StatusInternalServerError, "delivery_challans/list.html", gin.H{
-			"user":        user,
-			"currentPath": c.Request.URL.Path,
-			"error":       "Failed to load delivery challans",
+			"user":           user,
+			"currentProject": project,
+			"currentPath":    c.Request.URL.Path,
+			"error":          "Failed to load delivery challans",
 		})
 		return
 	}
 
-	// Fetch projects for dropdown
-	projects, err := database.GetAllProjectOptions()
-	if err != nil {
-		log.Printf("Error fetching projects: %v", err)
-	}
-
 	flashType, flashMessage := auth.PopFlash(c.Request)
 
+	basePath := fmt.Sprintf("/projects/%d/dcs-list", project.ID)
+
 	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "All DCs", URL: ""},
+		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d/dashboard", project.ID)},
+		helpers.Breadcrumb{Title: "All DCs"},
 	)
 
 	c.HTML(http.StatusOK, "delivery_challans/list.html", gin.H{
-		"user":         user,
-		"currentPath":  c.Request.URL.Path,
-		"breadcrumbs":  breadcrumbs,
-		"result":       result,
-		"filters":      filters,
-		"projects":     projects,
-		"flashType":    flashType,
-		"flashMessage": flashMessage,
+		"user":           user,
+		"currentProject": project,
+		"currentPath":    c.Request.URL.Path,
+		"breadcrumbs":    breadcrumbs,
+		"result":         result,
+		"filters":        filters,
+		"basePath":       basePath,
+		"flashType":      flashType,
+		"flashMessage":   flashMessage,
 	})
-
 }

@@ -1,0 +1,50 @@
+{{ define "wizard_steps" }}
+<nav class="mb-8">
+    <ol class="flex items-center w-full">
+        {{ $currentStep := .wizardStep }}
+        <!-- Step 1: Setup -->
+        <li class="flex items-center {{ if ge $currentStep 2 }}text-brand-600{{ else if eq $currentStep 1 }}text-brand-600{{ else }}text-gray-400{{ end }}">
+            <span class="flex items-center justify-center w-10 h-10 rounded-full border-2 {{ if gt $currentStep 1 }}bg-brand-600 border-brand-600 text-white{{ else if eq $currentStep 1 }}border-brand-600 text-brand-600 bg-brand-50{{ else }}border-gray-300 text-gray-400{{ end }} text-sm font-semibold shrink-0">
+                {{ if gt $currentStep 1 }}
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                {{ else }}1{{ end }}
+            </span>
+            <span class="ml-2 text-sm font-medium hidden sm:inline">Setup</span>
+        </li>
+        <li class="flex-1 mx-2 sm:mx-4">
+            <div class="h-0.5 {{ if ge $currentStep 2 }}bg-brand-600{{ else }}bg-gray-300{{ end }}"></div>
+        </li>
+        <!-- Step 2: Addresses -->
+        <li class="flex items-center {{ if ge $currentStep 2 }}text-brand-600{{ else }}text-gray-400{{ end }}">
+            <span class="flex items-center justify-center w-10 h-10 rounded-full border-2 {{ if gt $currentStep 2 }}bg-brand-600 border-brand-600 text-white{{ else if eq $currentStep 2 }}border-brand-600 text-brand-600 bg-brand-50{{ else }}border-gray-300 text-gray-400{{ end }} text-sm font-semibold shrink-0">
+                {{ if gt $currentStep 2 }}
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                {{ else }}2{{ end }}
+            </span>
+            <span class="ml-2 text-sm font-medium hidden sm:inline">Addresses</span>
+        </li>
+        <li class="flex-1 mx-2 sm:mx-4">
+            <div class="h-0.5 {{ if ge $currentStep 3 }}bg-brand-600{{ else }}bg-gray-300{{ end }}"></div>
+        </li>
+        <!-- Step 3: Serials -->
+        <li class="flex items-center {{ if ge $currentStep 3 }}text-brand-600{{ else }}text-gray-400{{ end }}">
+            <span class="flex items-center justify-center w-10 h-10 rounded-full border-2 {{ if gt $currentStep 3 }}bg-brand-600 border-brand-600 text-white{{ else if eq $currentStep 3 }}border-brand-600 text-brand-600 bg-brand-50{{ else }}border-gray-300 text-gray-400{{ end }} text-sm font-semibold shrink-0">
+                {{ if gt $currentStep 3 }}
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                {{ else }}3{{ end }}
+            </span>
+            <span class="ml-2 text-sm font-medium hidden sm:inline">Serials</span>
+        </li>
+        <li class="flex-1 mx-2 sm:mx-4">
+            <div class="h-0.5 {{ if ge $currentStep 4 }}bg-brand-600{{ else }}bg-gray-300{{ end }}"></div>
+        </li>
+        <!-- Step 4: Review -->
+        <li class="flex items-center {{ if eq $currentStep 4 }}text-brand-600{{ else }}text-gray-400{{ end }}">
+            <span class="flex items-center justify-center w-10 h-10 rounded-full border-2 {{ if eq $currentStep 4 }}border-brand-600 text-brand-600 bg-brand-50{{ else }}border-gray-300 text-gray-400{{ end }} text-sm font-semibold shrink-0">
+                4
+            </span>
+            <span class="ml-2 text-sm font-medium hidden sm:inline">Review</span>
+        </li>
+    </ol>
+</nav>
+{{ end }}

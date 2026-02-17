@@ -1,0 +1,63 @@
+{{ define "layout_main" }}
+{{ template "base" . }}
+{{ end }}
+
+{{ define "body" }}
+<div class="min-h-screen bg-neutral-100">
+    <!-- Simple header -->
+    <div class="bg-white border-b border-neutral-200">
+        <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <svg class="w-7 h-7 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <span class="text-lg font-bold text-neutral-900">DC Manager</span>
+            </div>
+            <a href="/logout" class="text-sm text-neutral-500 hover:text-neutral-700">Sign Out</a>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-6 py-12">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold text-neutral-900 mb-2">Select a Project to Continue</h1>
+            <p class="text-neutral-600">Choose a project to start working with</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {{ range .projects }}
+            <a href="/projects/{{ .ID }}/dashboard" class="block bg-white rounded-xl border border-neutral-200 p-6 hover:border-brand-300 hover:shadow-md transition-all group">
+                <div class="flex items-start gap-4">
+                    <div class="h-12 w-12 rounded-lg bg-brand-50 flex items-center justify-center shrink-0 group-hover:bg-brand-100 transition-colors">
+                        <svg class="w-6 h-6 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="font-semibold text-neutral-900 text-base">{{ .Name }}</h3>
+                        <p class="text-xs text-neutral-500 mt-1">Prefix: {{ .DCPrefix }}</p>
+                        {{ if .Description }}
+                        <p class="text-xs text-neutral-400 mt-2 line-clamp-2">{{ .Description }}</p>
+                        {{ end }}
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-neutral-100 flex items-center gap-4 text-xs text-neutral-400">
+                    {{ if .TransitDCCount }}<span>{{ .TransitDCCount }} Transit DCs</span>{{ end }}
+                    {{ if .OfficialDCCount }}<span>{{ .OfficialDCCount }} Official DCs</span>{{ end }}
+                    {{ if and (not .TransitDCCount) (not .OfficialDCCount) }}<span>No DCs yet</span>{{ end }}
+                </div>
+            </a>
+            {{ end }}
+
+            <!-- Create New Project card -->
+            <a href="/projects/new" class="block bg-white rounded-xl border-2 border-dashed border-neutral-300 p-5 hover:border-brand-400 hover:bg-brand-50 transition-all group text-center">
+                <div class="flex flex-col items-center gap-2 py-2">
+                    <svg class="w-8 h-8 text-neutral-400 group-hover:text-brand-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    <span class="text-sm font-medium text-neutral-600 group-hover:text-brand-600">Create New Project</span>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{{ end }}

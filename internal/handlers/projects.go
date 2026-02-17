@@ -20,10 +20,43 @@ import (
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
+func ShowProjectSelector(c *gin.Context) {
+	user := auth.GetCurrentUser(c)
+
+	projects, err := database.GetAccessibleProjects(user)
+	if err != nil {
+		log.Printf("Error fetching user projects: %v", err)
+		projects = []*models.Project{}
+	}
+
+	if len(projects) == 0 {
+		if user.IsAdmin() {
+			c.Redirect(http.StatusFound, "/projects/new")
+		} else {
+			c.HTML(http.StatusOK, "projects/select.html", gin.H{
+				"user":     user,
+				"projects": projects,
+			})
+		}
+		return
+	}
+
+	c.HTML(http.StatusOK, "projects/select.html", gin.H{
+		"user":     user,
+		"projects": projects,
+	})
+}
+
 func ListProjects(c *gin.Context) {
 	user := auth.GetCurrentUser(c)
 
-	projects, err := database.GetAllProjects()
+	var projects []*models.Project
+	var err error
+	if user.IsAdmin() {
+		projects, err = database.GetAllProjects()
+	} else {
+		projects, err = database.GetAccessibleProjects(user)
+	}
 	if err != nil {
 		log.Printf("Error fetching projects: %v", err)
 		c.HTML(http.StatusInternalServerError, "dashboard.html", gin.H{
@@ -72,7 +105,7 @@ func ShowProjectForm(c *gin.Context) {
 		helpers.Breadcrumb{Title: "New Project", URL: ""},
 	)
 
-	c.HTML(http.StatusOK, "projects/form.html", gin.H{
+	c.HTML(http.StatusOK, "projects/create-wizard.html", gin.H{
 		"user":        user,
 		"currentPath": c.Request.URL.Path,
 		"breadcrumbs": breadcrumbs,
@@ -86,38 +119,16 @@ func ShowProjectForm(c *gin.Context) {
 func CreateProject(c *gin.Context) {
 	user := auth.GetCurrentUser(c)
 
-	project := &models.Project{
-		Name:             c.PostForm("name"),
-		Description:      c.PostForm("description"),
-		DCPrefix:         strings.ToUpper(strings.TrimSpace(c.PostForm("dc_prefix"))),
-		TenderRefNumber:  c.PostForm("tender_ref_number"),
-		TenderRefDetails: c.PostForm("tender_ref_details"),
-		POReference:      c.PostForm("po_reference"),
-		BillFromAddress:  c.PostForm("bill_from_address"),
-		CompanyGSTIN:     strings.ToUpper(strings.TrimSpace(c.PostForm("company_gstin"))),
-		CreatedBy:        user.ID,
-	}
-
-	poDate := c.PostForm("po_date")
-	if poDate != "" {
-		project.PODate = &poDate
-	}
+	project := buildProjectFromForm(c)
+	project.CreatedBy = user.ID
 
 	errors := project.Validate()
 
-	// Handle file upload
-	file, err := c.FormFile("company_signature")
-	if err == nil {
-		path, uploadErr := handleSignatureUpload(file)
-		if uploadErr != nil {
-			errors["company_signature"] = uploadErr.Error()
-		} else {
-			project.CompanySignaturePath = path
-		}
-	}
+	// Handle file uploads
+	handleProjectFileUploads(c, project, errors)
 
 	if len(errors) > 0 {
-		c.HTML(http.StatusOK, "projects/form.html", gin.H{
+		c.HTML(http.StatusOK, "projects/create-wizard.html", gin.H{
 			"user":        user,
 			"currentPath": c.Request.URL.Path,
 			"breadcrumbs": helpers.BuildBreadcrumbs(
@@ -135,7 +146,7 @@ func CreateProject(c *gin.Context) {
 	if err := database.CreateProject(project); err != nil {
 		log.Printf("Error creating project: %v", err)
 		errors["general"] = "Failed to create project"
-		c.HTML(http.StatusOK, "projects/form.html", gin.H{
+		c.HTML(http.StatusOK, "projects/create-wizard.html", gin.H{
 			"user":        user,
 			"currentPath": c.Request.URL.Path,
 			"breadcrumbs": helpers.BuildBreadcrumbs(
@@ -204,37 +215,16 @@ func UpdateProject(c *gin.Context) {
 		return
 	}
 
-	project := &models.Project{
-		ID:                   id,
-		Name:                 c.PostForm("name"),
-		Description:          c.PostForm("description"),
-		DCPrefix:             strings.ToUpper(strings.TrimSpace(c.PostForm("dc_prefix"))),
-		TenderRefNumber:      c.PostForm("tender_ref_number"),
-		TenderRefDetails:     c.PostForm("tender_ref_details"),
-		POReference:          c.PostForm("po_reference"),
-		BillFromAddress:      c.PostForm("bill_from_address"),
-		CompanyGSTIN:         strings.ToUpper(strings.TrimSpace(c.PostForm("company_gstin"))),
-		CompanySignaturePath: existing.CompanySignaturePath,
-		CreatedBy:            existing.CreatedBy,
-	}
-
-	poDate := c.PostForm("po_date")
-	if poDate != "" {
-		project.PODate = &poDate
-	}
+	project := buildProjectFromForm(c)
+	project.ID = id
+	project.CompanySignaturePath = existing.CompanySignaturePath
+	project.CompanySealPath = existing.CompanySealPath
+	project.CreatedBy = existing.CreatedBy
 
 	errors := project.Validate()
 
-	// Handle file upload
-	file, uploadErr := c.FormFile("company_signature")
-	if uploadErr == nil {
-		path, err := handleSignatureUpload(file)
-		if err != nil {
-			errors["company_signature"] = err.Error()
-		} else {
-			project.CompanySignaturePath = path
-		}
-	}
+	// Handle file uploads
+	handleProjectFileUploads(c, project, errors)
 
 	if len(errors) > 0 {
 		c.HTML(http.StatusOK, "projects/form.html", gin.H{
@@ -342,7 +332,69 @@ func DeleteProject(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "redirect": "/projects"})
 }
 
-func handleSignatureUpload(file *multipart.FileHeader) (string, error) {
+func buildProjectFromForm(c *gin.Context) *models.Project {
+	project := &models.Project{
+		Name:                c.PostForm("name"),
+		Description:         c.PostForm("description"),
+		DCPrefix:            strings.ToUpper(strings.TrimSpace(c.PostForm("dc_prefix"))),
+		TenderRefNumber:     c.PostForm("tender_ref_number"),
+		TenderRefDetails:    c.PostForm("tender_ref_details"),
+		POReference:         c.PostForm("po_reference"),
+		BillFromAddress:     c.PostForm("bill_from_address"),
+		DispatchFromAddress: c.PostForm("dispatch_from_address"),
+		CompanyGSTIN:        strings.ToUpper(strings.TrimSpace(c.PostForm("company_gstin"))),
+		CompanyEmail:        strings.TrimSpace(c.PostForm("company_email")),
+		CompanyCIN:          strings.TrimSpace(c.PostForm("company_cin")),
+		DCNumberFormat:      c.PostForm("dc_number_format"),
+		DCNumberSeparator:   c.PostForm("dc_number_separator"),
+		PurposeText:         c.PostForm("purpose_text"),
+	}
+
+	poDate := c.PostForm("po_date")
+	if poDate != "" {
+		project.PODate = &poDate
+	}
+
+	if padding := c.PostForm("seq_padding"); padding != "" {
+		if p, err := strconv.Atoi(padding); err == nil {
+			project.SeqPadding = p
+		}
+	}
+
+	return project
+}
+
+func handleProjectFileUploads(c *gin.Context, project *models.Project, errors map[string]string) {
+	// Handle signature upload
+	if file, err := c.FormFile("company_signature"); err == nil {
+		path, uploadErr := handleImageUpload(file, "sig")
+		if uploadErr != nil {
+			errors["company_signature"] = uploadErr.Error()
+		} else {
+			project.CompanySignaturePath = path
+		}
+	}
+
+	// Handle seal upload
+	if file, err := c.FormFile("company_seal"); err == nil {
+		path, uploadErr := handleImageUpload(file, "seal")
+		if uploadErr != nil {
+			errors["company_seal"] = uploadErr.Error()
+		} else {
+			project.CompanySealPath = path
+		}
+	}
+}
+
+func handleImageUpload(file *multipart.FileHeader, prefix string) (string, error) {
+	return handleSignatureUpload(file, prefix)
+}
+
+func handleSignatureUpload(file *multipart.FileHeader, prefixes ...string) (string, error) {
+	prefix := "sig"
+	if len(prefixes) > 0 {
+		prefix = prefixes[0]
+	}
 	// Validate file size (2MB max)
 	if file.Size > 2*1024*1024 {
 		return "", fmt.Errorf("file size must be less than 2MB")
@@ -362,7 +414,7 @@ func handleSignatureUpload(file *multipart.FileHeader) (string, error) {
 	defer src.Close()
 
 	// Generate unique filename
-	filename := fmt.Sprintf("sig_%d%s", time.Now().UnixNano(), ext)
+	filename := fmt.Sprintf("%s_%d%s", prefix, time.Now().UnixNano(), ext)
 
 	// Ensure uploads directory exists
 	uploadDir := "./static/uploads"

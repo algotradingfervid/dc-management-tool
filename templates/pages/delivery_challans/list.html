@@ -1,12 +1,12 @@
-{{ define "title" }}All Delivery Challans - DC Management Tool{{ end }}
+{{ define "title" }}Delivery Challans - DC Management Tool{{ end }}
 
 {{ define "content" }}
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">All Delivery Challans</h1>
-            <p class="text-sm text-gray-500 mt-1">View and manage DCs across all projects</p>
+            <h1 class="text-2xl font-bold text-gray-900">Delivery Challans</h1>
+            <p class="text-sm text-gray-500 mt-1">View and manage DCs for this project</p>
         </div>
     </div>
 
@@ -22,23 +22,12 @@
     <!-- Filter Bar -->
     <div class="card">
         <form id="filter-form"
-              hx-get="/delivery-challans"
+              hx-get="{{ .basePath }}"
               hx-target="#dc-table-container"
               hx-select="#dc-table-container"
               hx-swap="outerHTML"
               hx-push-url="true">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-4">
-                <!-- Project Filter -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Project</label>
-                    <select name="project" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm">
-                        <option value="all" {{ if eq .filters.ProjectID "all" }}selected{{ end }}>All Projects</option>
-                        {{ range .projects }}
-                        <option value="{{ .ID }}" {{ if eq $.filters.ProjectID (intToStr .ID) }}selected{{ end }}>{{ .Name }}</option>
-                        {{ end }}
-                    </select>
-                </div>
-
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-4">
                 <!-- DC Type Filter -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">DC Type</label>
@@ -78,7 +67,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Search DC #</label>
                     <input type="text" name="search" value="{{ .filters.Search }}" placeholder="DC number..."
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm"
-                           hx-get="/delivery-challans"
+                           hx-get="{{ .basePath }}"
                            hx-target="#dc-table-container"
                            hx-select="#dc-table-container"
                            hx-swap="outerHTML"
@@ -93,7 +82,7 @@
                 <button type="submit" class="btn btn-primary text-sm">
                     Apply Filters
                 </button>
-                <a href="/delivery-challans" class="btn btn-secondary text-sm">
+                <a href="{{ .basePath }}" class="btn btn-secondary text-sm">
                     Clear All
                 </a>
             </div>
@@ -124,8 +113,8 @@
                         <tr>
                             <!-- DC Number (sortable) -->
                             <th class="px-6 py-3 text-left">
-                                <a href="/delivery-challans?sort_by=dc_number&sort_order={{ if and (eq .filters.SortBy "dc_number") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}&project={{ .filters.ProjectID }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
-                                   hx-get="/delivery-challans?sort_by=dc_number&sort_order={{ if and (eq .filters.SortBy "dc_number") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}"
+                                <a href="{{ .basePath }}?sort_by=dc_number&sort_order={{ if and (eq .filters.SortBy "dc_number") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
+                                   hx-get="{{ .basePath }}?sort_by=dc_number&sort_order={{ if and (eq .filters.SortBy "dc_number") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}"
                                    hx-target="#dc-table-container"
                                    hx-select="#dc-table-container"
                                    hx-swap="outerHTML"
@@ -140,8 +129,8 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                             <!-- Date (sortable) -->
                             <th class="px-6 py-3 text-left">
-                                <a href="/delivery-challans?sort_by=challan_date&sort_order={{ if and (eq .filters.SortBy "challan_date") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}&project={{ .filters.ProjectID }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
-                                   hx-get="/delivery-challans?sort_by=challan_date&sort_order={{ if and (eq .filters.SortBy "challan_date") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}"
+                                <a href="{{ .basePath }}?sort_by=challan_date&sort_order={{ if and (eq .filters.SortBy "challan_date") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
+                                   hx-get="{{ .basePath }}?sort_by=challan_date&sort_order={{ if and (eq .filters.SortBy "challan_date") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}"
                                    hx-target="#dc-table-container"
                                    hx-select="#dc-table-container"
                                    hx-swap="outerHTML"
@@ -153,26 +142,11 @@
                                     {{ end }}
                                 </a>
                             </th>
-                            <!-- Project (sortable) -->
-                            <th class="px-6 py-3 text-left">
-                                <a href="/delivery-challans?sort_by=project_name&sort_order={{ if and (eq .filters.SortBy "project_name") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}&project={{ .filters.ProjectID }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
-                                   hx-get="/delivery-challans?sort_by=project_name&sort_order={{ if and (eq .filters.SortBy "project_name") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}"
-                                   hx-target="#dc-table-container"
-                                   hx-select="#dc-table-container"
-                                   hx-swap="outerHTML"
-                                   hx-include="#filter-form"
-                                   class="text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700 flex items-center gap-1">
-                                    Project
-                                    {{ if eq .filters.SortBy "project_name" }}
-                                        {{ if eq .filters.SortOrder "asc" }}<span class="text-brand-600">▲</span>{{ else }}<span class="text-brand-600">▼</span>{{ end }}
-                                    {{ end }}
-                                </a>
-                            </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ship To</th>
                             <!-- Status (sortable) -->
                             <th class="px-6 py-3 text-left">
-                                <a href="/delivery-challans?sort_by=status&sort_order={{ if and (eq .filters.SortBy "status") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}&project={{ .filters.ProjectID }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
-                                   hx-get="/delivery-challans?sort_by=status&sort_order={{ if and (eq .filters.SortBy "status") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}"
+                                <a href="{{ .basePath }}?sort_by=status&sort_order={{ if and (eq .filters.SortBy "status") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
+                                   hx-get="{{ .basePath }}?sort_by=status&sort_order={{ if and (eq .filters.SortBy "status") (eq .filters.SortOrder "asc") }}desc{{ else }}asc{{ end }}"
                                    hx-target="#dc-table-container"
                                    hx-select="#dc-table-container"
                                    hx-swap="outerHTML"
@@ -208,16 +182,13 @@
                                 {{ .ChallanDate }}
                             </td>
                             <td class="px-6 py-4">
-                                <div class="text-sm text-gray-900 font-medium">{{ .ProjectName }}</div>
-                            </td>
-                            <td class="px-6 py-4">
                                 <div class="text-sm text-gray-600 max-w-xs truncate">{{ .ShipToSummary }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 {{ if eq .Status "draft" }}
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Draft</span>
+                                <span class="badge-draft inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Draft</span>
                                 {{ else }}
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Issued</span>
+                                <span class="badge-issued inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Issued</span>
                                 {{ end }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
@@ -231,13 +202,13 @@
                         {{ end }}
                         {{ else }}
                         <tr>
-                            <td colspan="7" class="px-6 py-12 text-center">
+                            <td colspan="6" class="px-6 py-12 text-center">
                                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                 </svg>
                                 <h3 class="mt-4 text-lg font-medium text-gray-900">No delivery challans found</h3>
-                                <p class="mt-2 text-sm text-gray-500">Try adjusting your filters or create a new DC from a project.</p>
-                                <a href="/delivery-challans" class="mt-4 inline-block text-brand-600 hover:text-brand-800 font-medium text-sm">Clear all filters</a>
+                                <p class="mt-2 text-sm text-gray-500">Try adjusting your filters or create a new DC.</p>
+                                <a href="{{ $.basePath }}" class="mt-4 inline-block text-brand-600 hover:text-brand-800 font-medium text-sm">Clear all filters</a>
                             </td>
                         </tr>
                         {{ end }}
@@ -251,8 +222,8 @@
         <div class="flex items-center justify-between mt-4">
             <div>
                 {{ if gt .result.Page 1 }}
-                <a href="/delivery-challans?page={{ sub .result.Page 1 }}&sort_by={{ .filters.SortBy }}&sort_order={{ .filters.SortOrder }}&project={{ .filters.ProjectID }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
-                   hx-get="/delivery-challans?page={{ sub .result.Page 1 }}"
+                <a href="{{ .basePath }}?page={{ sub .result.Page 1 }}&sort_by={{ .filters.SortBy }}&sort_order={{ .filters.SortOrder }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
+                   hx-get="{{ .basePath }}?page={{ sub .result.Page 1 }}"
                    hx-target="#dc-table-container"
                    hx-select="#dc-table-container"
                    hx-swap="outerHTML"
@@ -270,8 +241,8 @@
                 {{ if eq . $.result.Page }}
                 <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-brand-600 text-white text-sm font-medium">{{ . }}</span>
                 {{ else }}
-                <a href="/delivery-challans?page={{ . }}&sort_by={{ $.filters.SortBy }}&sort_order={{ $.filters.SortOrder }}&project={{ $.filters.ProjectID }}&type={{ $.filters.DCType }}&status={{ $.filters.Status }}&date_from={{ $.filters.DateFrom }}&date_to={{ $.filters.DateTo }}&search={{ $.filters.Search }}"
-                   hx-get="/delivery-challans?page={{ . }}"
+                <a href="{{ $.basePath }}?page={{ . }}&sort_by={{ $.filters.SortBy }}&sort_order={{ $.filters.SortOrder }}&type={{ $.filters.DCType }}&status={{ $.filters.Status }}&date_from={{ $.filters.DateFrom }}&date_to={{ $.filters.DateTo }}&search={{ $.filters.Search }}"
+                   hx-get="{{ $.basePath }}?page={{ . }}"
                    hx-target="#dc-table-container"
                    hx-select="#dc-table-container"
                    hx-swap="outerHTML"
@@ -283,8 +254,8 @@
 
             <div>
                 {{ if lt .result.Page .result.TotalPages }}
-                <a href="/delivery-challans?page={{ add .result.Page 1 }}&sort_by={{ .filters.SortBy }}&sort_order={{ .filters.SortOrder }}&project={{ .filters.ProjectID }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
-                   hx-get="/delivery-challans?page={{ add .result.Page 1 }}"
+                <a href="{{ .basePath }}?page={{ add .result.Page 1 }}&sort_by={{ .filters.SortBy }}&sort_order={{ .filters.SortOrder }}&type={{ .filters.DCType }}&status={{ .filters.Status }}&date_from={{ .filters.DateFrom }}&date_to={{ .filters.DateTo }}&search={{ .filters.Search }}"
+                   hx-get="{{ .basePath }}?page={{ add .result.Page 1 }}"
                    hx-target="#dc-table-container"
                    hx-select="#dc-table-container"
                    hx-swap="outerHTML"

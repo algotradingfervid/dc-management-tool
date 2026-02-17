@@ -35,7 +35,16 @@ func setupTestDB(t *testing.T) *sql.DB {
 			tender_ref_details TEXT NOT NULL DEFAULT '',
 			po_reference TEXT NOT NULL DEFAULT '',
 			bill_from_address TEXT NOT NULL DEFAULT '',
+			dispatch_from_address TEXT NOT NULL DEFAULT '',
 			company_gstin TEXT NOT NULL DEFAULT '',
+			company_email TEXT NOT NULL DEFAULT '',
+			company_cin TEXT NOT NULL DEFAULT '',
+			company_signature_path TEXT,
+			company_seal_path TEXT,
+			dc_number_format TEXT NOT NULL DEFAULT '{PREFIX}-{TYPE}-{FY}-{SEQ}',
+			dc_number_separator TEXT NOT NULL DEFAULT '-',
+			purpose_text TEXT NOT NULL DEFAULT 'DELIVERED AS PART OF PROJECT EXECUTION',
+			seq_padding INTEGER NOT NULL DEFAULT 3,
 			last_transit_dc_number INTEGER DEFAULT 0,
 			last_official_dc_number INTEGER DEFAULT 0,
 			created_by INTEGER NOT NULL DEFAULT 1,
@@ -323,7 +332,16 @@ func TestGenerateDCNumber_Concurrent(t *testing.T) {
 		tender_ref_details TEXT NOT NULL DEFAULT '',
 		po_reference TEXT NOT NULL DEFAULT '',
 		bill_from_address TEXT NOT NULL DEFAULT '',
+		dispatch_from_address TEXT NOT NULL DEFAULT '',
 		company_gstin TEXT NOT NULL DEFAULT '',
+		company_email TEXT NOT NULL DEFAULT '',
+		company_cin TEXT NOT NULL DEFAULT '',
+		company_signature_path TEXT,
+		company_seal_path TEXT,
+		dc_number_format TEXT NOT NULL DEFAULT '{PREFIX}-{TYPE}-{FY}-{SEQ}',
+		dc_number_separator TEXT NOT NULL DEFAULT '-',
+		purpose_text TEXT NOT NULL DEFAULT 'DELIVERED AS PART OF PROJECT EXECUTION',
+		seq_padding INTEGER NOT NULL DEFAULT 3,
 		created_by INTEGER NOT NULL DEFAULT 1,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -414,5 +432,81 @@ func TestGenerateDCNumber_SequenceExceeds999(t *testing.T) {
 	// Should still work, just wider number
 	if dc != "SCP-TDC-2526-1000" {
 		t.Errorf("got %s; want SCP-TDC-2526-1000", dc)
+	}
+}
+
+func TestFormatDCNumberConfigurable(t *testing.T) {
+	tests := []struct {
+		name     string
+		format   string
+		prefix   string
+		code     string
+		fy       string
+		dcType   string
+		seq      int
+		padding  int
+		expected string
+	}{
+		{"default format", "{PREFIX}-{TYPE}-{FY}-{SEQ}", "SCP", "SCP", "2526", DCTypeTransit, 1, 3, "SCP-TDC-25-26-001"},
+		{"slash separator", "{PREFIX}/{TYPE}/{FY}/{SEQ}", "FS", "FS", "2526", DCTypeTransit, 5, 3, "FS/TDC/25-26/005"},
+		{"with project code", "{PREFIX}/{PROJECT_CODE}/{FY}/{SEQ}", "FS", "GSWS", "2526", DCTypeTransit, 1, 3, "FS/GSWS/25-26/001"},
+		{"4-digit padding", "{PREFIX}-{TYPE}-{FY}-{SEQ}", "SCP", "SCP", "2526", DCTypeOfficial, 1, 4, "SCP-ODC-25-26-0001"},
+		{"empty format defaults", "", "SCP", "SCP", "2526", DCTypeTransit, 1, 3, "SCP-TDC-25-26-001"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FormatDCNumberConfigurable(tt.format, tt.prefix, tt.code, tt.fy, tt.dcType, tt.seq, tt.padding)
+			if result != tt.expected {
+				t.Errorf("got %s; want %s", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestPreviewDCNumber(t *testing.T) {
+	preview := PreviewDCNumber("{PREFIX}/{PROJECT_CODE}/{FY}/{SEQ}", "FS", "GSWS", 3)
+	if preview == "" {
+		t.Error("preview should not be empty")
+	}
+	// Should contain the prefix and project code
+	if !containsStr(preview, "FS") || !containsStr(preview, "GSWS") {
+		t.Errorf("preview %s should contain FS and GSWS", preview)
+	}
+}
+
+func containsStr(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && findSubstr(s, substr))
+}
+
+func findSubstr(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
+func TestGenerateDCNumber_CustomFormat(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// Insert project with custom format
+	result, err := db.Exec(`INSERT INTO projects (name, dc_prefix, dc_number_format, seq_padding) VALUES ('Test', 'FS', '{PREFIX}/{FY}/{TYPE}/{SEQ}', 4)`)
+	if err != nil {
+		t.Fatalf("failed to insert project: %v", err)
+	}
+	id, _ := result.LastInsertId()
+	projectID := int(id)
+
+	date := time.Date(2025, time.June, 15, 0, 0, 0, 0, time.UTC)
+	dc, err := GenerateDCNumberForDate(db, projectID, DCTypeTransit, date)
+	if err != nil {
+		t.Fatalf("failed to generate DC: %v", err)
+	}
+	expected := "FS/25-26/TDC/0001"
+	if dc != expected {
+		t.Errorf("got %s; want %s", dc, expected)
 	}
 }

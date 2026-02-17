@@ -1,0 +1,223 @@
+{{ template "base" . }}
+
+{{ define "title" }}New Shipment - Step 2{{ end }}
+
+{{ define "content" }}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6">Create New Shipment - Step 2: Select Addresses</h1>
+
+    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+        <p class="text-sm text-gray-600">Template: <strong>{{ .template.Name }}</strong> | Sets: <strong>{{ .numSets }}</strong> | Date: <strong>{{ .challanDate }}</strong></p>
+        <p class="text-sm text-gray-600">Next Transit DC: <strong>{{ .transitDCNumber }}</strong> | Next Official DC: <strong>{{ .officialDCNumber }}</strong></p>
+    </div>
+
+    <form method="POST" action="/projects/{{ .project.ID }}/shipments/new/step3">
+        {{ .csrfField }}
+
+        <!-- Carry forward step 1 data -->
+        <input type="hidden" name="template_id" value="{{ .templateID }}">
+        <input type="hidden" name="num_sets" value="{{ .numSets }}">
+        <input type="hidden" name="challan_date" value="{{ .challanDate }}">
+        <input type="hidden" name="transporter_name" value="{{ .transporterName }}">
+        <input type="hidden" name="vehicle_number" value="{{ .vehicleNumber }}">
+        <input type="hidden" name="eway_bill_number" value="{{ .ewayBillNumber }}">
+        <input type="hidden" name="docket_number" value="{{ .docketNumber }}">
+        <input type="hidden" name="tax_type" value="{{ .taxType }}">
+        <input type="hidden" name="reverse_charge" value="{{ .reverseCharge }}">
+
+        <div class="bg-white shadow rounded-lg p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Bill From Address</label>
+                <select name="bill_from_address_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    <option value="">Select...</option>
+                    {{ range .billFromAddresses }}
+                    <option value="{{ .ID }}">{{ .DisplayName }}</option>
+                    {{ end }}
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Dispatch From Address</label>
+                <select name="dispatch_from_address_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    <option value="">Select...</option>
+                    {{ range .dispatchFromAddresses }}
+                    <option value="{{ .ID }}">{{ .DisplayName }}</option>
+                    {{ end }}
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Bill To Address</label>
+                <select name="bill_to_address_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    <option value="">Select...</option>
+                    {{ range .billToAddresses }}
+                    <option value="{{ .ID }}">{{ .DisplayName }}</option>
+                    {{ end }}
+                </select>
+            </div>
+
+            <!-- Ship To Addresses - tag picker -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Ship To Addresses (select {{ .numSets }})</label>
+                <div id="ship-to-picker" class="relative">
+                    <!-- Selected tags -->
+                    <div id="ship-to-tags" class="flex flex-wrap gap-1.5 min-h-[42px] p-2 border border-gray-300 rounded-lg bg-white cursor-text focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500"
+                         onclick="document.getElementById('ship-to-search').focus()">
+                        <input type="text" id="ship-to-search" placeholder="Type to search addresses..."
+                            autocomplete="off"
+                            class="flex-1 min-w-[200px] border-0 p-0 text-sm focus:ring-0 focus:outline-none placeholder-gray-400">
+                    </div>
+                    <!-- Hidden inputs container -->
+                    <div id="ship-to-hidden-inputs"></div>
+                    <!-- Dropdown -->
+                    <div id="ship-to-dropdown" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"></div>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <span id="ship-to-count">0</span> / {{ .numSets }} selected
+                    </p>
+                </div>
+            </div>
+
+            <!-- Transit Ship To - populated from selected ship-to -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Transit Ship To Address</label>
+                <select name="transit_ship_to_address_id" id="transit-ship-to-select" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    <option value="">Select from ship-to addresses above...</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="mt-6 flex justify-end">
+            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">
+                Next: Enter Serials →
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+(function() {
+    var allAddresses = [
+        {{ range .shipToAddresses }}
+        { id: {{ .ID }}, name: {{ toJSON .DisplayName }} },
+        {{ end }}
+    ];
+    var selected = [];
+    var numSets = {{ .numSets }};
+    var searchInput = document.getElementById('ship-to-search');
+    var dropdown = document.getElementById('ship-to-dropdown');
+    var tagsContainer = document.getElementById('ship-to-tags');
+    var hiddenContainer = document.getElementById('ship-to-hidden-inputs');
+    var countEl = document.getElementById('ship-to-count');
+    var transitSelect = document.getElementById('transit-ship-to-select');
+
+    function render() {
+        countEl.textContent = selected.length;
+        tagsContainer.querySelectorAll('.ship-tag').forEach(function(el) { el.remove(); });
+        selected.forEach(function(addr) {
+            var tag = document.createElement('span');
+            tag.className = 'ship-tag inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800';
+            tag.innerHTML = '<span>' + escapeHtml(addr.name) + '</span>' +
+                '<button type="button" class="ml-1 hover:text-blue-600 font-bold" data-id="' + addr.id + '">&times;</button>';
+            tag.querySelector('button').addEventListener('click', function(e) {
+                e.stopPropagation();
+                removeAddress(addr.id);
+            });
+            tagsContainer.insertBefore(tag, searchInput);
+        });
+
+        hiddenContainer.innerHTML = '';
+        selected.forEach(function(addr) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'ship_to_address_ids';
+            input.value = addr.id;
+            hiddenContainer.appendChild(input);
+        });
+
+        var currentTransit = transitSelect.value;
+        transitSelect.innerHTML = '<option value="">Select from ship-to addresses above...</option>';
+        selected.forEach(function(addr) {
+            var opt = document.createElement('option');
+            opt.value = addr.id;
+            opt.textContent = addr.name;
+            if (String(addr.id) === currentTransit) opt.selected = true;
+            transitSelect.appendChild(opt);
+        });
+    }
+
+    function addAddress(addr) {
+        if (selected.some(function(s) { return s.id === addr.id; })) return;
+        if (selected.length >= numSets) {
+            countEl.parentElement.classList.add('text-red-600');
+            countEl.parentElement.textContent = 'Maximum ' + numSets + ' addresses allowed (matching number of sets)';
+            setTimeout(function() {
+                countEl.parentElement.classList.remove('text-red-600');
+                render();
+            }, 2000);
+            return;
+        }
+        selected.push(addr);
+        searchInput.value = '';
+        dropdown.classList.add('hidden');
+        render();
+        searchInput.focus();
+    }
+
+    function removeAddress(id) {
+        selected = selected.filter(function(s) { return s.id !== id; });
+        render();
+    }
+
+    function showDropdown(query) {
+        var selectedIds = selected.map(function(s) { return s.id; });
+        var filtered = allAddresses.filter(function(a) {
+            if (selectedIds.indexOf(a.id) !== -1) return false;
+            if (!query) return true;
+            return a.name.toLowerCase().indexOf(query.toLowerCase()) !== -1;
+        });
+
+        if (filtered.length === 0) {
+            dropdown.innerHTML = '<div class="px-3 py-2 text-sm text-gray-500">No matches found</div>';
+        } else {
+            dropdown.innerHTML = '';
+            filtered.slice(0, 20).forEach(function(addr) {
+                var item = document.createElement('div');
+                item.className = 'px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 transition-colors';
+                item.textContent = addr.name;
+                item.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    addAddress(addr);
+                });
+                dropdown.appendChild(item);
+            });
+            if (filtered.length > 20) {
+                var more = document.createElement('div');
+                more.className = 'px-3 py-1.5 text-xs text-gray-400 border-t';
+                more.textContent = '+ ' + (filtered.length - 20) + ' more \u2014 refine your search';
+                dropdown.appendChild(more);
+            }
+        }
+        dropdown.classList.remove('hidden');
+    }
+
+    searchInput.addEventListener('focus', function() { showDropdown(this.value); });
+    searchInput.addEventListener('input', function() { showDropdown(this.value); });
+    searchInput.addEventListener('blur', function() {
+        setTimeout(function() { dropdown.classList.add('hidden'); }, 150);
+    });
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Backspace' && this.value === '' && selected.length > 0) {
+            removeAddress(selected[selected.length - 1].id);
+        }
+    });
+
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    render();
+})();
+</script>
+{{ end }}

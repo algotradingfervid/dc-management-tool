@@ -13,7 +13,8 @@ func GetTemplatesByProjectID(projectID int) ([]*models.DCTemplate, error) {
 			t.id, t.project_id, t.name, t.purpose, t.created_at, t.updated_at,
 			COUNT(DISTINCT tp.product_id) as product_count,
 			COUNT(DISTINCT CASE WHEN dc.dc_type = 'transit' THEN dc.id END) as transit_count,
-			COUNT(DISTINCT CASE WHEN dc.dc_type = 'official' THEN dc.id END) as official_count
+			COUNT(DISTINCT CASE WHEN dc.dc_type = 'official' THEN dc.id END) as official_count,
+			COUNT(DISTINCT dc.id) as usage_count
 		FROM dc_templates t
 		LEFT JOIN dc_template_products tp ON t.id = tp.template_id
 		LEFT JOIN delivery_challans dc ON t.id = dc.template_id
@@ -33,7 +34,7 @@ func GetTemplatesByProjectID(projectID int) ([]*models.DCTemplate, error) {
 		t := &models.DCTemplate{}
 		err := rows.Scan(
 			&t.ID, &t.ProjectID, &t.Name, &t.Purpose, &t.CreatedAt, &t.UpdatedAt,
-			&t.ProductCount, &t.TransitDCCount, &t.OfficialDCCount,
+			&t.ProductCount, &t.TransitDCCount, &t.OfficialDCCount, &t.UsageCount,
 		)
 		if err != nil {
 			return nil, err
@@ -50,7 +51,8 @@ func GetTemplateByID(id int) (*models.DCTemplate, error) {
 			t.id, t.project_id, t.name, t.purpose, t.created_at, t.updated_at,
 			COUNT(DISTINCT tp.product_id) as product_count,
 			COUNT(DISTINCT CASE WHEN dc.dc_type = 'transit' THEN dc.id END) as transit_count,
-			COUNT(DISTINCT CASE WHEN dc.dc_type = 'official' THEN dc.id END) as official_count
+			COUNT(DISTINCT CASE WHEN dc.dc_type = 'official' THEN dc.id END) as official_count,
+			COUNT(DISTINCT dc.id) as usage_count
 		FROM dc_templates t
 		LEFT JOIN dc_template_products tp ON t.id = tp.template_id
 		LEFT JOIN delivery_challans dc ON t.id = dc.template_id
@@ -61,7 +63,7 @@ func GetTemplateByID(id int) (*models.DCTemplate, error) {
 	t := &models.DCTemplate{}
 	err := DB.QueryRow(query, id).Scan(
 		&t.ID, &t.ProjectID, &t.Name, &t.Purpose, &t.CreatedAt, &t.UpdatedAt,
-		&t.ProductCount, &t.TransitDCCount, &t.OfficialDCCount,
+		&t.ProductCount, &t.TransitDCCount, &t.OfficialDCCount, &t.UsageCount,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("template not found")
@@ -81,7 +83,7 @@ func GetTemplateProducts(templateID int) ([]*models.TemplateProductRow, error) {
 		FROM products p
 		INNER JOIN dc_template_products tp ON p.id = tp.product_id
 		WHERE tp.template_id = ?
-		ORDER BY p.item_name
+		ORDER BY tp.sort_order, p.item_name
 	`
 
 	rows, err := DB.Query(query, templateID)
@@ -118,6 +120,7 @@ func GetTemplateProducts(templateID int) ([]*models.TemplateProductRow, error) {
 type TemplateProductInput struct {
 	ProductID       int
 	DefaultQuantity int
+	SortOrder       int
 }
 
 func CreateTemplate(t *models.DCTemplate, products []TemplateProductInput) error {
@@ -143,8 +146,8 @@ func CreateTemplate(t *models.DCTemplate, products []TemplateProductInput) error
 
 	for _, p := range products {
 		_, err := tx.Exec(
-			"INSERT INTO dc_template_products (template_id, product_id, default_quantity) VALUES (?, ?, ?)",
-			t.ID, p.ProductID, p.DefaultQuantity,
+			"INSERT INTO dc_template_products (template_id, product_id, default_quantity, sort_order) VALUES (?, ?, ?, ?)",
+			t.ID, p.ProductID, p.DefaultQuantity, p.SortOrder,
 		)
 		if err != nil {
 			return err
@@ -176,8 +179,8 @@ func UpdateTemplate(t *models.DCTemplate, products []TemplateProductInput) error
 
 	for _, p := range products {
 		_, err := tx.Exec(
-			"INSERT INTO dc_template_products (template_id, product_id, default_quantity) VALUES (?, ?, ?)",
-			t.ID, p.ProductID, p.DefaultQuantity,
+			"INSERT INTO dc_template_products (template_id, product_id, default_quantity, sort_order) VALUES (?, ?, ?, ?)",
+			t.ID, p.ProductID, p.DefaultQuantity, p.SortOrder,
 		)
 		if err != nil {
 			return err
@@ -256,4 +259,43 @@ func GetTemplateProductIDs(templateID int) (map[int]int, error) {
 		result[productID] = qty
 	}
 	return result, nil
+}
+
+// DuplicateTemplate creates a copy of a template with "Copy of " prefix and all product links
+func DuplicateTemplate(templateID, projectID int) (*models.DCTemplate, error) {
+	original, err := GetTemplateByID(templateID)
+	if err != nil {
+		return nil, err
+	}
+	if original.ProjectID != projectID {
+		return nil, fmt.Errorf("template not found in project")
+	}
+
+	// Get original products with sort order
+	rows, err := DB.Query("SELECT product_id, default_quantity, sort_order FROM dc_template_products WHERE template_id = ? ORDER BY sort_order", templateID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var products []TemplateProductInput
+	for rows.Next() {
+		var p TemplateProductInput
+		if err := rows.Scan(&p.ProductID, &p.DefaultQuantity, &p.SortOrder); err != nil {
+			return nil, err
+		}
+		products = append(products, p)
+	}
+
+	newTemplate := &models.DCTemplate{
+		ProjectID: projectID,
+		Name:      "Copy of " + original.Name,
+		Purpose:   original.Purpose,
+	}
+
+	if err := CreateTemplate(newTemplate, products); err != nil {
+		return nil, err
+	}
+
+	return newTemplate, nil
 }

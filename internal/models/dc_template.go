@@ -17,6 +17,7 @@ type DCTemplate struct {
 	ProductCount    int `json:"product_count"`
 	TransitDCCount  int `json:"transit_dc_count"`
 	OfficialDCCount int `json:"official_dc_count"`
+	UsageCount      int `json:"usage_count"` // TransitDCCount + OfficialDCCount
 }
 
 type DCTemplateProduct struct {

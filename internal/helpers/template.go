@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"math"
 	"strings"
+	"time"
 )
 
 // TemplateFuncs returns a map of template helper functions
@@ -15,6 +16,12 @@ func TemplateFuncs() template.FuncMap {
 		"hasPrefix":    strings.HasPrefix,
 		"formatDate":   FormatDate,
 		"derefStr":     DerefStr,
+		"derefInt": func(p *int) int {
+			if p == nil {
+				return 0
+			}
+			return *p
+		},
 		"add":          func(a, b int) int { return a + b },
 		"sub":          func(a, b int) int { return a - b },
 		"mul":          func(a, b int) int { return a * b },
@@ -26,7 +33,9 @@ func TemplateFuncs() template.FuncMap {
 			return s
 		},
 		"sanitizeField": func(name string) string {
-			return strings.ToLower(strings.ReplaceAll(name, " ", "_"))
+			name = strings.ReplaceAll(name, " ", "_")
+			name = strings.ReplaceAll(name, "/", "_")
+			return strings.ToLower(name)
 		},
 		"mapGet": func(m map[string]string, key string) string {
 			return m[key]
@@ -95,6 +104,20 @@ func TemplateFuncs() template.FuncMap {
 		"intToStr": func(i int) string {
 			return fmt.Sprintf("%d", i)
 		},
+		"timeAgo": TimeAgo,
+		"containsInt": func(slice []int, val int) bool {
+			for _, v := range slice {
+				if v == val {
+					return true
+				}
+			}
+			return false
+		},
+		"eq_str": func(a, b string) bool { return a == b },
+		"vehiclesJSON": func(v interface{}) template.HTMLAttr {
+			b, _ := json.Marshal(v)
+			return template.HTMLAttr(b)
+		},
 	}
 }
 
@@ -138,4 +161,34 @@ type Breadcrumb struct {
 // BuildBreadcrumbs creates breadcrumb trail
 func BuildBreadcrumbs(items ...Breadcrumb) []Breadcrumb {
 	return items
+}
+
+// TimeAgo returns a human-readable relative time string
+func TimeAgo(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	d := time.Since(t)
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		m := int(d.Minutes())
+		if m == 1 {
+			return "1 minute ago"
+		}
+		return fmt.Sprintf("%d minutes ago", m)
+	case d < 24*time.Hour:
+		h := int(d.Hours())
+		if h == 1 {
+			return "1 hour ago"
+		}
+		return fmt.Sprintf("%d hours ago", h)
+	case d < 48*time.Hour:
+		return "yesterday"
+	case d < 7*24*time.Hour:
+		return fmt.Sprintf("%d days ago", int(d.Hours()/24))
+	default:
+		return t.Format("Jan 2, 2006")
+	}
 }

@@ -1,4 +1,4 @@
-.PHONY: help setup dev build run test clean migrate seed fmt lint
+.PHONY: help setup dev build run test clean migrate seed fmt lint css test-docker-build test-docker-up test-docker-down test-docker-parallel test-docker-suite test-docker-logs test-docker-reset
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -59,5 +59,48 @@ fmt: ## Format Go code
 lint: ## Run linter (requires golangci-lint)
 	@echo "Running linter..."
 	golangci-lint run
+
+css: ## Build Tailwind CSS
+	npm run css:build
+
+restart: ## Stop, rebuild CSS + Go binary, and start the server
+	@echo "Stopping any running server..."
+	@-pkill -f 'air' 2>/dev/null || true
+	@-pkill -f 'dc-management-tool' 2>/dev/null || true
+	@sleep 1
+	@echo "Rebuilding Tailwind CSS..."
+	@npx tailwindcss -i static/css/tailwind-input.css -o static/css/tailwind-output.css 2>&1
+	@echo "Building Go binary..."
+	@go build -o bin/dc-management-tool ./cmd/server
+	@echo "Starting server..."
+	@./bin/dc-management-tool
+
+## Docker-based parallel testing
+test-docker-build: ## Build Docker test image
+	@echo "Building Docker image..."
+	@docker compose build
+
+test-docker-up: ## Start 5 test containers (ports 8081-8085)
+	@echo "Starting test containers..."
+	@docker compose up -d --wait
+	@echo "Containers ready on ports 8081-8085"
+
+test-docker-down: ## Stop and remove test containers + volumes
+	@echo "Stopping test containers..."
+	@docker compose down -v
+
+test-docker-parallel: ## Run all test plans in parallel
+	@./scripts/run-parallel-tests.sh --all
+
+test-docker-suite: ## Run single test suite: make test-docker-suite PLAN=phase-4-products-master PORT=8081
+	@./scripts/run-suite.sh --plan testing-plans/$(PLAN).md --port $(PORT)
+
+test-docker-logs: ## Tail test container logs
+	@docker compose logs -f
+
+test-docker-reset: ## Full teardown with orphan removal
+	@echo "Full teardown..."
+	@docker compose down -v --remove-orphans
+	@echo "Done."
 
 .DEFAULT_GOAL := help

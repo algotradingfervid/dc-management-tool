@@ -15,101 +15,75 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Products</h1>
-            <p class="text-sm text-gray-500 mt-1">Manage products for {{ .project.Name }}</p>
+            <p class="text-sm text-gray-500 mt-1">Manage products for {{ .project.Name }}{{ if .productPage }} &middot; {{ .productPage.TotalCount }} total{{ end }}</p>
         </div>
-        <button onclick="openProductSlideOver()"
-            class="btn btn-primary text-sm inline-flex items-center">
-            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            Add Product
-        </button>
+        <div class="flex items-center gap-2">
+            <button onclick="toggleImportModal()" class="btn btn-secondary text-sm inline-flex items-center">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+                Import
+            </button>
+            <button onclick="openProductSlideOver()"
+                class="btn btn-primary text-sm inline-flex items-center">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Product
+            </button>
+        </div>
+    </div>
+
+    <!-- Search & Bulk Actions Bar -->
+    <div class="card p-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="flex-1 max-w-md">
+                <div class="relative">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <input type="text" id="product-search" placeholder="Search by name, HSN code, brand..."
+                           value="{{ .search }}"
+                           class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-brand-500 focus:border-brand-500"
+                           hx-get="/projects/{{ .project.ID }}/products?partial=true"
+                           hx-trigger="keyup changed delay:300ms"
+                           hx-target="#products-table-container"
+                           hx-swap="innerHTML"
+                           hx-include="[name='sort'],[name='dir']"
+                           name="search">
+                </div>
+            </div>
+            <div id="bulk-actions" class="hidden flex items-center gap-2">
+                <span id="selected-count" class="text-sm text-gray-600">0 selected</span>
+                <button onclick="bulkDeleteProducts()" class="btn btn-danger text-sm inline-flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    Delete Selected
+                </button>
+            </div>
+        </div>
+        <input type="hidden" name="sort" value="{{ .sortBy }}">
+        <input type="hidden" name="dir" value="{{ .sortDir }}">
     </div>
 
     <!-- Products Table -->
     <div class="card overflow-hidden">
         <div id="products-table-container"
-             hx-get="/projects/{{ .project.ID }}/products"
+             hx-get="/projects/{{ .project.ID }}/products?partial=true"
              hx-trigger="productChanged from:body"
-             hx-select="#products-table-container"
-             hx-swap="outerHTML">
-            {{ if .products }}
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">HSN Code</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UoM</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand/Model</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">GST %</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {{ range .products }}
-                        <tr class="hover:bg-gray-50" id="product-row-{{ .ID }}">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">{{ .ItemName }}</div>
-                                {{ if .ItemDescription }}
-                                <div class="text-xs text-gray-500 truncate max-w-xs">{{ .ItemDescription }}</div>
-                                {{ end }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ if .HSNCode }}{{ .HSNCode }}{{ else }}<span class="text-gray-400">-</span>{{ end }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ .UoM }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ .BrandModel }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">{{ printf "%.2f" .PerUnitPrice }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-right">{{ printf "%.0f" .GSTPercentage }}%</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
-                                <button onclick="editProduct({{ .ProjectID }}, {{ .ID }})"
-                                    class="text-brand-600 hover:text-brand-900 mr-3" title="Edit">
-                                    <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                    </svg>
-                                </button>
-                                <button onclick="confirmDeleteProduct({{ .ProjectID }}, {{ .ID }}, '{{ .ItemName }}')"
-                                    class="text-red-600 hover:text-red-900" title="Delete">
-                                    <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                    </svg>
-                                </button>
-                            </td>
-                        </tr>
-                        {{ end }}
-                    </tbody>
-                </table>
-            </div>
-            {{ else }}
-            <div class="text-center py-12">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No products</h3>
-                <p class="mt-1 text-sm text-gray-500">Get started by adding a product to this project.</p>
-                <div class="mt-4">
-                    <button onclick="openProductSlideOver()" class="btn btn-primary text-sm">
-                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
-                        Add Product
-                    </button>
-                </div>
-            </div>
-            {{ end }}
+             hx-include="#product-search,[name='sort'],[name='dir']"
+             hx-swap="innerHTML">
+            {{ template "products-table" . }}
         </div>
     </div>
 </div>
 
 <!-- Slide-over Panel -->
-<div id="product-slideover" class="hidden fixed inset-0 z-50">
-    <!-- Backdrop -->
-    <div class="absolute inset-0 bg-gray-600 bg-opacity-50 transition-opacity" onclick="closeProductSlideOver()"></div>
-    <!-- Panel -->
-    <div class="absolute inset-y-0 right-0 max-w-md w-full bg-white shadow-xl transform transition-transform duration-300 translate-x-0">
-        <div id="product-form-container" class="h-full overflow-y-auto">
-            <!-- Form loaded here via HTMX -->
-        </div>
+<div id="product-slideover-backdrop" class="hidden fixed inset-0 z-40 bg-black/20 transition-opacity duration-300 opacity-0" onclick="closeProductSlideOver()"></div>
+<div id="product-slideover" class="fixed inset-y-0 right-0 z-50 w-full max-w-md transform translate-x-full transition-transform duration-300 ease-in-out">
+    <div class="h-full bg-white shadow-2xl border-l border-gray-200">
+        <div id="product-form-container" class="h-full overflow-y-auto"></div>
     </div>
 </div>
 
@@ -125,41 +99,115 @@
     </div>
 </div>
 
+<!-- Bulk Delete Confirmation Modal -->
+<div id="bulk-delete-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-2">Delete Selected Products</h3>
+        <p class="text-sm text-gray-600 mb-4">Are you sure you want to delete <strong id="bulk-delete-count"></strong> selected products? This action cannot be undone.</p>
+        <div class="flex justify-end gap-3">
+            <button onclick="closeBulkDeleteModal()" class="btn btn-secondary">Cancel</button>
+            <button id="confirm-bulk-delete-btn" class="btn btn-danger">Delete All</button>
+        </div>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div id="import-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Import Products</h3>
+            <button onclick="toggleImportModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <p class="text-sm text-gray-600 mb-3">Upload a CSV or Excel file with product data. Columns will be auto-mapped based on headers.</p>
+        <a href="/projects/{{ .project.ID }}/products/import-template"
+           class="inline-flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-800 font-medium mb-4">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            Download CSV template
+        </a>
+        <form hx-post="/projects/{{ .project.ID }}/products/import"
+              hx-target="#import-result"
+              hx-swap="innerHTML"
+              hx-encoding="multipart/form-data"
+              hx-indicator="#import-spinner">
+            {{ .csrfField }}
+            <div class="mb-4">
+                <input type="file" name="file" accept=".csv,.xlsx,.xls"
+                       class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"
+                       required>
+            </div>
+            <div id="import-result" class="mb-4"></div>
+            <div class="flex items-center justify-end gap-3">
+                <div id="import-spinner" class="htmx-indicator">
+                    <svg class="animate-spin h-5 w-5 text-brand-600" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                </div>
+                <button type="button" onclick="toggleImportModal()" class="btn btn-secondary text-sm">Cancel</button>
+                <button type="submit" class="btn btn-primary text-sm">Upload & Import</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 var csrfToken = '{{ .csrfToken }}';
+var projectID = {{ .project.ID }};
+var selectedProducts = new Set();
 
 function openProductSlideOver() {
-    var el = document.getElementById('product-slideover');
-    el.classList.remove('hidden');
-    // Load add form
-    htmx.ajax('GET', '/projects/{{ .project.ID }}/products/new', {target: '#product-form-container', swap: 'innerHTML'});
+    var backdrop = document.getElementById('product-slideover-backdrop');
+    var panel = document.getElementById('product-slideover');
+    backdrop.classList.remove('hidden');
+    requestAnimationFrame(function() {
+        backdrop.classList.remove('opacity-0');
+        backdrop.classList.add('opacity-100');
+        panel.classList.remove('translate-x-full');
+        panel.classList.add('translate-x-0');
+    });
+    htmx.ajax('GET', '/projects/' + projectID + '/products/new', {target: '#product-form-container', swap: 'innerHTML'});
 }
 
-function editProduct(projectID, productID) {
-    var el = document.getElementById('product-slideover');
-    el.classList.remove('hidden');
-    htmx.ajax('GET', '/projects/' + projectID + '/products/' + productID + '/edit', {target: '#product-form-container', swap: 'innerHTML'});
+function editProduct(projID, productID) {
+    var backdrop = document.getElementById('product-slideover-backdrop');
+    var panel = document.getElementById('product-slideover');
+    backdrop.classList.remove('hidden');
+    requestAnimationFrame(function() {
+        backdrop.classList.remove('opacity-0');
+        backdrop.classList.add('opacity-100');
+        panel.classList.remove('translate-x-full');
+        panel.classList.add('translate-x-0');
+    });
+    htmx.ajax('GET', '/projects/' + projID + '/products/' + productID + '/edit', {target: '#product-form-container', swap: 'innerHTML'});
 }
 
 function closeProductSlideOver() {
-    document.getElementById('product-slideover').classList.add('hidden');
+    var backdrop = document.getElementById('product-slideover-backdrop');
+    var panel = document.getElementById('product-slideover');
+    backdrop.classList.remove('opacity-100');
+    backdrop.classList.add('opacity-0');
+    panel.classList.remove('translate-x-0');
+    panel.classList.add('translate-x-full');
+    setTimeout(function() { backdrop.classList.add('hidden'); }, 300);
 }
 
-function confirmDeleteProduct(projectID, productID, name) {
+function confirmDeleteProduct(projID, productID, name) {
     document.getElementById('delete-product-name').textContent = name;
     document.getElementById('product-delete-modal').classList.remove('hidden');
     document.getElementById('confirm-delete-product-btn').onclick = function() {
-        fetch('/projects/' + projectID + '/products/' + productID, {
+        fetch('/projects/' + projID + '/products/' + productID, {
             method: 'DELETE',
-            headers: {
-                'X-CSRF-Token': csrfToken,
-                'Content-Type': 'application/json'
-            }
+            headers: { 'X-CSRF-Token': csrfToken, 'Content-Type': 'application/json' }
         }).then(function(resp) {
             if (resp.ok) {
                 closeDeleteProductModal();
                 showToast('Product deleted successfully', 'success');
-                // Trigger refresh
                 htmx.trigger(document.body, 'productChanged');
             } else {
                 return resp.json().then(function(data) {
@@ -178,9 +226,280 @@ function closeDeleteProductModal() {
     document.getElementById('product-delete-modal').classList.add('hidden');
 }
 
-// Listen for productChanged to close slide-over and show toast
+// Bulk selection
+function toggleSelectAll(checkbox) {
+    var checkboxes = document.querySelectorAll('.product-checkbox');
+    selectedProducts.clear();
+    checkboxes.forEach(function(cb) {
+        cb.checked = checkbox.checked;
+        if (checkbox.checked) {
+            selectedProducts.add(parseInt(cb.value));
+        }
+    });
+    updateBulkActions();
+}
+
+function toggleProductSelect(checkbox) {
+    var id = parseInt(checkbox.value);
+    if (checkbox.checked) {
+        selectedProducts.add(id);
+    } else {
+        selectedProducts.delete(id);
+    }
+    // Update select-all state
+    var all = document.querySelectorAll('.product-checkbox');
+    var selectAll = document.getElementById('select-all');
+    if (selectAll) {
+        selectAll.checked = selectedProducts.size === all.length && all.length > 0;
+    }
+    updateBulkActions();
+}
+
+function updateBulkActions() {
+    var bulkActions = document.getElementById('bulk-actions');
+    var countEl = document.getElementById('selected-count');
+    if (selectedProducts.size > 0) {
+        bulkActions.classList.remove('hidden');
+        countEl.textContent = selectedProducts.size + ' selected';
+    } else {
+        bulkActions.classList.add('hidden');
+    }
+}
+
+function bulkDeleteProducts() {
+    document.getElementById('bulk-delete-count').textContent = selectedProducts.size;
+    document.getElementById('bulk-delete-modal').classList.remove('hidden');
+    document.getElementById('confirm-bulk-delete-btn').onclick = function() {
+        var ids = Array.from(selectedProducts).join(',');
+        fetch('/projects/' + projectID + '/products/bulk-delete', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken, 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'ids=' + encodeURIComponent(ids)
+        }).then(function(resp) { return resp.json(); })
+        .then(function(data) {
+            closeBulkDeleteModal();
+            selectedProducts.clear();
+            updateBulkActions();
+            if (data.deleted > 0) {
+                showToast(data.deleted + ' product(s) deleted', 'success');
+            }
+            if (data.errors && data.errors.length > 0) {
+                showToast(data.errors.length + ' product(s) could not be deleted', 'error');
+            }
+            htmx.trigger(document.body, 'productChanged');
+        }).catch(function() {
+            closeBulkDeleteModal();
+            showToast('Failed to delete products', 'error');
+        });
+    };
+}
+
+function closeBulkDeleteModal() {
+    document.getElementById('bulk-delete-modal').classList.add('hidden');
+}
+
+// Sorting
+function sortProducts(column) {
+    var sortInput = document.querySelector('[name="sort"]');
+    var dirInput = document.querySelector('[name="dir"]');
+    var currentSort = sortInput.value;
+    var currentDir = dirInput.value;
+
+    if (currentSort === column) {
+        dirInput.value = currentDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        sortInput.value = column;
+        dirInput.value = 'asc';
+    }
+
+    htmx.ajax('GET', '/projects/' + projectID + '/products?partial=true', {
+        target: '#products-table-container',
+        swap: 'innerHTML',
+        values: {
+            search: document.getElementById('product-search').value,
+            sort: sortInput.value,
+            dir: dirInput.value
+        }
+    });
+}
+
+// Pagination
+function goToPage(page) {
+    var sortInput = document.querySelector('[name="sort"]');
+    var dirInput = document.querySelector('[name="dir"]');
+    htmx.ajax('GET', '/projects/' + projectID + '/products?partial=true', {
+        target: '#products-table-container',
+        swap: 'innerHTML',
+        values: {
+            search: document.getElementById('product-search').value,
+            sort: sortInput.value,
+            dir: dirInput.value,
+            page: page
+        }
+    });
+}
+
+// Import modal
+function toggleImportModal() {
+    var modal = document.getElementById('import-modal');
+    modal.classList.toggle('hidden');
+    if (modal.classList.contains('hidden')) {
+        document.getElementById('import-result').innerHTML = '';
+    }
+}
+
+// Listen for productChanged to close slide-over
 document.body.addEventListener('productChanged', function() {
     closeProductSlideOver();
+    // Reset selections
+    selectedProducts.clear();
+    updateBulkActions();
 });
 </script>
+{{ end }}
+
+{{ define "products-table" }}
+{{ if .products }}
+<div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-3 w-10">
+                    <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"
+                           class="rounded border-gray-300 text-brand-600 focus:ring-brand-500">
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700" onclick="sortProducts('item_name')">
+                    <div class="flex items-center gap-1">
+                        Item Name
+                        {{ if eq .sortBy "item_name" }}
+                        <svg class="w-3 h-3 {{ if eq .sortDir "desc" }}rotate-180{{ end }}" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                        {{ end }}
+                    </div>
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700" onclick="sortProducts('hsn_code')">
+                    <div class="flex items-center gap-1">
+                        HSN Code
+                        {{ if eq .sortBy "hsn_code" }}
+                        <svg class="w-3 h-3 {{ if eq .sortDir "desc" }}rotate-180{{ end }}" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                        {{ end }}
+                    </div>
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700" onclick="sortProducts('uom')">
+                    <div class="flex items-center gap-1">
+                        UoM
+                        {{ if eq .sortBy "uom" }}
+                        <svg class="w-3 h-3 {{ if eq .sortDir "desc" }}rotate-180{{ end }}" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                        {{ end }}
+                    </div>
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700" onclick="sortProducts('brand_model')">
+                    <div class="flex items-center gap-1">
+                        Brand/Model
+                        {{ if eq .sortBy "brand_model" }}
+                        <svg class="w-3 h-3 {{ if eq .sortDir "desc" }}rotate-180{{ end }}" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                        {{ end }}
+                    </div>
+                </th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700" onclick="sortProducts('per_unit_price')">
+                    <div class="flex items-center justify-end gap-1">
+                        Price
+                        {{ if eq .sortBy "per_unit_price" }}
+                        <svg class="w-3 h-3 {{ if eq .sortDir "desc" }}rotate-180{{ end }}" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                        {{ end }}
+                    </div>
+                </th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700" onclick="sortProducts('gst_percentage')">
+                    <div class="flex items-center justify-end gap-1">
+                        GST %
+                        {{ if eq .sortBy "gst_percentage" }}
+                        <svg class="w-3 h-3 {{ if eq .sortDir "desc" }}rotate-180{{ end }}" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                        {{ end }}
+                    </div>
+                </th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price+GST</th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {{ range .products }}
+            <tr class="hover:bg-gray-50" id="product-row-{{ .ID }}">
+                <td class="px-4 py-3">
+                    <input type="checkbox" class="product-checkbox rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                           value="{{ .ID }}" onchange="toggleProductSelect(this)">
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">{{ .ItemName }}</div>
+                    {{ if .ItemDescription }}
+                    <div class="text-xs text-gray-500 truncate max-w-xs">{{ .ItemDescription }}</div>
+                    {{ end }}
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                    {{ if .HSNCode }}<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">{{ .HSNCode }}</span>{{ else }}<span class="text-gray-400">-</span>{{ end }}
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">{{ .UoM }}</span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{{ .BrandModel }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right font-mono">{{ printf "%.2f" .PerUnitPrice }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 text-right">{{ printf "%.0f" .GSTPercentage }}%</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right font-mono font-semibold">{{ printf "%.2f" .PriceWithGST }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
+                    <button onclick="editProduct({{ .ProjectID }}, {{ .ID }})"
+                        class="text-brand-600 hover:text-brand-900 mr-3" title="Edit">
+                        <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                    </button>
+                    <button onclick="confirmDeleteProduct({{ .ProjectID }}, {{ .ID }}, '{{ .ItemName }}')"
+                        class="text-red-600 hover:text-red-900" title="Delete">
+                        <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{{ if and .productPage (gt .productPage.TotalPages 1) }}
+<div class="px-4 py-3 flex items-center justify-between border-t border-gray-200 bg-gray-50">
+    <div class="text-sm text-gray-700">
+        Showing {{ if .products }}{{ with (index .products 0) }}{{ end }}page {{ $.productPage.CurrentPage }}{{ end }} of {{ .productPage.TotalPages }} ({{ .productPage.TotalCount }} products)
+    </div>
+    <div class="flex gap-1">
+        {{ if gt .productPage.CurrentPage 1 }}
+        <button onclick="goToPage({{ sub .productPage.CurrentPage 1 }})" class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-100">Prev</button>
+        {{ end }}
+        {{ range $i := seq 1 .productPage.TotalPages }}
+        <button onclick="goToPage({{ $i }})" class="px-3 py-1 text-sm border rounded-md {{ if eq $i $.productPage.CurrentPage }}bg-brand-600 text-white border-brand-600{{ else }}border-gray-300 hover:bg-gray-100{{ end }}">{{ $i }}</button>
+        {{ end }}
+        {{ if lt .productPage.CurrentPage .productPage.TotalPages }}
+        <button onclick="goToPage({{ add .productPage.CurrentPage 1 }})" class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-100">Next</button>
+        {{ end }}
+    </div>
+</div>
+{{ end }}
+
+{{ else }}
+<div class="text-center py-12">
+    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+    </svg>
+    <h3 class="mt-2 text-sm font-medium text-gray-900">{{ if .search }}No products found{{ else }}No products{{ end }}</h3>
+    <p class="mt-1 text-sm text-gray-500">{{ if .search }}Try adjusting your search terms.{{ else }}Get started by adding a product to this project.{{ end }}</p>
+    {{ if not .search }}
+    <div class="mt-4">
+        <button onclick="openProductSlideOver()" class="btn btn-primary text-sm">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Add Product
+        </button>
+    </div>
+    {{ end }}
+</div>
+{{ end }}
 {{ end }}

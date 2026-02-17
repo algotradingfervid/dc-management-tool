@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -37,15 +38,65 @@ type DCNumberParts struct {
 	SequenceNumber int
 }
 
+// FormatConfig holds the configurable DC number format settings from a project.
+type FormatConfig struct {
+	Format    string // e.g. "{PREFIX}/{PROJECT_CODE}/{FY}/{SEQ}" or "{PREFIX}-{TYPE}-{FY}-{SEQ}"
+	Separator string // legacy, not used with token-based format
+	Padding   int    // zero-padding for sequence number (default 3)
+}
+
+// DefaultFormatConfig returns the default format configuration.
+func DefaultFormatConfig() FormatConfig {
+	return FormatConfig{
+		Format:  "{PREFIX}-{TYPE}-{FY}-{SEQ}",
+		Padding: 3,
+	}
+}
+
+// FormatDCNumberConfigurable formats a DC number using a configurable format pattern.
+func FormatDCNumberConfigurable(format, prefix, projectCode, fy, dcType string, sequence, padding int) string {
+	if format == "" {
+		format = "{PREFIX}-{TYPE}-{FY}-{SEQ}"
+	}
+	if padding < 1 {
+		padding = 3
+	}
+
+	code := dcTypeCode[dcType]
+	seqStr := fmt.Sprintf("%0*d", padding, sequence)
+	fyFormatted := fmt.Sprintf("%s-%s", fy[:2], fy[2:])
+
+	r := strings.NewReplacer(
+		"{PREFIX}", prefix,
+		"{PROJECT_CODE}", projectCode,
+		"{FY}", fyFormatted,
+		"{SEQ}", seqStr,
+		"{TYPE}", code,
+	)
+	return r.Replace(format)
+}
+
+// PreviewDCNumber generates a preview of what a DC number would look like.
+func PreviewDCNumber(format, prefix, projectCode string, padding int) string {
+	if format == "" {
+		format = "{PREFIX}-{TYPE}-{FY}-{SEQ}"
+	}
+	if padding < 1 {
+		padding = 3
+	}
+	fy := GetFinancialYear(time.Now())
+	return FormatDCNumberConfigurable(format, prefix, projectCode, fy, DCTypeTransit, 1, padding)
+}
+
 // PeekNextDCNumber returns what the next DC number would be WITHOUT incrementing the sequence.
-// Use this for display purposes (e.g., showing the number on the create form).
 func PeekNextDCNumber(db *sql.DB, projectID int, dcType string) (string, error) {
 	if dcType != DCTypeTransit && dcType != DCTypeOfficial {
 		return "", fmt.Errorf("invalid DC type: %s (must be 'transit' or 'official')", dcType)
 	}
 
-	var dcPrefix string
-	err := db.QueryRow("SELECT dc_prefix FROM projects WHERE id = ?", projectID).Scan(&dcPrefix)
+	var dcPrefix, dcNumberFormat string
+	var seqPadding int
+	err := db.QueryRow("SELECT dc_prefix, dc_number_format, seq_padding FROM projects WHERE id = ?", projectID).Scan(&dcPrefix, &dcNumberFormat, &seqPadding)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", fmt.Errorf("project not found: %d", projectID)
@@ -70,39 +121,38 @@ func PeekNextDCNumber(db *sql.DB, projectID int, dcType string) (string, error) 
 		return "", fmt.Errorf("failed to read sequence: %w", err)
 	}
 
+	// Use configurable format if set, otherwise default
+	if dcNumberFormat != "" && dcNumberFormat != "{PREFIX}-{TYPE}-{FY}-{SEQ}" {
+		return FormatDCNumberConfigurable(dcNumberFormat, dcPrefix, dcPrefix, fy, dcType, nextSeq, seqPadding), nil
+	}
+
 	return FormatDCNumber(dcPrefix, fy, dcType, nextSeq), nil
 }
 
 // GenerateDCNumber generates a unique DC number for a delivery challan.
-// Format: {Prefix}-{TDC|ODC}-{YYYYYY}-{NNN}
-// Example: SCP-TDC-2425-001
-// WARNING: This increments the sequence. Only call when actually creating a DC.
 func GenerateDCNumber(db *sql.DB, projectID int, dcType string) (string, error) {
 	return GenerateDCNumberForDate(db, projectID, dcType, time.Now())
 }
 
 // GenerateDCNumberForDate generates a DC number using a specific date for FY calculation.
-// This is useful for testing and for generating DCs with a specific date.
 func GenerateDCNumberForDate(db *sql.DB, projectID int, dcType string, date time.Time) (string, error) {
 	if dcType != DCTypeTransit && dcType != DCTypeOfficial {
 		return "", fmt.Errorf("invalid DC type: %s (must be 'transit' or 'official')", dcType)
 	}
 
-	// Use BEGIN IMMEDIATE for SQLite write transaction to prevent SQLITE_BUSY
 	tx, err := db.Begin()
 	if err != nil {
 		return "", fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	// Force immediate write lock
 	if _, err := tx.Exec("SELECT 1 FROM dc_number_sequences LIMIT 0"); err != nil {
 		return "", fmt.Errorf("failed to acquire lock: %w", err)
 	}
 
-	// Get project DC prefix
-	var dcPrefix string
-	err = tx.QueryRow("SELECT dc_prefix FROM projects WHERE id = ?", projectID).Scan(&dcPrefix)
+	var dcPrefix, dcNumberFormat string
+	var seqPadding int
+	err = tx.QueryRow("SELECT dc_prefix, dc_number_format, seq_padding FROM projects WHERE id = ?", projectID).Scan(&dcPrefix, &dcNumberFormat, &seqPadding)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", fmt.Errorf("project not found: %d", projectID)
@@ -125,12 +175,15 @@ func GenerateDCNumberForDate(db *sql.DB, projectID int, dcType string, date time
 		return "", fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	if dcNumberFormat != "" && dcNumberFormat != "{PREFIX}-{TYPE}-{FY}-{SEQ}" {
+		return FormatDCNumberConfigurable(dcNumberFormat, dcPrefix, dcPrefix, fy, dcType, sequence, seqPadding), nil
+	}
+
 	return FormatDCNumber(dcPrefix, fy, dcType, sequence), nil
 }
 
 // getNextSequence retrieves and increments the sequence number atomically within a transaction.
 func getNextSequence(tx *sql.Tx, projectID int, dcType, financialYear string) (int, error) {
-	// Use INSERT ... ON CONFLICT to atomically get-and-increment
 	_, err := tx.Exec(`
 		INSERT INTO dc_number_sequences (project_id, dc_type, financial_year, next_sequence)
 		VALUES (?, ?, ?, 2)
@@ -142,7 +195,6 @@ func getNextSequence(tx *sql.Tx, projectID int, dcType, financialYear string) (i
 		return 0, fmt.Errorf("failed to upsert sequence: %w", err)
 	}
 
-	// Read the current value (which is next_sequence - 1 for existing, or 1 for new)
 	var nextSeq int
 	err = tx.QueryRow(`
 		SELECT next_sequence - 1 FROM dc_number_sequences
@@ -153,12 +205,10 @@ func getNextSequence(tx *sql.Tx, projectID int, dcType, financialYear string) (i
 		return 0, fmt.Errorf("failed to read sequence: %w", err)
 	}
 
-	// For a brand new row, we inserted next_sequence=2, so next_sequence-1=1. Correct.
-	// For an existing row, we incremented, so next_sequence-1 = the value we want. Correct.
 	return nextSeq, nil
 }
 
-// FormatDCNumber formats a DC number from its components.
+// FormatDCNumber formats a DC number from its components (legacy default format).
 func FormatDCNumber(prefix, financialYear, dcType string, sequence int) string {
 	code := dcTypeCode[dcType]
 	return fmt.Sprintf("%s-%s-%s-%03d", prefix, code, financialYear, sequence)
@@ -170,9 +220,6 @@ func ParseDCNumber(dcNumber string) (*DCNumberParts, error) {
 		return nil, fmt.Errorf("invalid DC number format: %s", dcNumber)
 	}
 
-	// Find the last 3 segments by splitting from the right
-	// Format: PREFIX-TDC-2526-001 (prefix may contain hyphens or slashes)
-	// We know the last 3 segments are: type code, FY, sequence
 	parts := splitFromRight(dcNumber, "-", 3)
 	if len(parts) != 4 {
 		return nil, fmt.Errorf("invalid DC number format: %s", dcNumber)
@@ -199,7 +246,6 @@ func ParseDCNumber(dcNumber string) (*DCNumberParts, error) {
 // splitFromRight splits a string by separator, taking the last n segments
 // and joining everything before them as the first element.
 func splitFromRight(s, sep string, n int) []string {
-	// Find positions of all separators
 	var positions []int
 	for i := 0; i < len(s); i++ {
 		if s[i] == sep[0] {

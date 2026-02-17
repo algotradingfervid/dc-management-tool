@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -10,11 +11,20 @@ import (
 	"github.com/narendhupati/dc-management-tool/internal/auth"
 	"github.com/narendhupati/dc-management-tool/internal/database"
 	"github.com/narendhupati/dc-management-tool/internal/helpers"
+	"github.com/narendhupati/dc-management-tool/internal/models"
+	"github.com/narendhupati/dc-management-tool/internal/services"
 )
 
-// ShowDashboard displays the dashboard page with statistics
+// ShowDashboard displays the project-scoped dashboard page with statistics
 func ShowDashboard(c *gin.Context) {
 	user := auth.GetCurrentUser(c)
+	project := c.MustGet("currentProject").(*models.Project)
+
+	// Get all user projects for the dropdown
+	allProjects, err := database.GetAccessibleProjects(user)
+	if err != nil {
+		log.Printf("Error fetching user projects: %v", err)
+	}
 
 	// Get flash messages
 	flashType, flashMessage := auth.PopFlash(c.Request)
@@ -43,41 +53,65 @@ func ShowDashboard(c *gin.Context) {
 		// no filter
 	}
 
-	// Fetch statistics
-	stats, err := database.GetDashboardStats(startDate, endDate)
+	// Fetch statistics scoped to current project
+	stats, err := database.GetDashboardStats(project.ID, startDate, endDate)
 	if err != nil {
 		log.Printf("Error fetching dashboard stats: %v", err)
 		stats = &database.DashboardStats{}
 	}
 
-	// Fetch recent DCs
-	recentDCs, err := database.GetRecentDCs(10)
+	// Fetch recent DCs scoped to current project
+	recentDCs, err := database.GetRecentDCs(project.ID, 10)
 	if err != nil {
 		log.Printf("Error fetching recent DCs: %v", err)
 	}
 
-	// Fetch project DC counts
-	projectCounts, err := database.GetProjectDCCounts()
+	// Fetch recent activity
+	recentActivity, err := database.GetRecentActivity(project.ID, 10)
 	if err != nil {
-		log.Printf("Error fetching project DC counts: %v", err)
+		log.Printf("Error fetching recent activity: %v", err)
+	}
+
+	// Next DC number previews
+	nextTransitDC := ""
+	nextOfficialDC := ""
+	if project.DCPrefix != "" {
+		if num, err := services.PeekNextDCNumber(database.DB, project.ID, "transit"); err == nil {
+			nextTransitDC = num
+		}
+		if num, err := services.PeekNextDCNumber(database.DB, project.ID, "official"); err == nil {
+			nextOfficialDC = num
+		}
+	}
+
+	// DC number format display
+	dcFormat := project.DCNumberFormat
+	if dcFormat == "" {
+		dcFormat = models.DefaultDCNumberFormat
 	}
 
 	// Build breadcrumbs
 	breadcrumbs := helpers.BuildBreadcrumbs(
+		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d/dashboard", project.ID)},
 		helpers.Breadcrumb{Title: "Dashboard"},
 	)
 
 	data := gin.H{
-		"user":          user,
-		"currentPath":   c.Request.URL.Path,
-		"breadcrumbs":   breadcrumbs,
-		"flashMessage":  flashMessage,
-		"flashType":     flashType,
-		"csrfToken":     csrf.Token(c.Request),
-		"Stats":         stats,
-		"RecentDCs":     recentDCs,
-		"ProjectCounts": projectCounts,
-		"Range":         dateRange,
+		"user":           user,
+		"currentProject": project,
+		"allProjects":    allProjects,
+		"currentPath":    c.Request.URL.Path,
+		"breadcrumbs":    breadcrumbs,
+		"flashMessage":   flashMessage,
+		"flashType":      flashType,
+		"csrfToken":      csrf.Token(c.Request),
+		"Stats":          stats,
+		"RecentDCs":      recentDCs,
+		"RecentActivity": recentActivity,
+		"Range":          dateRange,
+		"NextTransitDC":  nextTransitDC,
+		"NextOfficialDC": nextOfficialDC,
+		"DCFormat":       dcFormat,
 	}
 
 	// HTMX partial refresh

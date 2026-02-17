@@ -42,7 +42,7 @@ func ListTemplates(c *gin.Context) {
 	breadcrumbs := helpers.BuildBreadcrumbs(
 		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
 		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-		helpers.Breadcrumb{Title: "Templates", URL: ""},
+		helpers.Breadcrumb{Title: "DC Templates", URL: ""},
 	)
 
 	c.HTML(http.StatusOK, "dc_templates/list.html", gin.H{
@@ -50,6 +50,7 @@ func ListTemplates(c *gin.Context) {
 		"currentPath":  c.Request.URL.Path,
 		"breadcrumbs":  breadcrumbs,
 		"project":      project,
+		"currentProject":  project,
 		"templates":    templates,
 		"activeTab":    "templates",
 		"flashType":    flashType,
@@ -103,7 +104,7 @@ func CreateTemplateHandler(c *gin.Context) {
 	var products []database.TemplateProductInput
 	selectedProducts := make(map[int]int)
 
-	for _, pidStr := range productIDs {
+	for i, pidStr := range productIDs {
 		pid, err := strconv.Atoi(pidStr)
 		if err != nil {
 			continue
@@ -113,7 +114,7 @@ func CreateTemplateHandler(c *gin.Context) {
 		if qty < 1 {
 			qty = 1
 		}
-		products = append(products, database.TemplateProductInput{ProductID: pid, DefaultQuantity: qty})
+		products = append(products, database.TemplateProductInput{ProductID: pid, DefaultQuantity: qty, SortOrder: i})
 		selectedProducts[pid] = qty
 	}
 
@@ -205,7 +206,7 @@ func ShowTemplateDetail(c *gin.Context) {
 	breadcrumbs := helpers.BuildBreadcrumbs(
 		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
 		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-		helpers.Breadcrumb{Title: "Templates", URL: fmt.Sprintf("/projects/%d/templates", project.ID)},
+		helpers.Breadcrumb{Title: "DC Templates", URL: fmt.Sprintf("/projects/%d/templates", project.ID)},
 		helpers.Breadcrumb{Title: tmpl.Name, URL: ""},
 	)
 
@@ -214,6 +215,7 @@ func ShowTemplateDetail(c *gin.Context) {
 		"currentPath":  c.Request.URL.Path,
 		"breadcrumbs":  breadcrumbs,
 		"project":      project,
+		"currentProject":  project,
 		"template":     tmpl,
 		"products":     products,
 		"activeTab":    "templates",
@@ -240,6 +242,12 @@ func ShowEditTemplateForm(c *gin.Context) {
 	tmpl, err := database.GetTemplateByID(templateID)
 	if err != nil || tmpl.ProjectID != projectID {
 		c.String(http.StatusNotFound, "Template not found")
+		return
+	}
+
+	// Prevent editing templates that have been used in DCs
+	if hasDCs, count, _ := database.CheckTemplateHasDCs(templateID); hasDCs {
+		c.String(http.StatusForbidden, "Cannot edit template: %d DCs have been issued using this template", count)
 		return
 	}
 
@@ -285,6 +293,12 @@ func UpdateTemplateHandler(c *gin.Context) {
 		return
 	}
 
+	// Prevent updating templates that have been used in DCs
+	if hasDCs, count, _ := database.CheckTemplateHasDCs(templateID); hasDCs {
+		c.String(http.StatusForbidden, "Cannot edit template: %d DCs have been issued using this template", count)
+		return
+	}
+
 	tmpl := &models.DCTemplate{
 		ID:        templateID,
 		ProjectID: projectID,
@@ -298,7 +312,7 @@ func UpdateTemplateHandler(c *gin.Context) {
 	var products []database.TemplateProductInput
 	selectedProducts := make(map[int]int)
 
-	for _, pidStr := range productIDs {
+	for i, pidStr := range productIDs {
 		pid, err := strconv.Atoi(pidStr)
 		if err != nil {
 			continue
@@ -308,7 +322,7 @@ func UpdateTemplateHandler(c *gin.Context) {
 		if qty < 1 {
 			qty = 1
 		}
-		products = append(products, database.TemplateProductInput{ProductID: pid, DefaultQuantity: qty})
+		products = append(products, database.TemplateProductInput{ProductID: pid, DefaultQuantity: qty, SortOrder: i})
 		selectedProducts[pid] = qty
 	}
 
@@ -359,6 +373,31 @@ func UpdateTemplateHandler(c *gin.Context) {
 	c.HTML(http.StatusOK, "htmx/dc_templates/form-success.html", gin.H{
 		"message": "Template updated successfully",
 	})
+}
+
+func DuplicateTemplateHandler(c *gin.Context) {
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		return
+	}
+
+	templateID, err := strconv.Atoi(c.Param("tid"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid template ID"})
+		return
+	}
+
+	newTemplate, err := database.DuplicateTemplate(templateID, projectID)
+	if err != nil {
+		log.Printf("Error duplicating template: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	auth.SetFlash(c.Request, "success", fmt.Sprintf("Template duplicated as '%s'", newTemplate.Name))
+	c.Header("HX-Redirect", fmt.Sprintf("/projects/%d/templates/%d", projectID, newTemplate.ID))
+	c.JSON(http.StatusOK, gin.H{"success": true, "id": newTemplate.ID})
 }
 
 func DeleteTemplateHandler(c *gin.Context) {

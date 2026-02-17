@@ -27,6 +27,14 @@ func RequireAuth() gin.HandlerFunc {
 			return
 		}
 
+		// Check if user is deactivated
+		if !user.IsActive {
+			auth.DestroySession(c.Request)
+			c.Redirect(http.StatusFound, "/login")
+			c.Abort()
+			return
+		}
+
 		auth.SetCurrentUser(c, user)
 		c.Next()
 	}
