@@ -133,17 +133,23 @@ func GetOrCreateAddressConfig(projectID int, addressType string) (*models.Addres
 		default:
 			defaultCols = models.DefaultBillToColumns()
 		}
-		colJSON, _ := json.Marshal(defaultCols)
+		colJSON, marshalErr := json.Marshal(defaultCols)
+		if marshalErr != nil {
+			return nil, fmt.Errorf("marshal default columns: %w", marshalErr)
+		}
 
-		result, err := q.CreateAddressConfig(ctx, db.CreateAddressConfigParams{
+		result, cfgErr := q.CreateAddressConfig(ctx, db.CreateAddressConfigParams{
 			ProjectID:         int64(projectID),
 			AddressType:       addressType,
 			ColumnDefinitions: string(colJSON),
 		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create default config: %w", err)
+		if cfgErr != nil {
+			return nil, fmt.Errorf("failed to create default config: %w", cfgErr)
 		}
-		id, _ := result.LastInsertId()
+		id, cfgErr := result.LastInsertId()
+		if cfgErr != nil {
+			return nil, fmt.Errorf("get insert ID: %w", cfgErr)
+		}
 
 		config := &models.AddressListConfig{
 			ID:          int(id),
@@ -151,8 +157,8 @@ func GetOrCreateAddressConfig(projectID int, addressType string) (*models.Addres
 			AddressType: addressType,
 			ColumnJSON:  string(colJSON),
 		}
-		if err := config.ParseColumns(); err != nil {
-			return nil, fmt.Errorf("failed to parse columns: %w", err)
+		if parseErr := config.ParseColumns(); parseErr != nil {
+			return nil, fmt.Errorf("failed to parse columns: %w", parseErr)
 		}
 		return config, nil
 	} else if err != nil {
@@ -181,7 +187,7 @@ func BulkInsertAddresses(configID int, addresses []*models.Address) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	qtx := db.New(tx)
 	ctx := context.Background()
@@ -311,7 +317,10 @@ func DeleteAddress(addressID, configID int) error {
 	if err != nil {
 		return err
 	}
-	affected, _ := result.RowsAffected()
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("address not found")
 	}
@@ -342,7 +351,10 @@ func CreateAddress(configID int, data map[string]string, districtName, mandalNam
 	if err != nil {
 		return 0, err
 	}
-	id, _ := result.LastInsertId()
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("get insert ID: %w", err)
+	}
 	return int(id), nil
 }
 

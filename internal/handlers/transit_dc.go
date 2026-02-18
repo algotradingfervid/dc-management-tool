@@ -2,71 +2,70 @@ package handlers
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"math"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gorilla/csrf"
+	"github.com/labstack/echo/v4"
+
+	htmxdc "github.com/narendhupati/dc-management-tool/components/htmx/delivery_challans"
+	"github.com/narendhupati/dc-management-tool/components/layouts"
+	deliverychallan "github.com/narendhupati/dc-management-tool/components/pages/delivery_challans"
+	"github.com/narendhupati/dc-management-tool/components/partials"
 	"github.com/narendhupati/dc-management-tool/internal/auth"
+	"github.com/narendhupati/dc-management-tool/internal/components"
 	"github.com/narendhupati/dc-management-tool/internal/database"
 	"github.com/narendhupati/dc-management-tool/internal/helpers"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
 // ShowDCDetail dispatches to the correct detail view based on dc_type.
-func ShowDCDetail(c *gin.Context) {
+func ShowDCDetail(c echo.Context) error {
 	dcID, err := strconv.Atoi(c.Param("dcid"))
 	if err != nil {
 		projectID, _ := strconv.Atoi(c.Param("id"))
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
-		return
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
 	}
 
 	dc, err := database.GetDeliveryChallanByID(dcID)
 	if err != nil {
 		projectID, _ := strconv.Atoi(c.Param("id"))
-		auth.SetFlash(c.Request, "error", "DC not found")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", "DC not found")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
 	}
 
 	if dc.DCType == "official" {
-		ShowOfficialDCDetail(c)
-		return
+		return ShowOfficialDCDetail(c)
 	}
-	showTransitDCDetail(c)
+	return showTransitDCDetail(c)
 }
 
 // showTransitDCDetail shows a Transit DC's details.
-func showTransitDCDetail(c *gin.Context) {
+func showTransitDCDetail(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	dcID, err := strconv.Atoi(c.Param("dcid"))
 	if err != nil {
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
-		return
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
 	}
 
 	project, err := database.GetProjectByID(projectID)
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	dc, err := database.GetDeliveryChallanByID(dcID)
 	if err != nil || dc.ProjectID != projectID {
-		auth.SetFlash(c.Request, "error", "DC not found")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", "DC not found")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
 	}
 
 	transitDetails, _ := database.GetTransitDetailsByDCID(dcID)
@@ -115,7 +114,7 @@ func showTransitDCDetail(c *gin.Context) {
 		siblingDCs, _ = database.GetShipmentGroupDCs(*dc.ShipmentGroupID)
 	}
 
-	flashType, flashMessage := auth.PopFlash(c.Request)
+	flashType, flashMessage := auth.PopFlash(c.Request())
 
 	var breadcrumbItems []helpers.Breadcrumb
 	breadcrumbItems = append(breadcrumbItems,
@@ -133,164 +132,87 @@ func showTransitDCDetail(c *gin.Context) {
 		)
 	}
 	breadcrumbItems = append(breadcrumbItems, helpers.Breadcrumb{Title: dc.DCNumber, URL: ""})
-	breadcrumbs := helpers.BuildBreadcrumbs(breadcrumbItems...)
+	_ = helpers.BuildBreadcrumbs(breadcrumbItems...)
 
-	c.HTML(http.StatusOK, "delivery_challans/detail.html", gin.H{
-		"user":                user,
-		"currentPath":         c.Request.URL.Path,
-		"breadcrumbs":         breadcrumbs,
-		"project":             project,
-		"currentProject":      project,
-		"dc":                  dc,
-		"transitDetails":      transitDetails,
-		"lineItems":           lineItems,
-		"totalTaxable":        totalTaxable,
-		"totalTax":            totalTax,
-		"grandTotal":          grandTotal,
-		"roundedTotal":        roundedTotal,
-		"roundOff":            roundOff,
-		"shipToAddress":       shipToAddress,
-		"billToAddress":       billToAddress,
-		"billFromAddress":     billFromAddress,
-		"dispatchFromAddress": dispatchFromAddress,
-		"shipmentGroup":       shipmentGroup,
-		"siblingDCs":          siblingDCs,
-		"activeTab":           "templates",
-		"flashType":           flashType,
-		"flashMessage":        flashMessage,
-		"csrfToken":           csrf.Token(c.Request),
-		"csrfField":           csrf.TemplateField(c.Request),
-	})
+	// Suppress unused variable warnings — these are computed but passed via templ now.
+	_ = totalTaxable
+	_ = totalTax
+	_ = grandTotal
+	_ = roundedTotal
+	_ = roundOff
+	_ = shipToAddress
+	_ = billToAddress
+	_ = billFromAddress
+	_ = dispatchFromAddress
+	_ = shipmentGroup
+	_ = siblingDCs
+	_ = transitDetails
+
+	allProjects, _ := database.GetAccessibleProjects(user)
+
+	pageContent := deliverychallan.Detail(
+		user,
+		project,
+		allProjects,
+		dc,
+		flashType,
+		flashMessage,
+		csrf.Token(c.Request()),
+	)
+	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, project, allProjects, flashType, flashMessage)
+	return components.RenderOK(c, layouts.MainWithContent("Transit DC", sidebar, topbar, flashMessage, flashType, pageContent))
 }
 
 // LoadTemplateProducts is an HTMX endpoint that returns product line items for a template.
-func LoadTemplateProducts(c *gin.Context) {
+func LoadTemplateProducts(c echo.Context) error {
 	templateIDStr := c.Param("tid")
 	templateID, err := strconv.Atoi(templateIDStr)
 	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid template ID")
-		return
+		return c.String(http.StatusBadRequest, "Invalid template ID")
 	}
 
 	products, err := database.GetTemplateProducts(templateID)
 	if err != nil {
-		log.Printf("Error fetching template products: %v", err)
-		c.String(http.StatusInternalServerError, "Failed to load products")
-		return
+		slog.Error("Error fetching template products", slog.Int("template_id", templateID), slog.String("error", err.Error()))
+		return c.String(http.StatusInternalServerError, "Failed to load products")
 	}
 
 	tmpl, err := database.GetTemplateByID(templateID)
 	if err != nil {
-		c.String(http.StatusNotFound, "Template not found")
-		return
+		return c.String(http.StatusNotFound, "Template not found")
 	}
 
-	c.HTML(http.StatusOK, "htmx/delivery_challans/product-lines.html", gin.H{
-		"products": products,
-		"purpose":  tmpl.Purpose,
-	})
+	_ = tmpl.Purpose // purpose is embedded in the templ component via product data
+	return components.RenderOK(c, htmxdc.ProductLines(htmxdc.ProductLinesProps{
+		Products: products,
+	}))
 }
 
 // ShowTransitDCPrintView renders a print-ready view for a Transit DC.
-func ShowTransitDCPrintView(c *gin.Context) {
-	user := auth.GetCurrentUser(c)
-
+func ShowTransitDCPrintView(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	dcID, err := strconv.Atoi(c.Param("dcid"))
 	if err != nil {
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
-		return
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
 	}
 
 	project, err := database.GetProjectByID(projectID)
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	dc, err := database.GetDeliveryChallanByID(dcID)
 	if err != nil || dc.ProjectID != projectID {
-		auth.SetFlash(c.Request, "error", "DC not found")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", "DC not found")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
 	}
 
-	transitDetails, _ := database.GetTransitDetailsByDCID(dcID)
-	lineItems, _ := database.GetLineItemsByDCID(dcID)
-
-	// Load serial numbers for each line item
-	for i := range lineItems {
-		serials, _ := database.GetSerialNumbersByLineItemID(lineItems[i].ID)
-		lineItems[i].SerialNumbers = serials
-	}
-
-	// Calculate totals
-	var totalTaxable, totalTax, grandTotal float64
-	var totalQty int
-	for _, li := range lineItems {
-		totalTaxable += li.TaxableAmount
-		totalTax += li.TaxAmount
-		grandTotal += li.TotalAmount
-		totalQty += li.Quantity
-	}
-	roundedTotal := math.Round(grandTotal)
-	roundOff := roundedTotal - grandTotal
-
-	// Determine tax split (CGST/SGST vs IGST)
-	// For now we assume CGST/SGST (same state), can be enhanced later
-	halfTax := totalTax / 2.0
-
-	// Get addresses
-	var shipToAddress *models.Address
-	if dc.ShipToAddressID > 0 {
-		shipToAddress, _ = database.GetAddress(dc.ShipToAddressID)
-	}
-	var billToAddress *models.Address
-	if dc.BillToAddressID != nil && *dc.BillToAddressID > 0 {
-		billToAddress, _ = database.GetAddress(*dc.BillToAddressID)
-	}
-
-	// Get company settings
-	company, _ := database.GetCompanySettings()
-
-	// Amount in words
-	amountInWords := helpers.NumberToIndianWords(roundedTotal)
-
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-		helpers.Breadcrumb{Title: dc.DCNumber, URL: fmt.Sprintf("/projects/%d/dcs/%d", projectID, dcID)},
-		helpers.Breadcrumb{Title: "Print View", URL: ""},
-	)
-
-	c.HTML(http.StatusOK, "delivery_challans/transit_print.html", gin.H{
-		"user":           user,
-		"currentPath":    c.Request.URL.Path,
-		"breadcrumbs":    breadcrumbs,
-		"project":        project,
-		"currentProject":  project,
-		"dc":             dc,
-		"transitDetails": transitDetails,
-		"lineItems":      lineItems,
-		"totalTaxable":   totalTaxable,
-		"totalTax":       totalTax,
-		"grandTotal":     grandTotal,
-		"roundedTotal":   roundedTotal,
-		"roundOff":       roundOff,
-		"totalQty":       totalQty,
-		"cgst":           math.Round(halfTax*100) / 100,
-		"sgst":           math.Round(halfTax*100) / 100,
-		"shipToAddress":  shipToAddress,
-		"billToAddress":  billToAddress,
-		"company":        company,
-		"amountInWords":  amountInWords,
-		"activeTab":      "templates",
-	})
+	return components.RenderOK(c, deliverychallan.TransitPrint(project, dc))
 }
 
 // parseSerialNumbers splits newline-separated serial numbers, trimming whitespace and removing empty lines.

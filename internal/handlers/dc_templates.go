@@ -2,105 +2,103 @@ package handlers
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gorilla/csrf"
+	"github.com/labstack/echo/v4"
+	htmxdctemplates "github.com/narendhupati/dc-management-tool/components/htmx/dc_templates"
+	"github.com/narendhupati/dc-management-tool/components/layouts"
+	dctemplates "github.com/narendhupati/dc-management-tool/components/pages/dc_templates"
+	"github.com/narendhupati/dc-management-tool/components/partials"
 	"github.com/narendhupati/dc-management-tool/internal/auth"
+	"github.com/narendhupati/dc-management-tool/internal/components"
 	"github.com/narendhupati/dc-management-tool/internal/database"
 	"github.com/narendhupati/dc-management-tool/internal/helpers"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
-func ListTemplates(c *gin.Context) {
+func ListTemplates(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	project, err := database.GetProjectByID(projectID)
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Project not found")
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		auth.SetFlash(c.Request(), "error", "Project not found")
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	templates, err := database.GetTemplatesByProjectID(projectID)
 	if err != nil {
-		log.Printf("Error fetching templates: %v", err)
+		slog.Error("Error fetching templates", slog.String("error", err.Error()), slog.Int("projectID", projectID))
 		templates = []*models.DCTemplate{}
 	}
 
-	flashType, flashMessage := auth.PopFlash(c.Request)
+	allProjects, _ := database.GetAccessibleProjects(user)
+	flashType, flashMessage := auth.PopFlash(c.Request())
 
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-		helpers.Breadcrumb{Title: "DC Templates", URL: ""},
+	pageContent := dctemplates.List(
+		user,
+		project,
+		allProjects,
+		templates,
+		flashType,
+		flashMessage,
+		csrf.Token(c.Request()),
 	)
-
-	c.HTML(http.StatusOK, "dc_templates/list.html", gin.H{
-		"user":         user,
-		"currentPath":  c.Request.URL.Path,
-		"breadcrumbs":  breadcrumbs,
-		"project":      project,
-		"currentProject":  project,
-		"templates":    templates,
-		"activeTab":    "templates",
-		"flashType":    flashType,
-		"flashMessage": flashMessage,
-		"csrfToken":    csrf.Token(c.Request),
-		"csrfField":    csrf.TemplateField(c.Request),
-	})
+	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, project, allProjects, flashType, flashMessage)
+	return components.RenderOK(c, layouts.MainWithContent("DC Templates", sidebar, topbar, flashMessage, flashType, pageContent))
 }
 
-func ShowCreateTemplateForm(c *gin.Context) {
+func ShowCreateTemplateForm(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid project ID")
-		return
+		return c.String(http.StatusBadRequest, "Invalid project ID")
 	}
 
 	products, err := database.GetProductsByProjectID(projectID)
 	if err != nil {
-		log.Printf("Error fetching products: %v", err)
+		slog.Error("Error fetching products", slog.String("error", err.Error()), slog.Int("projectID", projectID))
 		products = []*models.Product{}
 	}
 
-	c.HTML(http.StatusOK, "htmx/dc_templates/form.html", gin.H{
-		"projectID":          projectID,
-		"template":           &models.DCTemplate{},
-		"products":           products,
-		"selectedProducts":   map[int]int{},
-		"errors":             map[string]string{},
-		"isEdit":             false,
-		"csrfField":          csrf.TemplateField(c.Request),
-	})
+	return components.RenderOK(c, htmxdctemplates.DCTemplateForm(htmxdctemplates.DCTemplateFormProps{
+		ProjectID:        projectID,
+		Template:         models.DCTemplate{},
+		IsEdit:           false,
+		Errors:           map[string]string{},
+		Products:         products,
+		SelectedProducts: map[int]int{},
+		CsrfToken:        csrf.Token(c.Request()),
+	}))
 }
 
-func CreateTemplateHandler(c *gin.Context) {
+func CreateTemplateHandler(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid project ID")
-		return
+		return c.String(http.StatusBadRequest, "Invalid project ID")
 	}
 
 	tmpl := &models.DCTemplate{
 		ProjectID: projectID,
-		Name:      strings.TrimSpace(c.PostForm("name")),
-		Purpose:   strings.TrimSpace(c.PostForm("purpose")),
+		Name:      strings.TrimSpace(c.FormValue("name")),
+		Purpose:   strings.TrimSpace(c.FormValue("purpose")),
 	}
 
-	errors := tmpl.Validate()
+	errors := helpers.ValidateStruct(tmpl)
 
 	// Parse selected products
-	productIDs := c.PostFormArray("product_ids")
+	if err := c.Request().ParseForm(); err != nil {
+		slog.Error("Error parsing form", slog.String("error", err.Error()))
+	}
+	productIDs := c.Request().PostForm["product_ids"]
 	var products []database.TemplateProductInput
 	selectedProducts := make(map[int]int)
 
@@ -109,7 +107,7 @@ func CreateTemplateHandler(c *gin.Context) {
 		if err != nil {
 			continue
 		}
-		qtyStr := c.PostForm(fmt.Sprintf("quantity_%d", pid))
+		qtyStr := c.FormValue(fmt.Sprintf("quantity_%d", pid))
 		qty, _ := strconv.Atoi(qtyStr)
 		if qty < 1 {
 			qty = 1
@@ -126,7 +124,7 @@ func CreateTemplateHandler(c *gin.Context) {
 	if _, ok := errors["name"]; !ok && tmpl.Name != "" {
 		unique, err := database.CheckTemplateNameUnique(projectID, tmpl.Name, 0)
 		if err != nil {
-			log.Printf("Error checking uniqueness: %v", err)
+			slog.Error("Error checking template name uniqueness", slog.String("error", err.Error()), slog.Int("projectID", projectID))
 		} else if !unique {
 			errors["name"] = "A template with this name already exists in this project"
 		}
@@ -135,180 +133,162 @@ func CreateTemplateHandler(c *gin.Context) {
 	allProducts, _ := database.GetProductsByProjectID(projectID)
 
 	if len(errors) > 0 {
-		c.HTML(http.StatusOK, "htmx/dc_templates/form.html", gin.H{
-			"projectID":        projectID,
-			"template":         tmpl,
-			"products":         allProducts,
-			"selectedProducts": selectedProducts,
-			"errors":           errors,
-			"isEdit":           false,
-			"csrfField":        csrf.TemplateField(c.Request),
-		})
-		return
+		return components.RenderOK(c, htmxdctemplates.DCTemplateForm(htmxdctemplates.DCTemplateFormProps{
+			ProjectID:        projectID,
+			Template:         *tmpl,
+			IsEdit:           false,
+			Errors:           errors,
+			Products:         allProducts,
+			SelectedProducts: selectedProducts,
+			CsrfToken:        csrf.Token(c.Request()),
+		}))
 	}
 
 	if err := database.CreateTemplate(tmpl, products); err != nil {
-		log.Printf("Error creating template: %v", err)
+		slog.Error("Error creating template", slog.String("error", err.Error()), slog.Int("projectID", projectID))
 		errors["general"] = "Failed to create template"
-		c.HTML(http.StatusOK, "htmx/dc_templates/form.html", gin.H{
-			"projectID":        projectID,
-			"template":         tmpl,
-			"products":         allProducts,
-			"selectedProducts": selectedProducts,
-			"errors":           errors,
-			"isEdit":           false,
-			"csrfField":        csrf.TemplateField(c.Request),
-		})
-		return
+		return components.RenderOK(c, htmxdctemplates.DCTemplateForm(htmxdctemplates.DCTemplateFormProps{
+			ProjectID:        projectID,
+			Template:         *tmpl,
+			IsEdit:           false,
+			Errors:           errors,
+			Products:         allProducts,
+			SelectedProducts: selectedProducts,
+			CsrfToken:        csrf.Token(c.Request()),
+		}))
 	}
 
-	c.Header("HX-Trigger", "templateChanged")
-	c.HTML(http.StatusOK, "htmx/dc_templates/form-success.html", gin.H{
-		"message": "Template created successfully",
-	})
+	c.Response().Header().Set("HX-Trigger", "templateChanged")
+	return components.RenderOK(c, htmxdctemplates.DCTemplateFormSuccess(htmxdctemplates.DCTemplateFormSuccessProps{
+		Message: "Template created successfully",
+	}))
 }
 
-func ShowTemplateDetail(c *gin.Context) {
+func ShowTemplateDetail(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	templateID, err := strconv.Atoi(c.Param("tid"))
 	if err != nil {
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/templates", projectID))
-		return
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/templates", projectID))
 	}
 
 	project, err := database.GetProjectByID(projectID)
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	tmpl, err := database.GetTemplateByID(templateID)
 	if err != nil || tmpl.ProjectID != projectID {
-		auth.SetFlash(c.Request, "error", "Template not found")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/templates", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", "Template not found")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/templates", projectID))
 	}
 
 	products, err := database.GetTemplateProducts(templateID)
 	if err != nil {
-		log.Printf("Error fetching template products: %v", err)
+		slog.Error("Error fetching template products", slog.String("error", err.Error()), slog.Int("templateID", templateID))
 	}
 
-	flashType, flashMessage := auth.PopFlash(c.Request)
+	allProjects, _ := database.GetAccessibleProjects(user)
+	flashType, flashMessage := auth.PopFlash(c.Request())
 
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-		helpers.Breadcrumb{Title: "DC Templates", URL: fmt.Sprintf("/projects/%d/templates", project.ID)},
-		helpers.Breadcrumb{Title: tmpl.Name, URL: ""},
+	pageContent := dctemplates.Detail(
+		user,
+		project,
+		allProjects,
+		tmpl,
+		products,
+		flashType,
+		flashMessage,
+		csrf.Token(c.Request()),
 	)
-
-	c.HTML(http.StatusOK, "dc_templates/detail.html", gin.H{
-		"user":         user,
-		"currentPath":  c.Request.URL.Path,
-		"breadcrumbs":  breadcrumbs,
-		"project":      project,
-		"currentProject":  project,
-		"template":     tmpl,
-		"products":     products,
-		"activeTab":    "templates",
-		"flashType":    flashType,
-		"flashMessage": flashMessage,
-		"csrfToken":    csrf.Token(c.Request),
-		"csrfField":    csrf.TemplateField(c.Request),
-	})
+	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, project, allProjects, flashType, flashMessage)
+	return components.RenderOK(c, layouts.MainWithContent("Template Details", sidebar, topbar, flashMessage, flashType, pageContent))
 }
 
-func ShowEditTemplateForm(c *gin.Context) {
+func ShowEditTemplateForm(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid project ID")
-		return
+		return c.String(http.StatusBadRequest, "Invalid project ID")
 	}
 
 	templateID, err := strconv.Atoi(c.Param("tid"))
 	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid template ID")
-		return
+		return c.String(http.StatusBadRequest, "Invalid template ID")
 	}
 
 	tmpl, err := database.GetTemplateByID(templateID)
 	if err != nil || tmpl.ProjectID != projectID {
-		c.String(http.StatusNotFound, "Template not found")
-		return
+		return c.String(http.StatusNotFound, "Template not found")
 	}
 
 	// Prevent editing templates that have been used in DCs
 	if hasDCs, count, _ := database.CheckTemplateHasDCs(templateID); hasDCs {
-		c.String(http.StatusForbidden, "Cannot edit template: %d DCs have been issued using this template", count)
-		return
+		return c.String(http.StatusForbidden, fmt.Sprintf("Cannot edit template: %d DCs have been issued using this template", count))
 	}
 
 	products, err := database.GetProductsByProjectID(projectID)
 	if err != nil {
-		log.Printf("Error fetching products: %v", err)
+		slog.Error("Error fetching products", slog.String("error", err.Error()), slog.Int("projectID", projectID))
 		products = []*models.Product{}
 	}
 
 	selectedProducts, err := database.GetTemplateProductIDs(templateID)
 	if err != nil {
-		log.Printf("Error fetching template product IDs: %v", err)
+		slog.Error("Error fetching template product IDs", slog.String("error", err.Error()), slog.Int("templateID", templateID))
 		selectedProducts = map[int]int{}
 	}
 
-	c.HTML(http.StatusOK, "htmx/dc_templates/form.html", gin.H{
-		"projectID":        projectID,
-		"template":         tmpl,
-		"products":         products,
-		"selectedProducts": selectedProducts,
-		"errors":           map[string]string{},
-		"isEdit":           true,
-		"csrfField":        csrf.TemplateField(c.Request),
-	})
+	return components.RenderOK(c, htmxdctemplates.DCTemplateForm(htmxdctemplates.DCTemplateFormProps{
+		ProjectID:        projectID,
+		Template:         *tmpl,
+		IsEdit:           true,
+		Errors:           map[string]string{},
+		Products:         products,
+		SelectedProducts: selectedProducts,
+		CsrfToken:        csrf.Token(c.Request()),
+	}))
 }
 
-func UpdateTemplateHandler(c *gin.Context) {
+func UpdateTemplateHandler(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid project ID")
-		return
+		return c.String(http.StatusBadRequest, "Invalid project ID")
 	}
 
 	templateID, err := strconv.Atoi(c.Param("tid"))
 	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid template ID")
-		return
+		return c.String(http.StatusBadRequest, "Invalid template ID")
 	}
 
 	existing, err := database.GetTemplateByID(templateID)
 	if err != nil || existing.ProjectID != projectID {
-		c.String(http.StatusNotFound, "Template not found")
-		return
+		return c.String(http.StatusNotFound, "Template not found")
 	}
 
 	// Prevent updating templates that have been used in DCs
 	if hasDCs, count, _ := database.CheckTemplateHasDCs(templateID); hasDCs {
-		c.String(http.StatusForbidden, "Cannot edit template: %d DCs have been issued using this template", count)
-		return
+		return c.String(http.StatusForbidden, fmt.Sprintf("Cannot edit template: %d DCs have been issued using this template", count))
 	}
 
 	tmpl := &models.DCTemplate{
 		ID:        templateID,
 		ProjectID: projectID,
-		Name:      strings.TrimSpace(c.PostForm("name")),
-		Purpose:   strings.TrimSpace(c.PostForm("purpose")),
+		Name:      strings.TrimSpace(c.FormValue("name")),
+		Purpose:   strings.TrimSpace(c.FormValue("purpose")),
 	}
 
-	errors := tmpl.Validate()
+	errors := helpers.ValidateStruct(tmpl)
 
-	productIDs := c.PostFormArray("product_ids")
+	if err := c.Request().ParseForm(); err != nil {
+		slog.Error("Error parsing form", slog.String("error", err.Error()))
+	}
+	productIDs := c.Request().PostForm["product_ids"]
 	var products []database.TemplateProductInput
 	selectedProducts := make(map[int]int)
 
@@ -317,7 +297,7 @@ func UpdateTemplateHandler(c *gin.Context) {
 		if err != nil {
 			continue
 		}
-		qtyStr := c.PostForm(fmt.Sprintf("quantity_%d", pid))
+		qtyStr := c.FormValue(fmt.Sprintf("quantity_%d", pid))
 		qty, _ := strconv.Atoi(qtyStr)
 		if qty < 1 {
 			qty = 1
@@ -333,7 +313,7 @@ func UpdateTemplateHandler(c *gin.Context) {
 	if _, ok := errors["name"]; !ok && tmpl.Name != "" {
 		unique, err := database.CheckTemplateNameUnique(projectID, tmpl.Name, templateID)
 		if err != nil {
-			log.Printf("Error checking uniqueness: %v", err)
+			slog.Error("Error checking template name uniqueness", slog.String("error", err.Error()), slog.Int("projectID", projectID), slog.Int("templateID", templateID))
 		} else if !unique {
 			errors["name"] = "A template with this name already exists in this project"
 		}
@@ -342,89 +322,80 @@ func UpdateTemplateHandler(c *gin.Context) {
 	allProducts, _ := database.GetProductsByProjectID(projectID)
 
 	if len(errors) > 0 {
-		c.HTML(http.StatusOK, "htmx/dc_templates/form.html", gin.H{
-			"projectID":        projectID,
-			"template":         tmpl,
-			"products":         allProducts,
-			"selectedProducts": selectedProducts,
-			"errors":           errors,
-			"isEdit":           true,
-			"csrfField":        csrf.TemplateField(c.Request),
-		})
-		return
+		return components.RenderOK(c, htmxdctemplates.DCTemplateForm(htmxdctemplates.DCTemplateFormProps{
+			ProjectID:        projectID,
+			Template:         *tmpl,
+			IsEdit:           true,
+			Errors:           errors,
+			Products:         allProducts,
+			SelectedProducts: selectedProducts,
+			CsrfToken:        csrf.Token(c.Request()),
+		}))
 	}
 
 	if err := database.UpdateTemplate(tmpl, products); err != nil {
-		log.Printf("Error updating template: %v", err)
+		slog.Error("Error updating template", slog.String("error", err.Error()), slog.Int("templateID", templateID), slog.Int("projectID", projectID))
 		errors["general"] = "Failed to update template"
-		c.HTML(http.StatusOK, "htmx/dc_templates/form.html", gin.H{
-			"projectID":        projectID,
-			"template":         tmpl,
-			"products":         allProducts,
-			"selectedProducts": selectedProducts,
-			"errors":           errors,
-			"isEdit":           true,
-			"csrfField":        csrf.TemplateField(c.Request),
-		})
-		return
+		return components.RenderOK(c, htmxdctemplates.DCTemplateForm(htmxdctemplates.DCTemplateFormProps{
+			ProjectID:        projectID,
+			Template:         *tmpl,
+			IsEdit:           true,
+			Errors:           errors,
+			Products:         allProducts,
+			SelectedProducts: selectedProducts,
+			CsrfToken:        csrf.Token(c.Request()),
+		}))
 	}
 
-	c.Header("HX-Trigger", "templateChanged")
-	c.HTML(http.StatusOK, "htmx/dc_templates/form-success.html", gin.H{
-		"message": "Template updated successfully",
-	})
+	c.Response().Header().Set("HX-Trigger", "templateChanged")
+	return components.RenderOK(c, htmxdctemplates.DCTemplateFormSuccess(htmxdctemplates.DCTemplateFormSuccessProps{
+		Message: "Template updated successfully",
+	}))
 }
 
-func DuplicateTemplateHandler(c *gin.Context) {
+func DuplicateTemplateHandler(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid project ID"})
 	}
 
 	templateID, err := strconv.Atoi(c.Param("tid"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid template ID"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid template ID"})
 	}
 
 	newTemplate, err := database.DuplicateTemplate(templateID, projectID)
 	if err != nil {
-		log.Printf("Error duplicating template: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		slog.Error("Error duplicating template", slog.String("error", err.Error()), slog.Int("templateID", templateID), slog.Int("projectID", projectID))
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": err.Error()})
 	}
 
-	auth.SetFlash(c.Request, "success", fmt.Sprintf("Template duplicated as '%s'", newTemplate.Name))
-	c.Header("HX-Redirect", fmt.Sprintf("/projects/%d/templates/%d", projectID, newTemplate.ID))
-	c.JSON(http.StatusOK, gin.H{"success": true, "id": newTemplate.ID})
+	auth.SetFlash(c.Request(), "success", fmt.Sprintf("Template duplicated as '%s'", newTemplate.Name))
+	c.Response().Header().Set("HX-Redirect", fmt.Sprintf("/projects/%d/templates/%d", projectID, newTemplate.ID))
+	return c.JSON(http.StatusOK, map[string]interface{}{"success": true, "id": newTemplate.ID})
 }
 
-func DeleteTemplateHandler(c *gin.Context) {
+func DeleteTemplateHandler(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid project ID"})
 	}
 
 	templateID, err := strconv.Atoi(c.Param("tid"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid template ID"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid template ID"})
 	}
 
 	tmpl, err := database.GetTemplateByID(templateID)
 	if err != nil || tmpl.ProjectID != projectID {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
-		return
+		return c.JSON(http.StatusNotFound, map[string]interface{}{"error": "Template not found"})
 	}
 
 	if err := database.DeleteTemplate(templateID, projectID); err != nil {
-		log.Printf("Error deleting template: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		slog.Error("Error deleting template", slog.String("error", err.Error()), slog.Int("templateID", templateID), slog.Int("projectID", projectID))
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": err.Error()})
 	}
 
-	c.Header("HX-Trigger", "templateChanged")
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Template deleted successfully"})
+	c.Response().Header().Set("HX-Trigger", "templateChanged")
+	return c.JSON(http.StatusOK, map[string]interface{}{"success": true, "message": "Template deleted successfully"})
 }

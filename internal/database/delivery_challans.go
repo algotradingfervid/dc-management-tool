@@ -110,7 +110,7 @@ func CreateDeliveryChallan(dc *models.DeliveryChallan, transitDetails *models.DC
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	q := db.New(tx)
 
@@ -132,7 +132,10 @@ func CreateDeliveryChallan(dc *models.DeliveryChallan, transitDetails *models.DC
 	if err != nil {
 		return fmt.Errorf("failed to insert delivery challan: %w", err)
 	}
-	dcID, _ := result.LastInsertId()
+	dcID, err := result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("get insert ID for delivery challan: %w", err)
+	}
 	dc.ID = int(dcID)
 
 	// Insert transit details if provided.
@@ -169,7 +172,10 @@ func CreateDeliveryChallan(dc *models.DeliveryChallan, transitDetails *models.DC
 		if err != nil {
 			return fmt.Errorf("failed to insert line item %d: %w", i+1, err)
 		}
-		liID, _ := liResult.LastInsertId()
+		liID, err := liResult.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("get insert ID for line item %d: %w", i+1, err)
+		}
 		lineItems[i].ID = int(liID)
 
 		if i < len(serialNumbersByLine) {
@@ -406,7 +412,7 @@ func DeleteDC(dcID int) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	q := db.New(tx)
 
@@ -467,7 +473,10 @@ func IssueDC(dcID int, userID int) error {
 	if err != nil {
 		return fmt.Errorf("failed to issue DC: %w", err)
 	}
-	rowsAffected, _ := result.RowsAffected()
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("get rows affected for issue DC: %w", err)
+	}
 	if rowsAffected == 0 {
 		return fmt.Errorf("DC not found or already issued")
 	}

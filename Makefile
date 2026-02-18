@@ -1,4 +1,6 @@
-.PHONY: help setup dev build run test clean migrate seed fmt lint css test-docker-build test-docker-up test-docker-down test-docker-parallel test-docker-suite test-docker-logs test-docker-reset
+.PHONY: help setup dev build run test clean migrate migrate-status migrate-down seed fmt lint css restart
+
+DATABASE_PATH ?= ./data/dc_management.db
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -12,8 +14,10 @@ setup: ## Install dependencies and set up project
 	go mod tidy
 	@echo "Installing Air for hot reload..."
 	go install github.com/air-verse/air@latest
+	@echo "Installing Goose migration CLI..."
+	go install github.com/pressly/goose/v3/cmd/goose@latest
 	@echo "Creating necessary directories..."
-	mkdir -p data static/uploads tmp
+	mkdir -p data static/uploads tmp internal/migrations
 	@echo "Setup complete!"
 
 dev: ## Run development server with hot reload
@@ -39,13 +43,15 @@ clean: ## Clean build artifacts and temporary files
 	go clean
 	@echo "Clean complete!"
 
-migrate: ## Run database migrations
+migrate: ## Run database migrations (via goose)
 	@echo "Running migrations..."
-	@go run cmd/server/main.go migrate || echo "Run 'make dev' to apply migrations automatically"
+	@goose -dir internal/migrations sqlite3 $(DATABASE_PATH) up
 
-migrate-down: ## Rollback last migration (manual implementation needed)
-	@echo "Migration rollback not yet implemented"
-	@echo "To rollback, manually execute down.sql files"
+migrate-status: ## Show migration status
+	@goose -dir internal/migrations sqlite3 $(DATABASE_PATH) status
+
+migrate-down: ## Rollback last migration
+	@goose -dir internal/migrations sqlite3 $(DATABASE_PATH) down
 
 seed: ## Seed database with test data
 	@echo "Seeding database..."
@@ -74,33 +80,5 @@ restart: ## Stop, rebuild CSS + Go binary, and start the server
 	@go build -o bin/dc-management-tool ./cmd/server
 	@echo "Starting server..."
 	@./bin/dc-management-tool
-
-## Docker-based parallel testing
-test-docker-build: ## Build Docker test image
-	@echo "Building Docker image..."
-	@docker compose build
-
-test-docker-up: ## Start 5 test containers (ports 8081-8085)
-	@echo "Starting test containers..."
-	@docker compose up -d --wait
-	@echo "Containers ready on ports 8081-8085"
-
-test-docker-down: ## Stop and remove test containers + volumes
-	@echo "Stopping test containers..."
-	@docker compose down -v
-
-test-docker-parallel: ## Run all test plans in parallel
-	@./scripts/run-parallel-tests.sh --all
-
-test-docker-suite: ## Run single test suite: make test-docker-suite PLAN=phase-4-products-master PORT=8081
-	@./scripts/run-suite.sh --plan testing-plans/$(PLAN).md --port $(PORT)
-
-test-docker-logs: ## Tail test container logs
-	@docker compose logs -f
-
-test-docker-reset: ## Full teardown with orphan removal
-	@echo "Full teardown..."
-	@docker compose down -v --remove-orphans
-	@echo "Done."
 
 .DEFAULT_GOAL := help

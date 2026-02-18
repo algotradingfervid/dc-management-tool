@@ -1,0 +1,214 @@
+package projects
+
+import (
+	"fmt"
+
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+templ Detail(user *models.User, currentProject *models.Project, allProjects []*models.Project, stats map[string]int64, flashType string, flashMessage string) {
+	<div class="space-y-6">
+		<!-- Flash Messages -->
+		if flashType != "" {
+			<script>
+				document.addEventListener('DOMContentLoaded', function() {
+					showToast(document.getElementById('detail-flash-data').dataset.message, document.getElementById('detail-flash-data').dataset.type);
+				});
+			</script>
+			<div id="detail-flash-data" class="hidden" data-message={ flashMessage } data-type={ flashType }></div>
+		}
+		if currentProject != nil {
+			<!-- Header -->
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+				<div>
+					<div class="flex items-center gap-3">
+						<h1 class="text-2xl font-bold text-gray-900">{ currentProject.Name }</h1>
+						<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-100 text-brand-800">
+							{ currentProject.DCPrefix }
+						</span>
+					</div>
+					if currentProject.Description != "" {
+						<p class="text-sm text-gray-500 mt-1">{ currentProject.Description }</p>
+					}
+				</div>
+				<div class="flex items-center gap-2">
+					<a href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/edit") } class="btn btn-secondary text-sm">
+						<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+						</svg>
+						Edit
+					</a>
+					<button
+						onclick={ templ.ComponentScript{Call: fmt.Sprintf("confirmDeleteProject(%d, '%s')", currentProject.ID, currentProject.Name)} }
+						class="btn btn-danger text-sm"
+					>
+						<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+						</svg>
+						Delete
+					</button>
+				</div>
+			</div>
+			<!-- Project Info Cards -->
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+				<div class="card">
+					<p class="text-sm font-medium text-gray-600">Products</p>
+					<p class="text-2xl font-bold text-gray-900 mt-1">{ fmt.Sprintf("%d", currentProject.ProductCount) }</p>
+				</div>
+				<div class="card">
+					<p class="text-sm font-medium text-gray-600">Templates</p>
+					<p class="text-2xl font-bold text-gray-900 mt-1">{ fmt.Sprintf("%d", currentProject.TemplateCount) }</p>
+				</div>
+				<div class="card">
+					<p class="text-sm font-medium text-gray-600">Transit DCs</p>
+					<p class="text-2xl font-bold text-brand-600 mt-1">{ fmt.Sprintf("%d", currentProject.TransitDCCount) }</p>
+				</div>
+				<div class="card">
+					<p class="text-sm font-medium text-gray-600">Official DCs</p>
+					<p class="text-2xl font-bold text-green-600 mt-1">{ fmt.Sprintf("%d", currentProject.OfficialDCCount) }</p>
+				</div>
+			</div>
+			<!-- Tabs -->
+			<div class="card">
+				<div class="border-b border-gray-200">
+					<nav class="-mb-px flex space-x-8" aria-label="Tabs">
+						<a
+							href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "?tab=overview") }
+							class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-brand-500 text-brand-600"
+						>Overview</a>
+						<a
+							href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/products") }
+							class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+						>Products ({ fmt.Sprintf("%d", currentProject.ProductCount) })</a>
+						<a
+							href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "?tab=templates") }
+							class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+						>Templates ({ fmt.Sprintf("%d", currentProject.TemplateCount) })</a>
+						<a
+							href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "?tab=addresses") }
+							class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+						>Addresses</a>
+						<a
+							href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "?tab=dcs") }
+							class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+						>DCs ({ fmt.Sprintf("%d", currentProject.TransitDCCount+currentProject.OfficialDCCount) })</a>
+					</nav>
+				</div>
+				<!-- Tab Content: Overview (default) -->
+				<div class="mt-6">
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+						<div>
+							<h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Tender Details</h3>
+							<dl class="space-y-3">
+								<div>
+									<dt class="text-sm font-medium text-gray-600">Tender Ref Number</dt>
+									if currentProject.TenderRefNumber != "" {
+										<dd class="text-sm text-gray-900 mt-0.5">{ currentProject.TenderRefNumber }</dd>
+									} else {
+										<dd class="text-sm text-gray-400 mt-0.5">Not set</dd>
+									}
+								</div>
+								<div>
+									<dt class="text-sm font-medium text-gray-600">Tender Ref Details</dt>
+									if currentProject.TenderRefDetails != "" {
+										<dd class="text-sm text-gray-900 mt-0.5">{ currentProject.TenderRefDetails }</dd>
+									} else {
+										<dd class="text-sm text-gray-400 mt-0.5">Not set</dd>
+									}
+								</div>
+								<div>
+									<dt class="text-sm font-medium text-gray-600">PO Reference</dt>
+									if currentProject.POReference != "" {
+										<dd class="text-sm text-gray-900 mt-0.5">{ currentProject.POReference }</dd>
+									} else {
+										<dd class="text-sm text-gray-400 mt-0.5">Not set</dd>
+									}
+								</div>
+								<div>
+									<dt class="text-sm font-medium text-gray-600">PO Date</dt>
+									if currentProject.PODate != nil {
+										<dd class="text-sm text-gray-900 mt-0.5">{ *currentProject.PODate }</dd>
+									} else {
+										<dd class="text-sm text-gray-400 mt-0.5">Not set</dd>
+									}
+								</div>
+							</dl>
+						</div>
+						<div>
+							<h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Billing Details</h3>
+							<dl class="space-y-3">
+								<div>
+									<dt class="text-sm font-medium text-gray-600">Bill From Address</dt>
+									if currentProject.BillFromAddress != "" {
+										<dd class="text-sm text-gray-900 mt-0.5 whitespace-pre-line">{ currentProject.BillFromAddress }</dd>
+									} else {
+										<dd class="text-sm text-gray-400 mt-0.5">Not set</dd>
+									}
+								</div>
+								<div>
+									<dt class="text-sm font-medium text-gray-600">Company GSTIN</dt>
+									if currentProject.CompanyGSTIN != "" {
+										<dd class="text-sm text-gray-900 mt-0.5">{ currentProject.CompanyGSTIN }</dd>
+									} else {
+										<dd class="text-sm text-gray-400 mt-0.5">Not set</dd>
+									}
+								</div>
+								if currentProject.CompanySignaturePath != "" {
+									<div>
+										<dt class="text-sm font-medium text-gray-600">Company Signature</dt>
+										<dd class="mt-1">
+											<img src={ "/static/uploads/" + currentProject.CompanySignaturePath } alt="Signature" class="max-h-20 border rounded"/>
+										</dd>
+									</div>
+								}
+							</dl>
+						</div>
+					</div>
+				</div>
+			</div>
+		}
+	</div>
+	<!-- Delete Confirmation Modal -->
+	<div id="delete-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center">
+		<div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+			<h3 class="text-lg font-semibold text-gray-900 mb-2">Delete Project</h3>
+			<p class="text-sm text-gray-600 mb-4">Are you sure you want to delete <strong id="delete-project-name"></strong>? This action cannot be undone.</p>
+			<div class="flex justify-end gap-3">
+				<button onclick="closeDeleteModal()" class="btn btn-secondary">Cancel</button>
+				<button id="confirm-delete-btn" class="btn btn-danger">Delete</button>
+			</div>
+		</div>
+	</div>
+	if currentProject != nil {
+		<script>
+			function confirmDeleteProject(id, name) {
+				document.getElementById('delete-project-name').textContent = name;
+				document.getElementById('delete-modal').classList.remove('hidden');
+				document.getElementById('confirm-delete-btn').onclick = function() {
+					fetch('/projects/' + id, {
+						method: 'DELETE',
+						headers: {
+							'Content-Type': 'application/json'
+						}
+					}).then(function(resp) {
+						return resp.json();
+					}).then(function(data) {
+						if (data.success) {
+							window.location.href = '/projects';
+						} else {
+							closeDeleteModal();
+							showToast(data.error || 'Failed to delete project', 'error');
+						}
+					}).catch(function() {
+						closeDeleteModal();
+						showToast('Failed to delete project', 'error');
+					});
+				};
+			}
+
+			function closeDeleteModal() {
+				document.getElementById('delete-modal').classList.add('hidden');
+			}
+		</script>
+	}
+}

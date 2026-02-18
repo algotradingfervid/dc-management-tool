@@ -1,0 +1,87 @@
+package layouts
+
+templ Base(title string) {
+	<!DOCTYPE html>
+	<html lang="en" class="h-full">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ title }</title>
+			<!-- Design System -->
+			<link rel="stylesheet" href="/static/css/design-system.css"/>
+			<!-- Tailwind CSS (compiled) -->
+			<link rel="stylesheet" href="/static/css/tailwind-output.css"/>
+			<!-- Print Styles -->
+			<link rel="stylesheet" href="/static/css/print.css" media="print"/>
+			<!-- HTMX -->
+			<script src="https://unpkg.com/htmx.org@2.0.8"></script>
+			<!-- Alpine.js: store must be registered before Alpine loads -->
+			<script>
+				document.addEventListener('alpine:init', () => {
+					Alpine.store('sidebar', {
+						open: window.innerWidth >= 1024,
+						collapsed: false,
+						toggle() { this.open = !this.open; },
+						close() { this.open = false; },
+						openSidebar() { this.open = true; },
+						toggleCollapse() { this.collapsed = !this.collapsed; }
+					});
+				});
+			</script>
+			<!-- Alpine.js -->
+			<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+		</head>
+		<body class="h-full font-sans antialiased bg-neutral-100 text-neutral-900">
+			<!-- Toast Container -->
+			<div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+			<!-- HTMX Loading Indicator -->
+			<div id="htmx-indicator" class="hidden fixed top-0 left-0 right-0 z-[60] h-1 bg-brand-200">
+				<div class="h-full bg-brand-500 animate-pulse" style="width: 100%"></div>
+			</div>
+			{ children... }
+			<!-- HTMX Config -->
+			<script>
+				document.body.addEventListener('htmx:configRequest', function(evt) {
+					document.body.classList.add('htmx-request');
+				});
+				document.body.addEventListener('htmx:afterRequest', function(evt) {
+					document.body.classList.remove('htmx-request');
+				});
+			</script>
+			<!-- Core JS -->
+			<script src="/static/js/app.js"></script>
+			<script src="/static/js/toast.js"></script>
+			<!-- Global keyboard shortcuts -->
+			<script>
+			document.addEventListener('keydown', function(e) {
+				// Ctrl+S / Cmd+S: submit the nearest visible form
+				if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+					e.preventDefault();
+					var form = document.querySelector('form:not([hidden])');
+					if (form) {
+						var submit = form.querySelector('[type="submit"]');
+						if (submit) submit.click();
+						else form.requestSubmit();
+					}
+				}
+				// Escape: close slide-overs and modals
+				if (e.key === 'Escape') {
+					document.querySelectorAll('.fixed.z-50:not(.hidden)').forEach(function(el) {
+						if (el.id !== 'toast-container') el.classList.add('hidden');
+					});
+				}
+			});
+
+			// HTMX loading indicator
+			document.body.addEventListener('htmx:beforeRequest', function(evt) {
+				var indicator = document.getElementById('htmx-indicator');
+				if (indicator) indicator.classList.remove('hidden');
+			});
+			document.body.addEventListener('htmx:afterRequest', function(evt) {
+				var indicator = document.getElementById('htmx-indicator');
+				if (indicator) indicator.classList.add('hidden');
+			});
+			</script>
+		</body>
+	</html>
+}

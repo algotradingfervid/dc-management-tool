@@ -1,0 +1,204 @@
+package serial_search
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/narendhupati/dc-management-tool/internal/database"
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+// basePath builds the serial-search URL for the given project.
+func basePath(projectID int) string {
+	return fmt.Sprintf("/projects/%d/serial-search", projectID)
+}
+
+// dcURL builds the URL for a specific DC inside a project.
+func dcURL(projectID int, dcID int) string {
+	return fmt.Sprintf("/projects/%d/dcs/%d", projectID, dcID)
+}
+
+// SerialSearch renders the full serial number search page.
+templ SerialSearch(
+	user *models.User,
+	currentProject *models.Project,
+	allProjects []*models.Project,
+	query string,
+	initial bool,
+	results []database.SerialSearchResult,
+	notFound []string,
+	flashType string,
+	flashMessage string,
+) {
+	<div class="space-y-6">
+		<!-- Header -->
+		<div>
+			<h1 class="text-2xl font-bold text-gray-900">Serial Number Search</h1>
+			<p class="text-sm text-gray-500 mt-1">
+				Search for serial numbers across delivery challans in this project. Paste multiple serials separated by commas or newlines.
+			</p>
+		</div>
+		<!-- Search Form -->
+		<div class="card">
+			<form
+				id="search-form"
+				hx-get={ basePath(currentProject.ID) }
+				hx-target="#search-results"
+				hx-select="#search-results-inner"
+				hx-swap="innerHTML"
+				hx-push-url="true"
+			>
+				<div class="flex flex-col md:flex-row gap-4">
+					<!-- Search Input -->
+					<div class="flex-1">
+						<label class="block text-sm font-medium text-gray-700 mb-1">Serial Number(s)</label>
+						<input
+							type="text"
+							name="q"
+							value={ query }
+							placeholder="Enter serial number(s) — comma-separated for bulk search..."
+							class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm"
+							hx-get={ basePath(currentProject.ID) }
+							hx-target="#search-results"
+							hx-select="#search-results-inner"
+							hx-swap="innerHTML"
+							hx-trigger="keyup changed delay:300ms"
+							hx-include="#search-form"
+							autofocus
+						/>
+					</div>
+					<!-- Search Button -->
+					<div class="flex items-end">
+						<button type="submit" class="btn-primary whitespace-nowrap">
+							<svg class="w-4 h-4 mr-1.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+							</svg>
+							Search
+						</button>
+					</div>
+				</div>
+			</form>
+		</div>
+		<!-- Results Container -->
+		<div id="search-results">
+			<div id="search-results-inner">
+				@SerialResults(currentProject, query, initial, results, notFound)
+			</div>
+		</div>
+	</div>
+}
+
+// SerialResults renders just the results block — also used as the HTMX partial response.
+templ SerialResults(
+	currentProject *models.Project,
+	query string,
+	initial bool,
+	results []database.SerialSearchResult,
+	notFound []string,
+) {
+	if initial {
+		<!-- Initial State -->
+		<div class="card text-center py-12">
+			<svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+			</svg>
+			<h3 class="text-lg font-semibold text-gray-900 mb-1">Enter a serial number to search</h3>
+			<p class="text-sm text-gray-500">Search across delivery challans in this project. Paste multiple serials separated by commas for bulk lookup.</p>
+		</div>
+	} else {
+		<!-- Not Found Serials -->
+		if len(notFound) > 0 {
+			<div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+				<div class="flex items-start">
+					<svg class="w-5 h-5 text-amber-500 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+					</svg>
+					<div>
+						<p class="text-sm font-medium text-amber-800">Not found:</p>
+						<div class="flex flex-wrap gap-2 mt-1">
+							for _, s := range notFound {
+								<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 font-mono">{ s }</span>
+							}
+						</div>
+					</div>
+				</div>
+			</div>
+		}
+		if len(results) > 0 {
+			<!-- Results Table -->
+			<div class="card overflow-hidden p-0">
+				<div class="px-5 py-3 bg-gray-50 border-b border-gray-200">
+					<p class="text-sm font-medium text-gray-700">
+						Found <span class="font-semibold text-gray-900">{ strconv.Itoa(len(results)) }</span>
+						if len(results) == 1 {
+							result
+						} else {
+							results
+						}
+					</p>
+				</div>
+				<div class="overflow-x-auto">
+					<table class="min-w-full divide-y divide-gray-200">
+						<thead class="bg-gray-50">
+							<tr>
+								<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial Number</th>
+								<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+								<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DC Number</th>
+								<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DC Type</th>
+								<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+								<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ship To</th>
+								<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+							</tr>
+						</thead>
+						<tbody class="bg-white divide-y divide-gray-200">
+							for _, r := range results {
+								<tr class="hover:bg-gray-50 transition-colors">
+									<td class="px-5 py-3 whitespace-nowrap">
+										<span class="font-mono text-sm font-medium text-gray-900">{ r.SerialNumber }</span>
+									</td>
+									<td class="px-5 py-3 text-sm text-gray-700">{ r.ProductName }</td>
+									<td class="px-5 py-3 whitespace-nowrap">
+										<a
+											href={ templ.SafeURL(dcURL(r.ProjectID, r.DCID)) }
+											class="text-brand-600 hover:text-brand-800 font-medium text-sm"
+										>{ r.DCNumber }</a>
+									</td>
+									<td class="px-5 py-3 whitespace-nowrap">
+										if r.DCType == "transit" {
+											<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Transit</span>
+										} else {
+											<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Official</span>
+										}
+									</td>
+									<td class="px-5 py-3 text-sm text-gray-500 whitespace-nowrap">{ r.ChallanDate }</td>
+									<td class="px-5 py-3 text-sm text-gray-500">{ r.ShipToSummary }</td>
+									<td class="px-5 py-3 whitespace-nowrap">
+										if r.Status == "draft" {
+											<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Draft</span>
+										} else {
+											<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Issued</span>
+										}
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+				if len(results) >= 200 {
+					<div class="px-5 py-3 bg-yellow-50 border-t border-yellow-200">
+						<p class="text-xs text-yellow-700">Showing first 200 results. Refine your search for more specific results.</p>
+					</div>
+				}
+			</div>
+		} else {
+			<!-- No Results -->
+			<div class="card text-center py-12">
+				<svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+				</svg>
+				<h3 class="text-lg font-semibold text-gray-900 mb-1">No serial numbers found</h3>
+				<p class="text-sm text-gray-500">Try a different search term or check your spelling.</p>
+			</div>
+		}
+	}
+}

@@ -1,0 +1,181 @@
+package deliverychallan
+
+import (
+	"fmt"
+
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+func step3ProjectIDStr(p *models.Project) string {
+	if p == nil {
+		return ""
+	}
+	return fmt.Sprintf("%d", p.ID)
+}
+
+func step3ProductIDStr(p *models.TemplateProductRow) string {
+	return fmt.Sprintf("%d", p.ID)
+}
+
+func step3RequiredCount(p *models.TemplateProductRow, numSets int) string {
+	return fmt.Sprintf("%d", p.DefaultQuantity*numSets)
+}
+
+func step3QtyPerSet(p *models.TemplateProductRow) string {
+	return fmt.Sprintf("%d", p.DefaultQuantity)
+}
+
+func step3NumSetsStr(n int) string {
+	return fmt.Sprintf("%d", n)
+}
+
+func step3AddressIDStr(id int) string {
+	return fmt.Sprintf("%d", id)
+}
+
+func step3ShipToAddressName(a *models.Address) string {
+	if a.MandalName != "" && a.DistrictName != "" {
+		return a.MandalName + " (" + a.DistrictName + ")"
+	}
+	if a.MandalName != "" {
+		return a.MandalName
+	}
+	if a.DistrictName != "" {
+		return a.DistrictName
+	}
+	return a.DisplayName()
+}
+
+// step3InitScript builds the inline JS that initialises SerialAssignment for
+// every product, using the ship-to addresses as destinations.
+func step3InitScript(
+	currentProject *models.Project,
+	products []*models.TemplateProductRow,
+	shipToAddresses []*models.Address,
+) string {
+	js := "(function() {\n"
+	js += "  var csrfInput = document.querySelector('#wizard-step3-form input[name=\"gorilla.csrf.Token\"]');\n"
+	js += "  window._csrfToken = csrfInput ? csrfInput.value : '';\n"
+	js += fmt.Sprintf("  window._projectID = %d;\n", currentProject.ID)
+
+	// Build destinations array once
+	js += "  var destinations = [\n"
+	for _, a := range shipToAddresses {
+		name := step3ShipToAddressName(a)
+		js += fmt.Sprintf("    { id: %d, name: %q, qty: 0 },\n", a.ID, name)
+	}
+	js += "  ];\n"
+
+	// Init each product
+	for _, p := range products {
+		varName := fmt.Sprintf("dests_%d", p.ID)
+		js += fmt.Sprintf("  var %s = destinations.map(function(d) {\n", varName)
+		js += fmt.Sprintf("    return { id: d.id, name: d.name, qty: %d };\n", p.DefaultQuantity)
+		js += "  });\n"
+		js += fmt.Sprintf(
+			"  SerialAssignment.initProduct(%d, %d, %s);\n",
+			p.ID, p.DefaultQuantity*len(shipToAddresses), varName,
+		)
+	}
+
+	js += "})();\n"
+	return js
+}
+
+// WizardStep3 renders the serial-number entry step of the shipment wizard.
+//
+// Props:
+//   - user, currentProject, allProjects: standard layout data
+//   - products: template products (with DefaultQuantity), one textarea per product
+//   - numSets: number of official DC sets being created
+//   - shipToAddresses: the selected ship-to addresses (one per set) for JS assignment
+//   - shipToAddressIDs: IDs of selected ship-to addresses (carry-forward hidden fields)
+//   - csrfToken: CSRF token string
+//   - Carry-forward scalar fields from steps 1 and 2
+templ WizardStep3(
+	user *models.User,
+	currentProject *models.Project,
+	allProjects []*models.Project,
+	products []*models.TemplateProductRow,
+	numSets int,
+	shipToAddresses []*models.Address,
+	shipToAddressIDs []int,
+	csrfToken string,
+	// Step 1 carry-forward
+	templateID int,
+	challanDate string,
+	transporterName string,
+	vehicleNumber string,
+	ewayBillNumber string,
+	docketNumber string,
+	taxType string,
+	reverseCharge string,
+	// Step 2 carry-forward
+	billFromAddressID int,
+	dispatchFromAddressID int,
+	billToAddressID int,
+	transitShipToAddrID int,
+) {
+	<div class="max-w-5xl mx-auto">
+		@wizardSteps(3)
+		<form method="POST" action={ templ.SafeURL("/projects/" + step3ProjectIDStr(currentProject) + "/shipments/wizard/step4") } id="wizard-step3-form">
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			<!-- Carry forward hidden fields (step 1) -->
+			<input type="hidden" name="template_id" value={ fmt.Sprintf("%d", templateID) }/>
+			<input type="hidden" name="num_sets" value={ step3NumSetsStr(numSets) }/>
+			<input type="hidden" name="challan_date" value={ challanDate }/>
+			<input type="hidden" name="transporter_name" value={ transporterName }/>
+			<input type="hidden" name="vehicle_number" value={ vehicleNumber }/>
+			<input type="hidden" name="eway_bill_number" value={ ewayBillNumber }/>
+			<input type="hidden" name="docket_number" value={ docketNumber }/>
+			<input type="hidden" name="tax_type" value={ taxType }/>
+			<input type="hidden" name="reverse_charge" value={ reverseCharge }/>
+			<!-- Carry forward hidden fields (step 2) -->
+			<input type="hidden" name="bill_from_address_id" value={ fmt.Sprintf("%d", billFromAddressID) }/>
+			<input type="hidden" name="dispatch_from_address_id" value={ fmt.Sprintf("%d", dispatchFromAddressID) }/>
+			<input type="hidden" name="bill_to_address_id" value={ fmt.Sprintf("%d", billToAddressID) }/>
+			<input type="hidden" name="transit_ship_to_address_id" value={ fmt.Sprintf("%d", transitShipToAddrID) }/>
+			for _, id := range shipToAddressIDs {
+				<input type="hidden" name="ship_to_address_ids" value={ step3AddressIDStr(id) }/>
+			}
+			<!-- Product serial entry cards -->
+			if len(products) > 0 {
+				for _, p := range products {
+					<div class="card mb-6">
+						<div class="flex items-center justify-between mb-4">
+							<h3 class="text-lg font-semibold text-gray-900">{ p.ItemName }</h3>
+							<span class="text-sm text-gray-500" id={ "counter-" + step3ProductIDStr(p) }>
+								Entered: 0 / Required: { step3RequiredCount(p, numSets) }
+							</span>
+						</div>
+						<p class="text-sm text-gray-500 mb-3">
+							Enter { step3RequiredCount(p, numSets) } serial numbers ({ step3QtyPerSet(p) } per set &times; { step3NumSetsStr(numSets) } sets), one per line
+						</p>
+						<textarea
+							id={ "serials-textarea-" + step3ProductIDStr(p) }
+							rows="8"
+							class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm font-mono"
+							placeholder="Enter serial numbers, one per line..."
+							data-product-id={ step3ProductIDStr(p) }
+							data-required={ step3RequiredCount(p, numSets) }
+							oninput="SerialAssignment.handleSerialInput(this, window._projectID, window._csrfToken || '')"
+						></textarea>
+						<div id={ "serial-errors-" + step3ProductIDStr(p) } class="mt-2"></div>
+						<!-- Assignment grid rendered by JS -->
+						<div id={ "assignment-" + step3ProductIDStr(p) } class="mt-4 hidden"></div>
+					</div>
+				}
+			} else {
+				<div class="card mb-6">
+					<p class="text-sm text-gray-500 text-center py-8">No products in selected template.</p>
+				</div>
+			}
+			<div class="flex items-center justify-between mt-6">
+				<a href="javascript:history.back()" class="btn btn-secondary">&#x2190; Back</a>
+				<button type="submit" class="btn btn-primary" id="step3-next">Next: Review &#x2192;</button>
+			</div>
+		</form>
+	</div>
+	<script src="/static/js/serial-assignment.js"></script>
+	@templ.Raw("<script>" + step3InitScript(currentProject, products, shipToAddresses) + "</script>")
+}

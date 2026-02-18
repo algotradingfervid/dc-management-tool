@@ -64,13 +64,13 @@ func convertToIndianWords(num int64) string {
 
 	// Indian numbering: Crores, Lakhs, Thousands, Hundreds
 	crore := num / 10000000
-	num = num % 10000000
+	num %= 10000000
 
 	lakh := num / 100000
-	num = num % 100000
+	num %= 100000
 
 	thousand := num / 1000
-	num = num % 1000
+	num %= 1000
 
 	var parts []string
 

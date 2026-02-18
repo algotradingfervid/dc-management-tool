@@ -1,6 +1,19 @@
 package models
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/narendhupati/dc-management-tool/internal/helpers"
+)
+
+func validateProject(p *Project) map[string]string {
+	errors := helpers.ValidateStruct(p)
+	// SeqPadding: 0 is valid (default), but if set must be 2-6
+	if p.SeqPadding != 0 && (p.SeqPadding < 2 || p.SeqPadding > 6) {
+		errors["seq_padding"] = "Sequence padding must be between 2 and 6"
+	}
+	return errors
+}
 
 func TestProjectValidate(t *testing.T) {
 	tests := []struct {
@@ -67,7 +80,7 @@ func TestProjectValidate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errors := tt.project.Validate()
+			errors := validateProject(&tt.project)
 			if tt.wantErrors == nil {
 				if len(errors) != 0 {
 					t.Errorf("expected no errors, got %v", errors)

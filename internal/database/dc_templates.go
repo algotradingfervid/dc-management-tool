@@ -120,7 +120,7 @@ func CreateTemplate(t *models.DCTemplate, products []TemplateProductInput) error
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	qtx := db.New(tx)
 
@@ -161,7 +161,7 @@ func UpdateTemplate(t *models.DCTemplate, products []TemplateProductInput) error
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	qtx := db.New(tx)
 

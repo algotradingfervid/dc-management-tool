@@ -1,0 +1,155 @@
+version: '3'
+
+env:
+  GOFLAGS: -mod=mod
+  GO_ENV: '{{ .GO_ENV | default "development" }}'
+  DATABASE_PATH: '{{ .DATABASE_PATH | default "./data/dc_management.db" }}'
+
+tasks:
+  default:
+    desc: "Show available tasks"
+    cmds:
+      - task --list-all
+
+  setup:
+    desc: "Install dependencies and development tools"
+    cmds:
+      - echo "Installing Go dependencies"
+      - go mod download
+      - go mod tidy
+      - echo "Installing Air for hot reload"
+      - go install github.com/air-verse/air@latest
+      - echo "Installing golangci-lint"
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - echo "Installing Goose migration CLI"
+      - go install github.com/pressly/goose/v3/cmd/goose@latest
+      - echo "Installing templ CLI"
+      - go install github.com/a-h/templ/cmd/templ@latest
+      - echo "Creating necessary directories"
+      - mkdir -p data static/uploads tmp db/migrations components
+      - echo "Setup complete!"
+
+  templ:gen:
+    desc: "Generate Go code from .templ files"
+    cmds:
+      - templ generate ./components
+
+  templ:fmt:
+    desc: "Format .templ files"
+    cmds:
+      - templ fmt ./components
+
+  dev:
+    desc: "Run development server with hot reload (Air)"
+    env:
+      GO_ENV: development
+    deps:
+      - templ:gen
+    cmds:
+      - air
+
+  build:
+    desc: "Build production binary"
+    cmds:
+      - echo "Building production binary"
+      - go build -o bin/dc-management-tool ./cmd/server
+      - echo "Build complete -- bin/dc-management-tool"
+
+  build:prod:
+    desc: "Full production build: generate templ + Tailwind CSS + binary (static files embedded)"
+    cmds:
+      - echo "Generating templ files"
+      - templ generate ./components
+      - echo "Building Tailwind CSS"
+      - npx tailwindcss -i static/css/tailwind-input.css -o static/css/tailwind-output.css --minify
+      - echo "Building production binary (static CSS/JS embedded)"
+      - go build -ldflags="-s -w" -o bin/dc-management-tool ./cmd/server
+      - echo "Done -- bin/dc-management-tool (run it from any directory)"
+
+  run:
+    desc: "Build and run production binary"
+    deps:
+      - build
+    cmds:
+      - echo "Running production binary"
+      - ./bin/dc-management-tool
+
+  test:
+    desc: "Run all tests with verbose output"
+    cmds:
+      - go test -v ./...
+
+  test:one:
+    desc: "Run a single test (usage: task test:one -- -run TestName ./internal/services/)"
+    cmds:
+      - go test -v {{.CLI_ARGS}}
+
+  lint:
+    desc: "Run golangci-lint"
+    cmds:
+      - echo "Running linter"
+      - golangci-lint run
+
+  fmt:
+    desc: "Format Go code with gofmt"
+    cmds:
+      - echo "Formatting code"
+      - go fmt ./...
+
+  tailwind:
+    desc: "Build Tailwind CSS"
+    cmds:
+      - npx tailwindcss -i static/css/tailwind-input.css -o static/css/tailwind-output.css
+
+  tailwind:watch:
+    desc: "Watch and rebuild Tailwind CSS on changes"
+    cmds:
+      - npx tailwindcss -i static/css/tailwind-input.css -o static/css/tailwind-output.css --watch
+
+  migrate:
+    desc: "Run database migrations (via goose)"
+    cmds:
+      - echo "Running migrations"
+      - goose -dir internal/migrations sqlite3 {{.DATABASE_PATH}} up
+
+  migrate:status:
+    desc: "Show migration status"
+    cmds:
+      - goose -dir internal/migrations sqlite3 {{.DATABASE_PATH}} status
+
+  migrate:down:
+    desc: "Rollback last migration"
+    cmds:
+      - goose -dir internal/migrations sqlite3 {{.DATABASE_PATH}} down
+
+  seed:
+    desc: "Seed database with test data"
+    cmds:
+      - echo "Seeding database"
+      - sqlite3 data/dc_management.db < migrations/seed_data.sql
+      - echo "Seed data inserted successfully!"
+
+  clean:
+    desc: "Clean build artifacts and temporary files"
+    cmds:
+      - echo "Cleaning up"
+      - rm -rf tmp bin data/*.db static/uploads/*
+      - go clean
+      - echo "Clean complete!"
+
+  restart:
+    desc: "Stop, rebuild CSS + Go binary, and start the server"
+    deps:
+      - templ:gen
+    cmds:
+      - echo "Stopping any running server"
+      - pkill -f 'air' 2>/dev/null || true
+      - pkill -f 'dc-management-tool' 2>/dev/null || true
+      - sleep 1
+      - echo "Rebuilding Tailwind CSS"
+      - npx tailwindcss -i static/css/tailwind-input.css -o static/css/tailwind-output.css 2>&1
+      - echo "Building Go binary"
+      - go build -o bin/dc-management-tool ./cmd/server
+      - echo "Starting server"
+      - ./bin/dc-management-tool
+

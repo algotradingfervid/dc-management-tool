@@ -1,0 +1,68 @@
+package standalone
+
+templ Health(status string, dbStatus string, version string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>Health Check - DC Management Tool</title>
+			<script src="https://cdn.tailwindcss.com"></script>
+			<script>
+				tailwind.config = {
+					theme: {
+						extend: {
+							colors: {
+								brand: {
+									600: '#2563eb',
+									700: '#1d4ed8',
+								}
+							}
+						}
+					}
+				}
+			</script>
+		</head>
+		<body class="bg-gray-50">
+			<div class="min-h-screen flex items-center justify-center">
+				<div class="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+					<h1 class="text-2xl font-bold text-gray-800 mb-4">System Health Check</h1>
+					<div class="space-y-3">
+						<!-- Status -->
+						<div class="flex justify-between items-center">
+							<span class="text-gray-600">Status:</span>
+							<span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+								{ status }
+							</span>
+						</div>
+						<!-- Database -->
+						<div class="flex justify-between items-center">
+							<span class="text-gray-600">Database:</span>
+							if dbStatus == "connected" {
+								<span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+									Connected
+								</span>
+							} else {
+								<span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+									Disconnected
+								</span>
+							}
+						</div>
+						<!-- Version -->
+						if version != "" {
+							<div class="flex justify-between items-center">
+								<span class="text-gray-600">Version:</span>
+								<span class="text-gray-800 font-mono text-sm">{ version }</span>
+							</div>
+						}
+					</div>
+					<div class="mt-6 text-center">
+						<a href="/" class="text-brand-600 hover:text-brand-700 font-medium">
+							Go to Dashboard
+						</a>
+					</div>
+				</div>
+			</div>
+		</body>
+	</html>
+}

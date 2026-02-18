@@ -1,23 +1,22 @@
 package models
 
 import (
-	"strings"
 	"time"
 )
 
 type Project struct {
 	ID                   int       `json:"id"`
-	Name                 string    `json:"name"`
-	Description          string    `json:"description"`
-	DCPrefix             string    `json:"dc_prefix"`
+	Name                 string    `json:"name" validate:"required,max=255"`
+	Description          string    `json:"description" validate:"max=1000"`
+	DCPrefix             string    `json:"dc_prefix" validate:"required,max=10"`
 	TenderRefNumber      string    `json:"tender_ref_number"`
 	TenderRefDetails     string    `json:"tender_ref_details"`
 	POReference          string    `json:"po_reference"`
 	PODate               *string   `json:"po_date"`
 	BillFromAddress      string    `json:"bill_from_address"`
 	DispatchFromAddress  string    `json:"dispatch_from_address"`
-	CompanyGSTIN         string    `json:"company_gstin"`
-	CompanyEmail         string    `json:"company_email"`
+	CompanyGSTIN         string    `json:"company_gstin" validate:"omitempty,len=15"`
+	CompanyEmail         string    `json:"company_email" validate:"omitempty,email"`
 	CompanyCIN           string    `json:"company_cin"`
 	CompanySignaturePath string    `json:"company_signature_path"`
 	CompanySealPath      string    `json:"company_seal_path"`
@@ -43,31 +42,3 @@ const DefaultDCNumberFormat = "{PREFIX}-{TYPE}-{FY}-{SEQ}"
 
 // DCFormatTokens lists available tokens for DC number formatting.
 var DCFormatTokens = []string{"{PREFIX}", "{PROJECT_CODE}", "{FY}", "{SEQ}", "{TYPE}"}
-
-func (p *Project) Validate() map[string]string {
-	errors := make(map[string]string)
-
-	if strings.TrimSpace(p.Name) == "" {
-		errors["name"] = "Project name is required"
-	}
-
-	if strings.TrimSpace(p.DCPrefix) == "" {
-		errors["dc_prefix"] = "DC prefix is required"
-	} else if len(p.DCPrefix) > 10 {
-		errors["dc_prefix"] = "DC prefix must be 10 characters or less"
-	}
-
-	if p.CompanyGSTIN != "" && len(p.CompanyGSTIN) != 15 {
-		errors["company_gstin"] = "GSTIN must be exactly 15 characters"
-	}
-
-	if p.CompanyEmail != "" && !strings.Contains(p.CompanyEmail, "@") {
-		errors["company_email"] = "Invalid email address"
-	}
-
-	if p.SeqPadding != 0 && (p.SeqPadding < 2 || p.SeqPadding > 6) {
-		errors["seq_padding"] = "Sequence padding must be between 2 and 6"
-	}
-
-	return errors
-}

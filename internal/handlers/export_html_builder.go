@@ -204,7 +204,7 @@ func buildTransitPrintHTML(project *models.Project, dc *models.DeliveryChallan,
 		<th style="width:75px;">Total Value</th>
 	</tr></thead><tbody>`)
 
-	for i, li := range lineItems {
+	for i, li := range lineItems { //nolint:gocritic
 		serialsHTML := ""
 		for _, s := range li.SerialNumbers {
 			serialsHTML += esc(s) + "<br>"
@@ -273,7 +273,7 @@ func buildTransitPrintHTML(project *models.Project, dc *models.DeliveryChallan,
 	if company != nil {
 		b.WriteString(fmt.Sprintf(`<p class="text-xs font-semibold text-gray-700 mb-2">For %s</p>`, esc(company.Name)))
 	}
-	b.WriteString(`<div style="height:48px;margin-bottom:8px;"></div><p class="text-xs font-semibold text-gray-600">Authorised Signatory</p>`)
+	b.WriteString(`<div style="height:48px;margin-bottom:8px;"></div><p class="text-xs font-semibold text-gray-600">Authorized Signatory</p>`)
 	b.WriteString(`</div></div>`)
 
 	b.WriteString(`</body></html>`)
@@ -282,7 +282,7 @@ func buildTransitPrintHTML(project *models.Project, dc *models.DeliveryChallan,
 
 func buildOfficialPrintHTML(project *models.Project, dc *models.DeliveryChallan,
 	lineItems []models.DCLineItem, company *models.CompanySettings,
-	shipToAddress, billToAddress *models.Address, totalQty int) string {
+	shipToAddress, billToAddress *models.Address, _ int) string {
 
 	var b strings.Builder
 	b.WriteString(`<!DOCTYPE html><html><head><meta charset="utf-8">`)
@@ -396,7 +396,7 @@ func buildOfficialPrintHTML(project *models.Project, dc *models.DeliveryChallan,
 		<th style="width:70px;">Remarks</th>
 	</tr></thead><tbody>`)
 
-	for i, li := range lineItems {
+	for i, li := range lineItems { //nolint:gocritic
 		serialsHTML := ""
 		for _, s := range li.SerialNumbers {
 			serialsHTML += esc(s) + "<br>"

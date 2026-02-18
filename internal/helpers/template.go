@@ -22,9 +22,9 @@ func TemplateFuncs() template.FuncMap {
 			}
 			return *p
 		},
-		"add":          func(a, b int) int { return a + b },
-		"sub":          func(a, b int) int { return a - b },
-		"mul":          func(a, b int) int { return a * b },
+		"add": func(a, b int) int { return a + b },
+		"sub": func(a, b int) int { return a - b },
+		"mul": func(a, b int) int { return a * b },
 		"seq": func(start, end int) []int {
 			var s []int
 			for i := start; i <= end; i++ {
@@ -58,12 +58,13 @@ func TemplateFuncs() template.FuncMap {
 			return strings.Join(parts, " - ")
 		},
 		"toJSON": func(v interface{}) template.JS {
-			b, _ := json.Marshal(v)
+			b, err := json.Marshal(v)
+			if err != nil {
+				return ""
+			}
 			return template.JS(b)
 		},
-		"join": func(strs []string, sep string) string {
-			return strings.Join(strs, sep)
-		},
+		"join": strings.Join,
 		"formatINR": func(amount float64) string {
 			// Format number with Indian comma grouping (e.g., 1,23,456.00)
 			isNeg := amount < 0
@@ -80,7 +81,7 @@ func TemplateFuncs() template.FuncMap {
 					result = s[len(s)-2:] + "," + result
 					s = s[:len(s)-2]
 				}
-				if len(s) > 0 {
+				if s != "" {
 					result = s + "," + result
 				}
 				s = result
@@ -92,9 +93,7 @@ func TemplateFuncs() template.FuncMap {
 			}
 			return fmt.Sprintf("%s%s.%02d", prefix, s, decimal)
 		},
-		"numberToWords": func(amount float64) string {
-			return NumberToIndianWords(amount)
-		},
+		"numberToWords": NumberToIndianWords,
 		"derefFloat": func(f *float64) float64 {
 			if f == nil {
 				return 0
@@ -115,7 +114,10 @@ func TemplateFuncs() template.FuncMap {
 		},
 		"eq_str": func(a, b string) bool { return a == b },
 		"vehiclesJSON": func(v interface{}) template.HTMLAttr {
-			b, _ := json.Marshal(v)
+			b, err := json.Marshal(v)
+			if err != nil {
+				return ""
+			}
 			return template.HTMLAttr(b)
 		},
 	}

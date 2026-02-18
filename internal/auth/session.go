@@ -41,10 +41,10 @@ func SetFlash(r *http.Request, msgType, message string) {
 	SessionManager.Put(r.Context(), sessionFlashType, msgType)
 }
 
-func PopFlash(r *http.Request) (string, string) {
-	message := SessionManager.PopString(r.Context(), sessionFlashKey)
-	msgType := SessionManager.PopString(r.Context(), sessionFlashType)
-	return msgType, message
+func PopFlash(r *http.Request) (flashType, flashMsg string) {
+	flashMsg = SessionManager.PopString(r.Context(), sessionFlashKey)
+	flashType = SessionManager.PopString(r.Context(), sessionFlashType)
+	return flashType, flashMsg
 }
 
 func DestroySession(r *http.Request) error {

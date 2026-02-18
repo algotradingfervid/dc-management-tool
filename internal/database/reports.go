@@ -81,11 +81,6 @@ func dateFilterSQL(startDate, endDate *time.Time, args []interface{}) (string, [
 	return clause, args
 }
 
-// summaryCountSQL executes a COUNT query with the given WHERE fragments and scans into dst.
-func summaryCountSQL(query string, args []interface{}, dst *int) error {
-	return DB.QueryRow(query, args...).Scan(dst)
-}
-
 // GetDCSummaryReport returns aggregate stats for the DC summary report.
 // Uses sqlc param types for the both-dates case (documenting the sqlc API surface),
 // but falls back to direct hand-written SQL because the generated SQL constants are

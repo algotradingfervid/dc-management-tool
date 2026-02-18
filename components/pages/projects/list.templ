@@ -1,0 +1,131 @@
+package projects
+
+import (
+	"fmt"
+
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+func projectIDStr(p *models.Project) string {
+	if p == nil {
+		return ""
+	}
+	return fmt.Sprintf("%d", p.ID)
+}
+
+templ List(user *models.User, projects []*models.Project, currentProject *models.Project, allProjects []*models.Project, flashType string, flashMessage string) {
+	<div class="space-y-6">
+		<!-- Header -->
+		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+			<div>
+				<h1 class="text-2xl font-bold text-gray-900">Projects</h1>
+				<p class="text-sm text-gray-500 mt-1">Manage your delivery challan projects</p>
+			</div>
+			<a href="/projects/new" class="btn btn-primary inline-flex items-center">
+				<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+				</svg>
+				New Project
+			</a>
+		</div>
+		<!-- Search Bar -->
+		<div class="card">
+			<div class="flex items-center gap-4">
+				<div class="flex-1">
+					<input
+						type="text"
+						id="project-search"
+						placeholder="Search projects by name, DC prefix, or PO reference..."
+						class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm"
+						hx-get="/projects"
+						hx-trigger="keyup changed delay:300ms"
+						hx-target="#projects-grid"
+						hx-select="#projects-grid"
+						hx-swap="outerHTML"
+						name="q"
+					/>
+				</div>
+			</div>
+		</div>
+		<!-- Flash Messages -->
+		if flashType != "" {
+			<script>
+				document.addEventListener('DOMContentLoaded', function() {
+					showToast(document.getElementById('list-flash-data').dataset.message, document.getElementById('list-flash-data').dataset.type);
+				});
+			</script>
+			<div id="list-flash-data" class="hidden" data-message={ flashMessage } data-type={ flashType }></div>
+		}
+		<!-- Projects Grid -->
+		<div id="projects-grid">
+			if len(projects) > 0 {
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+					for _, p := range projects {
+						<div class="card hover:shadow-md transition-shadow duration-200">
+							<div class="flex items-start justify-between mb-3">
+								<div class="flex-1 min-w-0">
+									<h3 class="text-lg font-semibold text-gray-900 truncate">{ p.Name }</h3>
+									<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-100 text-brand-800 mt-1">
+										{ p.DCPrefix }
+									</span>
+								</div>
+							</div>
+							if p.Description != "" {
+								<p class="text-sm text-gray-600 mb-3 line-clamp-2">{ p.Description }</p>
+							}
+							if p.POReference != "" {
+								<div class="text-sm text-gray-500 mb-1">
+									<span class="font-medium">PO:</span> { p.POReference }
+								</div>
+							}
+							<!-- Stats -->
+							<div class="grid grid-cols-4 gap-2 mt-4 pt-4 border-t border-gray-100">
+								<div class="text-center">
+									<p class="text-lg font-bold text-gray-900">{ fmt.Sprintf("%d", p.ProductCount) }</p>
+									<p class="text-xs text-gray-500">Products</p>
+								</div>
+								<div class="text-center">
+									<p class="text-lg font-bold text-gray-900">{ fmt.Sprintf("%d", p.TemplateCount) }</p>
+									<p class="text-xs text-gray-500">Templates</p>
+								</div>
+								<div class="text-center">
+									<p class="text-lg font-bold text-brand-600">{ fmt.Sprintf("%d", p.TransitDCCount) }</p>
+									<p class="text-xs text-gray-500">Transit</p>
+								</div>
+								<div class="text-center">
+									<p class="text-lg font-bold text-green-600">{ fmt.Sprintf("%d", p.OfficialDCCount) }</p>
+									<p class="text-xs text-gray-500">Official</p>
+								</div>
+							</div>
+							<!-- Last Activity -->
+							<div class="mt-3 text-xs text-gray-400">
+								Updated { p.UpdatedAt.Format("Jan 02, 2006") }
+							</div>
+							<!-- Actions -->
+							<div class="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+								<a href={ templ.SafeURL("/projects/" + projectIDStr(p)) } class="btn btn-secondary text-sm flex-1 justify-center">Open</a>
+								<a href={ templ.SafeURL("/projects/" + projectIDStr(p) + "/settings") } class="btn btn-secondary text-sm flex-1 justify-center">Settings</a>
+							</div>
+						</div>
+					}
+				</div>
+			} else {
+				<div class="card text-center py-12">
+					<svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+					</svg>
+					<h3 class="mt-4 text-lg font-medium text-gray-900">No projects yet</h3>
+					<p class="mt-2 text-sm text-gray-500">Get started by creating your first project.</p>
+					<div class="mt-6">
+						<a href="/projects/new" class="btn btn-primary">
+							<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+							</svg>
+							New Project
+						</a>
+					</div>
+				</div>
+			}
+		</div>
+	</div>
+}

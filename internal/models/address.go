@@ -13,7 +13,7 @@ type Address struct {
 	ID           int               `json:"id"`
 	ConfigID     int               `json:"config_id"`
 	Data         map[string]string `json:"-"`
-	DataJSON     string            `json:"-"` // raw JSON from DB
+	DataJSON     string            `json:"-"`             // raw JSON from DB
 	DistrictName string            `json:"district_name"` // fixed field for ship-to
 	MandalName   string            `json:"mandal_name"`   // fixed field for ship-to
 	MandalCode   string            `json:"mandal_code"`   // fixed field for ship-to

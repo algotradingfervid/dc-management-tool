@@ -1,0 +1,96 @@
+run:
+  timeout: 5m
+  tests: true
+  go: "1.25"
+
+linters-settings:
+  gofmt:
+    simplify: true
+
+  errcheck:
+    check-type-assertions: false
+    check-blank: false
+
+  cyclop:
+    max-complexity: 15
+    skip-tests: true
+
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+    disabled-checks:
+      - hugeParam
+      - rangeExprCopy
+      - rangeValCopy
+      - paramTypeCombine
+      - unnamedResult
+      - elseif
+      - tooManyResultsChecker
+      - unnecessaryBlock
+      - whyNoLint
+
+  misspell:
+    locale: US
+
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment
+    settings:
+      shadow:
+        strict: false
+
+linters:
+  enable:
+    - errcheck
+    - gocritic
+    - gofmt
+    - goimports
+    - govet
+    - misspell
+    - revive
+    - gosimple
+    - staticcheck
+    - typecheck
+    - unused
+    - ineffassign
+    - unconvert
+    - unparam
+    - wastedassign
+  disable-all: false
+  fast: false
+
+issues:
+  max-issues-per-linter: 50
+  max-same-issues: 10
+
+  exclude:
+    - "should have a package comment"
+    - "ST1000"
+
+  exclude-rules:
+    - path: "_test\\.go$"
+      linters:
+        - errcheck
+        - govet
+        - gosimple
+        - staticcheck
+        - typecheck
+        - gocritic
+
+    - path: "db/generated"
+      linters:
+        - revive
+        - gosimple
+        - staticcheck
+        - errcheck
+        - govet
+        - unused
+
+    - path: "cmd/.*"
+      linters:
+        - unparam
+
+severity:
+  default: error

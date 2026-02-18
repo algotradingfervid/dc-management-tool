@@ -1,0 +1,363 @@
+package deliverychallan
+
+import (
+	"fmt"
+
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+func step1ProjectIDStr(p *models.Project) string {
+	if p == nil {
+		return ""
+	}
+	return fmt.Sprintf("%d", p.ID)
+}
+
+func step1TemplateIDStr(t models.DCTemplate) string {
+	return fmt.Sprintf("%d", t.ID)
+}
+
+// wizardSteps renders the 4-step progress indicator.
+// currentStep is 1-based (1=Setup, 2=Addresses, 3=Serials, 4=Review).
+templ wizardSteps(currentStep int) {
+	<nav class="mb-8">
+		<ol class="flex items-center w-full">
+			<!-- Step 1: Setup -->
+			<li
+				class={ "flex items-center " + func() string {
+					if currentStep >= 1 {
+						return "text-brand-600"
+					}
+					return "text-gray-400"
+				}() }
+			>
+				<span
+					class={ "flex items-center justify-center w-10 h-10 rounded-full border-2 text-sm font-semibold shrink-0 " + func() string {
+						if currentStep > 1 {
+							return "bg-brand-600 border-brand-600 text-white"
+						} else if currentStep == 1 {
+							return "border-brand-600 text-brand-600 bg-brand-50"
+						}
+						return "border-gray-300 text-gray-400"
+					}() }
+				>
+					if currentStep > 1 {
+						<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+							<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+						</svg>
+					} else {
+						1
+					}
+				</span>
+				<span class="ml-2 text-sm font-medium hidden sm:inline">Setup</span>
+			</li>
+			<li class="flex-1 mx-2 sm:mx-4">
+				<div
+					class={ "h-0.5 " + func() string {
+						if currentStep >= 2 {
+							return "bg-brand-600"
+						}
+						return "bg-gray-300"
+					}() }
+				></div>
+			</li>
+			<!-- Step 2: Addresses -->
+			<li
+				class={ "flex items-center " + func() string {
+					if currentStep >= 2 {
+						return "text-brand-600"
+					}
+					return "text-gray-400"
+				}() }
+			>
+				<span
+					class={ "flex items-center justify-center w-10 h-10 rounded-full border-2 text-sm font-semibold shrink-0 " + func() string {
+						if currentStep > 2 {
+							return "bg-brand-600 border-brand-600 text-white"
+						} else if currentStep == 2 {
+							return "border-brand-600 text-brand-600 bg-brand-50"
+						}
+						return "border-gray-300 text-gray-400"
+					}() }
+				>
+					if currentStep > 2 {
+						<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+							<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+						</svg>
+					} else {
+						2
+					}
+				</span>
+				<span class="ml-2 text-sm font-medium hidden sm:inline">Addresses</span>
+			</li>
+			<li class="flex-1 mx-2 sm:mx-4">
+				<div
+					class={ "h-0.5 " + func() string {
+						if currentStep >= 3 {
+							return "bg-brand-600"
+						}
+						return "bg-gray-300"
+					}() }
+				></div>
+			</li>
+			<!-- Step 3: Serials -->
+			<li
+				class={ "flex items-center " + func() string {
+					if currentStep >= 3 {
+						return "text-brand-600"
+					}
+					return "text-gray-400"
+				}() }
+			>
+				<span
+					class={ "flex items-center justify-center w-10 h-10 rounded-full border-2 text-sm font-semibold shrink-0 " + func() string {
+						if currentStep > 3 {
+							return "bg-brand-600 border-brand-600 text-white"
+						} else if currentStep == 3 {
+							return "border-brand-600 text-brand-600 bg-brand-50"
+						}
+						return "border-gray-300 text-gray-400"
+					}() }
+				>
+					if currentStep > 3 {
+						<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+							<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+						</svg>
+					} else {
+						3
+					}
+				</span>
+				<span class="ml-2 text-sm font-medium hidden sm:inline">Serials</span>
+			</li>
+			<li class="flex-1 mx-2 sm:mx-4">
+				<div
+					class={ "h-0.5 " + func() string {
+						if currentStep >= 4 {
+							return "bg-brand-600"
+						}
+						return "bg-gray-300"
+					}() }
+				></div>
+			</li>
+			<!-- Step 4: Review -->
+			<li
+				class={ "flex items-center " + func() string {
+					if currentStep == 4 {
+						return "text-brand-600"
+					}
+					return "text-gray-400"
+				}() }
+			>
+				<span
+					class={ "flex items-center justify-center w-10 h-10 rounded-full border-2 text-sm font-semibold shrink-0 " + func() string {
+						if currentStep == 4 {
+							return "border-brand-600 text-brand-600 bg-brand-50"
+						}
+						return "border-gray-300 text-gray-400"
+					}() }
+				>
+					4
+				</span>
+				<span class="ml-2 text-sm font-medium hidden sm:inline">Review</span>
+			</li>
+		</ol>
+	</nav>
+}
+
+templ WizardStep1(
+	user *models.User,
+	currentProject *models.Project,
+	allProjects []*models.Project,
+	templates []models.DCTemplate,
+	errors map[string]string,
+	formData map[string]string,
+	csrfToken string,
+) {
+	<div class="max-w-4xl mx-auto">
+		@wizardSteps(1)
+		<form method="POST" action={ templ.SafeURL("/projects/" + step1ProjectIDStr(currentProject) + "/shipments/wizard/step2") } id="wizard-step1-form">
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			<div class="card p-6 space-y-8">
+				<!-- DC Template -->
+				<div>
+					<label for="template_id" class="block text-sm font-medium text-gray-700 mb-1">DC Template</label>
+					if errors["template_id"] != "" {
+						<p class="text-xs text-red-600 mb-1">{ errors["template_id"] }</p>
+					}
+					<select
+						name="template_id"
+						id="template_id"
+						required
+						class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+						hx-get={ "/projects/" + step1ProjectIDStr(currentProject) + "/shipments/wizard/products-preview" }
+						hx-target="#product-preview"
+						hx-swap="innerHTML"
+						hx-include="[name='template_id']"
+					>
+						<option value="">-- Select a template --</option>
+						for _, t := range templates {
+							<option value={ step1TemplateIDStr(t) }>{ t.Name }</option>
+						}
+					</select>
+				</div>
+				<!-- Number of Sets -->
+				<div>
+					<label for="num-sets-input" class="block text-sm font-medium text-gray-700 mb-1">Number of Sets</label>
+					if errors["num_sets"] != "" {
+						<p class="text-xs text-red-600 mb-1">{ errors["num_sets"] }</p>
+					}
+					<input
+						type="number"
+						name="num_sets"
+						value={ func() string {
+							if v, ok := formData["num_sets"]; ok && v != "" {
+								return v
+							}
+							return "1"
+						}() }
+						min="1"
+						id="num-sets-input"
+						class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+					/>
+					<p id="sets-info" class="text-sm text-gray-500 mt-1">This will create 1 Transit DC + 1 Official DC</p>
+				</div>
+				<!-- Challan Date -->
+				<div>
+					<label for="challan_date" class="block text-sm font-medium text-gray-700 mb-1">Challan Date</label>
+					if errors["challan_date"] != "" {
+						<p class="text-xs text-red-600 mb-1">{ errors["challan_date"] }</p>
+					}
+					<input
+						type="date"
+						name="challan_date"
+						id="challan_date"
+						required
+						value={ formData["challan_date"] }
+						class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+					/>
+				</div>
+				<!-- Transport Details -->
+				<div>
+					<h3 class="text-sm font-medium text-gray-700 mb-3">Transport Details</h3>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div>
+							<label for="transporter_name" class="block text-sm font-medium text-gray-700 mb-1">Transporter Name</label>
+							<input
+								type="text"
+								name="transporter_name"
+								id="transporter_name"
+								value={ formData["transporter_name"] }
+								class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+							/>
+						</div>
+						<div>
+							<label for="vehicle_number" class="block text-sm font-medium text-gray-700 mb-1">Vehicle Number</label>
+							<input
+								type="text"
+								name="vehicle_number"
+								id="vehicle_number"
+								value={ formData["vehicle_number"] }
+								class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+							/>
+						</div>
+						<div>
+							<label for="docket_number" class="block text-sm font-medium text-gray-700 mb-1">Docket Number</label>
+							<input
+								type="text"
+								name="docket_number"
+								id="docket_number"
+								value={ formData["docket_number"] }
+								class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+							/>
+						</div>
+						<div>
+							<label for="eway_bill_number" class="block text-sm font-medium text-gray-700 mb-1">E-Way Bill Number</label>
+							<input
+								type="text"
+								name="eway_bill_number"
+								id="eway_bill_number"
+								value={ formData["eway_bill_number"] }
+								class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+							/>
+						</div>
+					</div>
+				</div>
+				<!-- Tax Configuration -->
+				<div>
+					<h3 class="text-sm font-medium text-gray-700 mb-3">Tax Configuration</h3>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">Tax Type</label>
+							<div class="flex items-center space-x-4">
+								<label class="inline-flex items-center">
+									<input
+										type="radio"
+										name="tax_type"
+										value="cgst_sgst"
+										checked?={ formData["tax_type"] == "" || formData["tax_type"] == "cgst_sgst" }
+										class="text-brand-600 focus:ring-brand-500"
+									/>
+									<span class="ml-2 text-sm text-gray-700">CGST + SGST</span>
+								</label>
+								<label class="inline-flex items-center">
+									<input
+										type="radio"
+										name="tax_type"
+										value="igst"
+										checked?={ formData["tax_type"] == "igst" }
+										class="text-brand-600 focus:ring-brand-500"
+									/>
+									<span class="ml-2 text-sm text-gray-700">IGST</span>
+								</label>
+							</div>
+						</div>
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-2">Reverse Charge</label>
+							<div class="flex items-center space-x-4">
+								<label class="inline-flex items-center">
+									<input
+										type="radio"
+										name="reverse_charge"
+										value="N"
+										checked?={ formData["reverse_charge"] == "" || formData["reverse_charge"] == "N" }
+										class="text-brand-600 focus:ring-brand-500"
+									/>
+									<span class="ml-2 text-sm text-gray-700">No</span>
+								</label>
+								<label class="inline-flex items-center">
+									<input
+										type="radio"
+										name="reverse_charge"
+										value="Y"
+										checked?={ formData["reverse_charge"] == "Y" }
+										class="text-brand-600 focus:ring-brand-500"
+									/>
+									<span class="ml-2 text-sm text-gray-700">Yes</span>
+								</label>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!-- Product Preview -->
+				<div>
+					<h3 class="text-sm font-medium text-gray-700 mb-3">Product Preview</h3>
+					<div id="product-preview" class="rounded-lg border border-gray-200 p-4 text-sm text-gray-500 text-center">
+						Select a template to preview products
+					</div>
+				</div>
+			</div>
+			<!-- Actions -->
+			<div class="flex items-center justify-between mt-6">
+				<a href={ templ.SafeURL("/projects/" + step1ProjectIDStr(currentProject) + "/dcs") } class="btn btn-secondary">Cancel</a>
+				<button type="submit" class="btn btn-primary">Next: Addresses &#x2192;</button>
+			</div>
+		</form>
+	</div>
+	<script>
+		document.getElementById('num-sets-input').addEventListener('input', function() {
+			var n = parseInt(this.value) || 1;
+			document.getElementById('sets-info').textContent =
+				'This will create 1 Transit DC + ' + n + ' Official DC' + (n > 1 ? 's' : '');
+		});
+	</script>
+}

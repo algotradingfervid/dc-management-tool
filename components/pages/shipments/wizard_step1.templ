@@ -1,0 +1,116 @@
+package shipments
+
+import (
+	"fmt"
+
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+templ WizardStep1(
+	user *models.User,
+	currentProject *models.Project,
+	allProjects []*models.Project,
+	templates []*models.DCTemplate,
+	transporters []*models.Transporter,
+	flashType string,
+	flashMessage string,
+	csrfToken string,
+) {
+	<div class="max-w-4xl mx-auto">
+		<h1 class="text-2xl font-bold mb-6">Create New Shipment - Step 1: Basic Details</h1>
+		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/new/step2", currentProject.ID)) }>
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			<div class="bg-white shadow rounded-lg p-6 space-y-4">
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Template</label>
+					<select name="template_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+						<option value="">Select a template...</option>
+						for _, t := range templates {
+							<option value={ fmt.Sprintf("%d", t.ID) }>{ t.Name }</option>
+						}
+					</select>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Number of Sets</label>
+					<input type="number" name="num_sets" min="1" value="1" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Challan Date</label>
+					<input type="date" name="challan_date" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Transporter</label>
+					<select name="transporter_id" id="transporter-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+						<option value="">-- None --</option>
+						for _, t := range transporters {
+							<option value={ fmt.Sprintf("%d", t.ID) } data-vehicles={ vehiclesJSON(t.Vehicles) }>{ t.CompanyName }</option>
+						}
+					</select>
+					<input type="hidden" name="transporter_name" id="transporter-name-hidden"/>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Vehicle</label>
+					<select name="vehicle_number" id="vehicle-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+						<option value="">-- Select transporter first --</option>
+					</select>
+					<input type="hidden" name="driver_name" id="driver-name-hidden"/>
+					<input type="hidden" name="driver_phone" id="driver-phone-hidden"/>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">E-Way Bill Number</label>
+					<input type="text" name="eway_bill_number" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Docket Number</label>
+					<input type="text" name="docket_number" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Tax Type</label>
+					<select name="tax_type" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+						<option value="cgst_sgst">CGST + SGST</option>
+						<option value="igst">IGST</option>
+					</select>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Reverse Charge</label>
+					<select name="reverse_charge" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+						<option value="N">No</option>
+						<option value="Y">Yes</option>
+					</select>
+				</div>
+			</div>
+			<div class="mt-6 flex justify-end">
+				<button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">
+					Next: Select Addresses →
+				</button>
+			</div>
+		</form>
+	</div>
+	<script>
+		document.getElementById('transporter-select').addEventListener('change', function() {
+			var opt = this.options[this.selectedIndex];
+			document.getElementById('transporter-name-hidden').value = opt.text !== '-- None --' ? opt.text : '';
+			var vehicleSelect = document.getElementById('vehicle-select');
+			vehicleSelect.innerHTML = '<option value="">-- Select vehicle --</option>';
+			document.getElementById('driver-name-hidden').value = '';
+			document.getElementById('driver-phone-hidden').value = '';
+			if (!opt.value) return;
+			try {
+				var vehicles = JSON.parse(opt.getAttribute('data-vehicles') || '[]');
+				vehicles.forEach(function(v) {
+					var o = document.createElement('option');
+					o.value = v.vehicle_number;
+					o.textContent = v.vehicle_number + (v.vehicle_type ? ' (' + v.vehicle_type + ')' : '');
+					o.setAttribute('data-driver', v.driver_name || '');
+					o.setAttribute('data-phone', v.driver_phone1 || '');
+					vehicleSelect.appendChild(o);
+				});
+			} catch(e) {}
+		});
+		document.getElementById('vehicle-select').addEventListener('change', function() {
+			var opt = this.options[this.selectedIndex];
+			document.getElementById('driver-name-hidden').value = opt.getAttribute('data-driver') || '';
+			document.getElementById('driver-phone-hidden').value = opt.getAttribute('data-phone') || '';
+		});
+	</script>
+}

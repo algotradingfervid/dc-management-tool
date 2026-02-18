@@ -29,7 +29,7 @@ type SerialSearchResult struct {
 // SearchSerialsTwoTermsAllProjects, SearchSerialsTwoTermsByProject). However, the
 // generated SQL constants in the current sqlc output are truncated and cannot be
 // executed safely, so all query execution uses hand-written SQL that preserves the
-// original behaviour exactly.
+// original behavior exactly.
 func SearchSerialNumbers(query string, projectID string) ([]SerialSearchResult, []string, error) {
 	// Reference sqlc types to document intent and keep the import used.
 	_ = db.SearchSerialsSingleTermByProjectParams{}

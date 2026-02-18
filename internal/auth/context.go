@@ -1,14 +1,15 @@
 package auth
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
 const contextUserKey = "current_user"
 
-func GetCurrentUser(c *gin.Context) *models.User {
-	if user, exists := c.Get(contextUserKey); exists {
+func GetCurrentUser(c echo.Context) *models.User {
+	user := c.Get(contextUserKey)
+	if user != nil {
 		if u, ok := user.(*models.User); ok {
 			return u
 		}
@@ -16,6 +17,6 @@ func GetCurrentUser(c *gin.Context) *models.User {
 	return nil
 }
 
-func SetCurrentUser(c *gin.Context, user *models.User) {
+func SetCurrentUser(c echo.Context, user *models.User) {
 	c.Set(contextUserKey, user)
 }

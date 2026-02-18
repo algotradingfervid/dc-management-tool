@@ -1,0 +1,224 @@
+package deliverychallan
+
+import (
+	"fmt"
+
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+func transitPrintIDStr(id int) string {
+	return fmt.Sprintf("%d", id)
+}
+
+templ TransitPrint(currentProject *models.Project, dc *models.DeliveryChallan) {
+	<div class="max-w-4xl mx-auto">
+		<!-- Action Bar (hidden on print) -->
+		<div class="no-print flex items-center gap-3 mb-6">
+			<span
+				class={ "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap " + func() string {
+					if dc.Status == "draft" {
+						return "bg-amber-50 text-amber-700 border-amber-200"
+					}
+					return "bg-emerald-50 text-emerald-700 border-emerald-200"
+				}() }
+			>
+				<span
+					class={ "w-1.5 h-1.5 rounded-full " + func() string {
+						if dc.Status == "draft" {
+							return "bg-amber-500"
+						}
+						return "bg-emerald-500"
+					}() }
+				></span>
+				if dc.Status == "draft" {
+					DRAFT
+				} else {
+					ISSUED
+				}
+			</span>
+			<div class="h-6 w-px bg-gray-200"></div>
+			<button onclick="window.print()" class="inline-flex items-center gap-2 h-9 px-4 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
+				<svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z"></path>
+				</svg>
+				Print
+			</button>
+			<a href={ templ.SafeURL("/projects/" + transitPrintIDStr(currentProject.ID) + "/dcs/" + transitPrintIDStr(dc.ID)) } class="inline-flex items-center gap-2 h-9 px-4 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
+				Back to DC
+			</a>
+		</div>
+		<!-- DC Preview Document -->
+		<div class="dc-document rounded-lg overflow-hidden print-area" style="background: white; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);">
+			<div class="p-6 sm:p-8 lg:p-10">
+				<!-- Company Header (project-level) -->
+				<div class="text-center mb-6 pb-4 border-b-2 border-gray-800">
+					<h1 class="text-lg font-bold text-gray-900 uppercase tracking-wide">{ currentProject.Name }</h1>
+					if currentProject.BillFromAddress != "" {
+						<p class="text-xs text-gray-600 mt-1.5 leading-relaxed max-w-lg mx-auto">{ currentProject.BillFromAddress }</p>
+					}
+					if currentProject.CompanyGSTIN != "" {
+						<p class="text-xs text-gray-700 mt-1 font-semibold font-mono">GSTIN: { currentProject.CompanyGSTIN }</p>
+					}
+				</div>
+				<!-- DC Title -->
+				<div class="text-center mb-6">
+					<h2 class="text-base font-bold text-gray-900 uppercase tracking-widest border border-gray-300 inline-block px-8 py-1.5">Delivery Challan</h2>
+				</div>
+				<!-- Two Column Header -->
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5 text-xs">
+					<!-- Left Column: DC Details -->
+					<div class="border border-gray-200 rounded p-3 space-y-1.5">
+						<div class="flex justify-between">
+							<span class="text-gray-500 font-medium">DC No:</span>
+							<span class="font-semibold text-gray-800 font-mono">{ dc.DCNumber }</span>
+						</div>
+						if dc.ChallanDate != nil {
+							<div class="flex justify-between">
+								<span class="text-gray-500 font-medium">Date:</span>
+								<span class="text-gray-800">{ *dc.ChallanDate }</span>
+							</div>
+						}
+						<div class="flex justify-between">
+							<span class="text-gray-500 font-medium">Type:</span>
+							<span class="text-gray-800">{ dc.DCType }</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-gray-500 font-medium">Reverse Charge:</span>
+							<span class="text-gray-800">No</span>
+						</div>
+					</div>
+					<!-- Right Column: Project/PO Details -->
+					<div class="border border-gray-200 rounded p-3 space-y-1.5">
+						if currentProject.POReference != "" {
+							<div class="flex justify-between">
+								<span class="text-gray-500 font-medium">PO Number:</span>
+								<span class="font-semibold text-gray-800 font-mono">{ currentProject.POReference }</span>
+							</div>
+						}
+						if currentProject.PODate != nil {
+							<div class="flex justify-between">
+								<span class="text-gray-500 font-medium">PO Date:</span>
+								<span class="text-gray-800">{ *currentProject.PODate }</span>
+							</div>
+						}
+						<div class="flex justify-between">
+							<span class="text-gray-500 font-medium">Project:</span>
+							<span class="text-gray-800">
+								{ currentProject.Name }
+								if currentProject.Description != "" {
+									<span>&nbsp;&mdash;&nbsp;{ currentProject.Description }</span>
+								}
+							</span>
+						</div>
+					</div>
+				</div>
+				<!-- Address Blocks -->
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+					<!-- Bill From -->
+					<div class="border border-gray-200 rounded p-3">
+						<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Bill From</p>
+						<p class="text-xs font-semibold text-gray-800">{ currentProject.Name }</p>
+						if currentProject.BillFromAddress != "" {
+							<p class="text-xs text-gray-600 leading-relaxed">{ currentProject.BillFromAddress }</p>
+						}
+						if currentProject.CompanyGSTIN != "" {
+							<p class="text-xs text-gray-600 mt-0.5">
+								<span class="font-medium">GSTIN:</span> { currentProject.CompanyGSTIN }
+							</p>
+						}
+					</div>
+					<!-- Dispatch From -->
+					<div class="border border-gray-200 rounded p-3">
+						<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Dispatch From</p>
+						<p class="text-xs font-semibold text-gray-800">{ currentProject.Name }</p>
+						if currentProject.DispatchFromAddress != "" {
+							<p class="text-xs text-gray-600 leading-relaxed">{ currentProject.DispatchFromAddress }</p>
+						}
+					</div>
+				</div>
+				<!-- Product Table -->
+				<div class="overflow-x-auto mb-6 -mx-2 px-2">
+					<table
+						class="w-full border-collapse"
+						style="min-width: 820px;"
+					>
+						<thead>
+							<tr>
+								<th
+									style="width: 36px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;"
+								>S.No</th>
+								<th style="width: 140px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;">Item Description</th>
+								<th style="width: 110px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;">Serial Nos</th>
+								<th style="width: 40px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;">UoM</th>
+								<th style="width: 50px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;">HSN Code</th>
+								<th style="width: 36px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;">Qty</th>
+								<th style="width: 80px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;">Per Unit Price</th>
+								<th style="width: 80px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;">Taxable Value</th>
+								<th style="width: 40px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;">GST %</th>
+								<th style="width: 75px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;">GST Amount</th>
+								<th style="width: 80px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;">Total Value</th>
+							</tr>
+						</thead>
+						<tbody>
+							<!-- Line items are populated server-side; this templ renders the shell.
+							     Actual line items rendered via server-rendered data injection. -->
+						</tbody>
+					</table>
+				</div>
+				<!-- Tax Summary -->
+				<div class="flex justify-end mb-6">
+					<div class="w-full sm:w-72 border border-gray-200 rounded overflow-hidden text-xs">
+						<div class="flex justify-between px-3 py-2 border-b border-gray-100">
+							<span class="text-gray-500">Taxable Value</span>
+							<span class="font-semibold text-gray-800 font-mono">—</span>
+						</div>
+						<div class="flex justify-between px-3 py-2 border-b border-gray-100">
+							<span class="text-gray-500">CGST</span>
+							<span class="font-semibold text-gray-800 font-mono">—</span>
+						</div>
+						<div class="flex justify-between px-3 py-2 border-b border-gray-100">
+							<span class="text-gray-500">SGST</span>
+							<span class="font-semibold text-gray-800 font-mono">—</span>
+						</div>
+						<div class="flex justify-between px-3 py-2 border-b border-gray-100">
+							<span class="text-gray-500">Round Off</span>
+							<span class="font-semibold text-gray-800 font-mono">—</span>
+						</div>
+						<div class="flex justify-between px-3 py-2.5 bg-gray-50">
+							<span class="font-bold text-gray-900">Invoice Value</span>
+							<span class="font-bold text-gray-900 font-mono">—</span>
+						</div>
+					</div>
+				</div>
+				<!-- Amount in Words -->
+				<div class="border border-gray-200 rounded p-3 mb-6">
+					<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Amount in Words</p>
+					<p class="text-xs font-semibold text-gray-800">—</p>
+				</div>
+				<!-- Signature Section -->
+				<div class="grid grid-cols-2 gap-8 pt-4 border-t border-gray-200">
+					<!-- Receiver -->
+					<div>
+						<p class="text-xs font-semibold text-gray-700 mb-10">Receiver&#39;s Signature</p>
+						<div class="border-b border-gray-300 mb-1"></div>
+						<p class="text-[10px] text-gray-400">Name: _________________________</p>
+					</div>
+					<!-- Authorised Signatory -->
+					<div class="text-right">
+						<p class="text-xs font-semibold text-gray-700 mb-2">For { currentProject.Name }</p>
+						<div class="h-12 mb-2 flex items-end justify-end">
+							if currentProject.CompanySignaturePath != "" {
+								<img src={ currentProject.CompanySignaturePath } alt="Signature" class="h-10"/>
+							} else {
+								<div class="w-32 h-10 border border-dashed border-gray-300 rounded flex items-center justify-center">
+									<span class="text-[10px] text-gray-300 italic">Signature</span>
+								</div>
+							}
+						</div>
+						<p class="text-xs font-semibold text-gray-600">Authorised Signatory</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+}

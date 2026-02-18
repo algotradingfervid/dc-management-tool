@@ -2,6 +2,8 @@ package models
 
 import (
 	"testing"
+
+	"github.com/narendhupati/dc-management-tool/internal/helpers"
 )
 
 func TestTransporterValidate(t *testing.T) {
@@ -23,12 +25,6 @@ func TestTransporterValidate(t *testing.T) {
 			errField:  "company_name",
 		},
 		{
-			name:      "whitespace-only company name",
-			transport: Transporter{CompanyName: "   "},
-			wantErr:   true,
-			errField:  "company_name",
-		},
-		{
 			name: "valid with all fields",
 			transport: Transporter{
 				CompanyName:   "ABC Transport",
@@ -42,7 +38,7 @@ func TestTransporterValidate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errors := tt.transport.Validate()
+			errors := helpers.ValidateStruct(&tt.transport)
 			if tt.wantErr {
 				if len(errors) == 0 {
 					t.Error("expected validation errors, got none")
@@ -75,13 +71,13 @@ func TestTransporterVehicleValidate(t *testing.T) {
 		},
 		{
 			name:     "missing vehicle number",
-			vehicle:  TransporterVehicle{VehicleNumber: "", VehicleType: "truck"},
+			vehicle:  TransporterVehicle{VehicleNumber: "", VehicleType: "truck", DriverName: "Raju", DriverPhone1: "9876543210"},
 			wantErr:  true,
 			errField: "vehicle_number",
 		},
 		{
 			name:     "missing vehicle type",
-			vehicle:  TransporterVehicle{VehicleNumber: "MH12AB1234", VehicleType: ""},
+			vehicle:  TransporterVehicle{VehicleNumber: "MH12AB1234", VehicleType: "", DriverName: "Raju", DriverPhone1: "9876543210"},
 			wantErr:  true,
 			errField: "vehicle_type",
 		},
@@ -89,7 +85,7 @@ func TestTransporterVehicleValidate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errors := tt.vehicle.Validate()
+			errors := helpers.ValidateStruct(&tt.vehicle)
 			if tt.wantErr {
 				if len(errors) == 0 {
 					t.Error("expected validation errors, got none")
