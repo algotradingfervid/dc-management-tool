@@ -1,0 +1,73 @@
+package htmx
+
+import (
+	"strconv"
+
+	"github.com/narendhupati/dc-management-tool/internal/database"
+)
+
+// DCSummaryPartialProps holds props for the DC summary report fragment.
+type DCSummaryPartialProps struct {
+	Report *database.DCSummaryReport
+}
+
+func dcSummaryItoa(i int) string {
+	return strconv.Itoa(i)
+}
+
+templ DCSummaryPartial(props DCSummaryPartialProps) {
+	if props.Report != nil {
+		<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+			<div class="card text-center">
+				<p class="text-3xl font-bold text-blue-600">{ dcSummaryItoa(props.Report.TransitDraftDCs + props.Report.TransitIssuedDCs) }</p>
+				<p class="text-sm text-gray-500 mt-1">Transit DCs</p>
+				<p class="text-xs text-gray-400">{ dcSummaryItoa(props.Report.TransitDraftDCs) } draft / { dcSummaryItoa(props.Report.TransitIssuedDCs) } issued</p>
+			</div>
+			<div class="card text-center">
+				<p class="text-3xl font-bold text-green-600">{ dcSummaryItoa(props.Report.OfficialDraftDCs + props.Report.OfficialIssuedDCs) }</p>
+				<p class="text-sm text-gray-500 mt-1">Official DCs</p>
+				<p class="text-xs text-gray-400">{ dcSummaryItoa(props.Report.OfficialDraftDCs) } draft / { dcSummaryItoa(props.Report.OfficialIssuedDCs) } issued</p>
+			</div>
+			<div class="card text-center">
+				<p class="text-3xl font-bold text-amber-600">{ dcSummaryItoa(props.Report.TotalItemsDispatched) }</p>
+				<p class="text-sm text-gray-500 mt-1">Items Dispatched</p>
+			</div>
+		</div>
+		<div class="card overflow-hidden p-0 mt-4">
+			<table class="min-w-full divide-y divide-gray-200">
+				<thead class="bg-gray-50">
+					<tr>
+						<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Metric</th>
+						<th class="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
+					</tr>
+				</thead>
+				<tbody class="bg-white divide-y divide-gray-200">
+					<tr>
+						<td class="px-5 py-3 text-sm text-gray-700">Transit DCs (Draft)</td>
+						<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ dcSummaryItoa(props.Report.TransitDraftDCs) }</td>
+					</tr>
+					<tr>
+						<td class="px-5 py-3 text-sm text-gray-700">Transit DCs (Issued)</td>
+						<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ dcSummaryItoa(props.Report.TransitIssuedDCs) }</td>
+					</tr>
+					<tr>
+						<td class="px-5 py-3 text-sm text-gray-700">Official DCs (Draft)</td>
+						<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ dcSummaryItoa(props.Report.OfficialDraftDCs) }</td>
+					</tr>
+					<tr>
+						<td class="px-5 py-3 text-sm text-gray-700">Official DCs (Issued)</td>
+						<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ dcSummaryItoa(props.Report.OfficialIssuedDCs) }</td>
+					</tr>
+					<tr>
+						<td class="px-5 py-3 text-sm text-gray-700">Total Items Dispatched</td>
+						<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ dcSummaryItoa(props.Report.TotalItemsDispatched) }</td>
+					</tr>
+					<tr>
+						<td class="px-5 py-3 text-sm text-gray-700">Total Serial Numbers Used</td>
+						<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ dcSummaryItoa(props.Report.TotalSerialsUsed) }</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	}
+}

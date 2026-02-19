@@ -3,7 +3,7 @@ package handlers
 import (
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -12,42 +12,37 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gorilla/csrf"
+	"github.com/labstack/echo/v4"
+	"github.com/narendhupati/dc-management-tool/components/layouts"
+	pageprojects "github.com/narendhupati/dc-management-tool/components/pages/projects"
+	"github.com/narendhupati/dc-management-tool/components/partials"
 	"github.com/narendhupati/dc-management-tool/internal/auth"
+	"github.com/narendhupati/dc-management-tool/internal/components"
 	"github.com/narendhupati/dc-management-tool/internal/database"
-	"github.com/narendhupati/dc-management-tool/internal/helpers"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
-func ShowProjectSelector(c *gin.Context) {
+func ShowProjectSelector(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 
 	projects, err := database.GetAccessibleProjects(user)
 	if err != nil {
-		log.Printf("Error fetching user projects: %v", err)
+		slog.Error("Error fetching user projects", slog.String("error", err.Error()), slog.Int("userID", user.ID))
 		projects = []*models.Project{}
 	}
 
 	if len(projects) == 0 {
 		if user.IsAdmin() {
-			c.Redirect(http.StatusFound, "/projects/new")
-		} else {
-			c.HTML(http.StatusOK, "projects/select.html", gin.H{
-				"user":     user,
-				"projects": projects,
-			})
+			return c.Redirect(http.StatusFound, "/projects/new")
 		}
-		return
+		return components.RenderOK(c, pageprojects.Select(user, projects))
 	}
 
-	c.HTML(http.StatusOK, "projects/select.html", gin.H{
-		"user":     user,
-		"projects": projects,
-	})
+	return components.RenderOK(c, pageprojects.Select(user, projects))
 }
 
-func ListProjects(c *gin.Context) {
+func ListProjects(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 
 	var projects []*models.Project
@@ -58,16 +53,12 @@ func ListProjects(c *gin.Context) {
 		projects, err = database.GetAccessibleProjects(user)
 	}
 	if err != nil {
-		log.Printf("Error fetching projects: %v", err)
-		c.HTML(http.StatusInternalServerError, "dashboard.html", gin.H{
-			"user":  user,
-			"error": "Failed to load projects",
-		})
-		return
+		slog.Error("Error fetching projects", slog.String("error", err.Error()), slog.Int("userID", user.ID))
+		return c.Redirect(http.StatusFound, "/projects/select")
 	}
 
 	// Filter by search query if provided
-	q := strings.TrimSpace(c.Query("q"))
+	q := strings.TrimSpace(c.QueryParam("q"))
 	if q != "" {
 		q = strings.ToLower(q)
 		var filtered []*models.Project
@@ -81,138 +72,138 @@ func ListProjects(c *gin.Context) {
 		projects = filtered
 	}
 
-	flashType, flashMessage := auth.PopFlash(c.Request)
+	flashType, flashMessage := auth.PopFlash(c.Request())
 
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "Projects", URL: ""},
+	allProjects, _ := database.GetAccessibleProjects(user)
+
+	pageContent := pageprojects.List(
+		user,
+		projects,
+		nil, // currentProject — not project-scoped
+		allProjects,
+		flashType,
+		flashMessage,
 	)
-
-	c.HTML(http.StatusOK, "projects/list.html", gin.H{
-		"user":         user,
-		"currentPath":  c.Request.URL.Path,
-		"breadcrumbs":  breadcrumbs,
-		"projects":     projects,
-		"flashType":    flashType,
-		"flashMessage": flashMessage,
-	})
+	sidebar := partials.Sidebar(user, nil, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, nil, allProjects, flashType, flashMessage)
+	return components.RenderOK(c, layouts.MainWithContent("Projects", sidebar, topbar, flashMessage, flashType, pageContent))
 }
 
-func ShowProjectForm(c *gin.Context) {
+func ShowProjectForm(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-		helpers.Breadcrumb{Title: "New Project", URL: ""},
-	)
+	allProjects, _ := database.GetAccessibleProjects(user)
 
-	c.HTML(http.StatusOK, "projects/create-wizard.html", gin.H{
-		"user":        user,
-		"currentPath": c.Request.URL.Path,
-		"breadcrumbs": breadcrumbs,
-		"project":     &models.Project{CompanyGSTIN: "36AACCF9742K1Z8"},
-		"errors":      map[string]string{},
-		"isEdit":      false,
-		"csrfField":   csrf.TemplateField(c.Request),
-	})
+	formData := map[string]string{
+		"company_gstin": "36AACCF9742K1Z8",
+	}
+
+	pageContent := pageprojects.CreateWizard(
+		user,
+		allProjects,
+		1, // currentStep
+		map[string]string{},
+		csrf.Token(c.Request()),
+		formData,
+	)
+	sidebar := partials.Sidebar(user, nil, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, nil, allProjects, "", "")
+	return components.RenderOK(c, layouts.MainWithContent("Create Project", sidebar, topbar, "", "", pageContent))
 }
 
-func CreateProject(c *gin.Context) {
+func CreateProject(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 
 	project := buildProjectFromForm(c)
 	project.CreatedBy = user.ID
 
-	errors := project.Validate()
+	errors := validateProject(project)
 
 	// Handle file uploads
 	handleProjectFileUploads(c, project, errors)
 
+	allProjects, _ := database.GetAccessibleProjects(user)
+
 	if len(errors) > 0 {
-		c.HTML(http.StatusOK, "projects/create-wizard.html", gin.H{
-			"user":        user,
-			"currentPath": c.Request.URL.Path,
-			"breadcrumbs": helpers.BuildBreadcrumbs(
-				helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-				helpers.Breadcrumb{Title: "New Project", URL: ""},
-			),
-			"project":   project,
-			"errors":    errors,
-			"isEdit":    false,
-			"csrfField": csrf.TemplateField(c.Request),
-		})
-		return
+		formData := projectToFormData(project)
+		pageContent := pageprojects.CreateWizard(
+			user,
+			allProjects,
+			1,
+			errors,
+			csrf.Token(c.Request()),
+			formData,
+		)
+		sidebar := partials.Sidebar(user, nil, allProjects, c.Request().URL.Path)
+		topbar := partials.Topbar(user, nil, allProjects, "", "")
+		return components.RenderOK(c, layouts.MainWithContent("Create Project", sidebar, topbar, "", "", pageContent))
 	}
 
 	if err := database.CreateProject(project); err != nil {
-		log.Printf("Error creating project: %v", err)
+		slog.Error("Error creating project", slog.String("error", err.Error()))
 		errors["general"] = "Failed to create project"
-		c.HTML(http.StatusOK, "projects/create-wizard.html", gin.H{
-			"user":        user,
-			"currentPath": c.Request.URL.Path,
-			"breadcrumbs": helpers.BuildBreadcrumbs(
-				helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-				helpers.Breadcrumb{Title: "New Project", URL: ""},
-			),
-			"project":   project,
-			"errors":    errors,
-			"isEdit":    false,
-			"csrfField": csrf.TemplateField(c.Request),
-		})
-		return
+		formData := projectToFormData(project)
+		pageContent := pageprojects.CreateWizard(
+			user,
+			allProjects,
+			1,
+			errors,
+			csrf.Token(c.Request()),
+			formData,
+		)
+		sidebar := partials.Sidebar(user, nil, allProjects, c.Request().URL.Path)
+		topbar := partials.Topbar(user, nil, allProjects, "", "")
+		return components.RenderOK(c, layouts.MainWithContent("Create Project", sidebar, topbar, "", "", pageContent))
 	}
 
-	auth.SetFlash(c.Request, "success", "Project created successfully")
-	c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", project.ID))
+	auth.SetFlash(c.Request(), "success", "Project created successfully")
+	return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", project.ID))
 }
 
-func ShowEditProjectForm(c *gin.Context) {
+func ShowEditProjectForm(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	project, err := database.GetProjectByID(id)
 	if err != nil {
-		log.Printf("Error fetching project: %v", err)
-		auth.SetFlash(c.Request, "error", "Project not found")
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		slog.Error("Error fetching project", slog.String("error", err.Error()), slog.Int("projectID", id))
+		auth.SetFlash(c.Request(), "error", "Project not found")
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-		helpers.Breadcrumb{Title: "Edit", URL: ""},
-	)
+	allProjects, _ := database.GetAccessibleProjects(user)
 
-	c.HTML(http.StatusOK, "projects/form.html", gin.H{
-		"user":        user,
-		"currentPath": c.Request.URL.Path,
-		"breadcrumbs": breadcrumbs,
-		"project":     project,
-		"errors":      map[string]string{},
-		"isEdit":      true,
-		"csrfField":   csrf.TemplateField(c.Request),
-	})
+	pageContent := pageprojects.Form(
+		user,
+		project,
+		allProjects,
+		project,
+		map[string]string{},
+		csrf.Token(c.Request()),
+		"",
+		"",
+	)
+	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, project, allProjects, "", "")
+	return components.RenderOK(c, layouts.MainWithContent("Edit Project", sidebar, topbar, "", "", pageContent))
 }
 
-func UpdateProject(c *gin.Context) {
+func UpdateProject(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	existing, err := database.GetProjectByID(id)
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Project not found")
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		auth.SetFlash(c.Request(), "error", "Project not found")
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	project := buildProjectFromForm(c)
@@ -221,141 +212,174 @@ func UpdateProject(c *gin.Context) {
 	project.CompanySealPath = existing.CompanySealPath
 	project.CreatedBy = existing.CreatedBy
 
-	errors := project.Validate()
+	errors := validateProject(project)
 
 	// Handle file uploads
 	handleProjectFileUploads(c, project, errors)
 
+	allProjects, _ := database.GetAccessibleProjects(user)
+
 	if len(errors) > 0 {
-		c.HTML(http.StatusOK, "projects/form.html", gin.H{
-			"user":        user,
-			"currentPath": c.Request.URL.Path,
-			"breadcrumbs": helpers.BuildBreadcrumbs(
-				helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-				helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-				helpers.Breadcrumb{Title: "Edit", URL: ""},
-			),
-			"project":   project,
-			"errors":    errors,
-			"isEdit":    true,
-			"csrfField": csrf.TemplateField(c.Request),
-		})
-		return
+		pageContent := pageprojects.Form(
+			user,
+			project,
+			allProjects,
+			project,
+			errors,
+			csrf.Token(c.Request()),
+			"",
+			"",
+		)
+		sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+		topbar := partials.Topbar(user, project, allProjects, "", "")
+		return components.RenderOK(c, layouts.MainWithContent("Edit Project", sidebar, topbar, "", "", pageContent))
 	}
 
 	if err := database.UpdateProject(project); err != nil {
-		log.Printf("Error updating project: %v", err)
+		slog.Error("Error updating project", slog.String("error", err.Error()), slog.Int("projectID", id))
 		errors["general"] = "Failed to update project"
-		c.HTML(http.StatusOK, "projects/form.html", gin.H{
-			"user":        user,
-			"currentPath": c.Request.URL.Path,
-			"breadcrumbs": helpers.BuildBreadcrumbs(
-				helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-				helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-				helpers.Breadcrumb{Title: "Edit", URL: ""},
-			),
-			"project":   project,
-			"errors":    errors,
-			"isEdit":    true,
-			"csrfField": csrf.TemplateField(c.Request),
-		})
-		return
+		pageContent := pageprojects.Form(
+			user,
+			project,
+			allProjects,
+			project,
+			errors,
+			csrf.Token(c.Request()),
+			"",
+			"",
+		)
+		sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+		topbar := partials.Topbar(user, project, allProjects, "", "")
+		return components.RenderOK(c, layouts.MainWithContent("Edit Project", sidebar, topbar, "", "", pageContent))
 	}
 
-	auth.SetFlash(c.Request, "success", "Project updated successfully")
-	c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", project.ID))
+	auth.SetFlash(c.Request(), "success", "Project updated successfully")
+	return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", project.ID))
 }
 
-func ShowProject(c *gin.Context) {
+func ShowProject(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	project, err := database.GetProjectByID(id)
 	if err != nil {
-		log.Printf("Error fetching project: %v", err)
-		auth.SetFlash(c.Request, "error", "Project not found")
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		slog.Error("Error fetching project", slog.String("error", err.Error()), slog.Int("projectID", id))
+		auth.SetFlash(c.Request(), "error", "Project not found")
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
-	flashType, flashMessage := auth.PopFlash(c.Request)
-	activeTab := c.DefaultQuery("tab", "overview")
+	flashType, flashMessage := auth.PopFlash(c.Request())
 
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-		helpers.Breadcrumb{Title: project.Name, URL: ""},
+	allProjects, _ := database.GetAccessibleProjects(user)
+
+	pageContent := pageprojects.Detail(
+		user,
+		project,
+		allProjects,
+		map[string]int64{},
+		flashType,
+		flashMessage,
 	)
-
-	c.HTML(http.StatusOK, "projects/detail.html", gin.H{
-		"user":         user,
-		"currentPath":  c.Request.URL.Path,
-		"breadcrumbs":  breadcrumbs,
-		"project":      project,
-		"activeTab":    activeTab,
-		"flashType":    flashType,
-		"flashMessage": flashMessage,
-		"csrfToken":    csrf.Token(c.Request),
-	})
+	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, project, allProjects, flashType, flashMessage)
+	return components.RenderOK(c, layouts.MainWithContent("Project Details", sidebar, topbar, flashMessage, flashType, pageContent))
 }
 
-func DeleteProject(c *gin.Context) {
+func DeleteProject(c echo.Context) error {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid project ID"})
 	}
 
 	canDelete, err := database.CanDeleteProject(id)
 	if err != nil {
-		log.Printf("Error checking delete: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check project"})
-		return
+		slog.Error("Error checking delete eligibility", slog.String("error", err.Error()), slog.Int("projectID", id))
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "Failed to check project"})
 	}
 
 	if !canDelete {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot delete project with issued delivery challans"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Cannot delete project with issued delivery challans"})
 	}
 
 	if err := database.DeleteProject(id); err != nil {
-		log.Printf("Error deleting project: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete project"})
-		return
+		slog.Error("Error deleting project", slog.String("error", err.Error()), slog.Int("projectID", id))
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "Failed to delete project"})
 	}
 
-	auth.SetFlash(c.Request, "success", "Project deleted successfully")
-	c.JSON(http.StatusOK, gin.H{"success": true, "redirect": "/projects"})
+	auth.SetFlash(c.Request(), "success", "Project deleted successfully")
+	return c.JSON(http.StatusOK, map[string]interface{}{"success": true, "redirect": "/projects"})
 }
 
-func buildProjectFromForm(c *gin.Context) *models.Project {
+// validateProject runs validation on a project and returns a map of errors.
+func validateProject(project *models.Project) map[string]string {
+	errors := make(map[string]string)
+	if strings.TrimSpace(project.Name) == "" {
+		errors["name"] = "Project name is required"
+	}
+	if strings.TrimSpace(project.DCPrefix) == "" {
+		errors["dc_prefix"] = "DC prefix is required"
+	}
+	if project.SeqPadding != 0 && (project.SeqPadding < 2 || project.SeqPadding > 6) {
+		errors["seq_padding"] = "Sequence padding must be between 2 and 6"
+	}
+	return errors
+}
+
+// projectToFormData converts a project struct into the formData map expected by CreateWizard.
+func projectToFormData(p *models.Project) map[string]string {
+	fd := map[string]string{
+		"name":                  p.Name,
+		"description":           p.Description,
+		"dc_prefix":             p.DCPrefix,
+		"bill_from_address":     p.BillFromAddress,
+		"dispatch_from_address": p.DispatchFromAddress,
+		"company_gstin":         p.CompanyGSTIN,
+		"company_email":         p.CompanyEmail,
+		"company_cin":           p.CompanyCIN,
+		"dc_number_format":      p.DCNumberFormat,
+		"dc_number_separator":   p.DCNumberSeparator,
+		"purpose_text":          p.PurposeText,
+		"tender_ref_number":     p.TenderRefNumber,
+		"tender_ref_details":    p.TenderRefDetails,
+		"po_reference":          p.POReference,
+	}
+	if p.PODate != nil {
+		fd["po_date"] = *p.PODate
+	}
+	if p.SeqPadding != 0 {
+		fd["seq_padding"] = strconv.Itoa(p.SeqPadding)
+	}
+	return fd
+}
+
+func buildProjectFromForm(c echo.Context) *models.Project {
 	project := &models.Project{
-		Name:                c.PostForm("name"),
-		Description:         c.PostForm("description"),
-		DCPrefix:            strings.ToUpper(strings.TrimSpace(c.PostForm("dc_prefix"))),
-		TenderRefNumber:     c.PostForm("tender_ref_number"),
-		TenderRefDetails:    c.PostForm("tender_ref_details"),
-		POReference:         c.PostForm("po_reference"),
-		BillFromAddress:     c.PostForm("bill_from_address"),
-		DispatchFromAddress: c.PostForm("dispatch_from_address"),
-		CompanyGSTIN:        strings.ToUpper(strings.TrimSpace(c.PostForm("company_gstin"))),
-		CompanyEmail:        strings.TrimSpace(c.PostForm("company_email")),
-		CompanyCIN:          strings.TrimSpace(c.PostForm("company_cin")),
-		DCNumberFormat:      c.PostForm("dc_number_format"),
-		DCNumberSeparator:   c.PostForm("dc_number_separator"),
-		PurposeText:         c.PostForm("purpose_text"),
+		Name:                c.FormValue("name"),
+		Description:         c.FormValue("description"),
+		DCPrefix:            strings.ToUpper(strings.TrimSpace(c.FormValue("dc_prefix"))),
+		TenderRefNumber:     c.FormValue("tender_ref_number"),
+		TenderRefDetails:    c.FormValue("tender_ref_details"),
+		POReference:         c.FormValue("po_reference"),
+		BillFromAddress:     c.FormValue("bill_from_address"),
+		DispatchFromAddress: c.FormValue("dispatch_from_address"),
+		CompanyGSTIN:        strings.ToUpper(strings.TrimSpace(c.FormValue("company_gstin"))),
+		CompanyEmail:        strings.TrimSpace(c.FormValue("company_email")),
+		CompanyCIN:          strings.TrimSpace(c.FormValue("company_cin")),
+		DCNumberFormat:      c.FormValue("dc_number_format"),
+		DCNumberSeparator:   c.FormValue("dc_number_separator"),
+		PurposeText:         c.FormValue("purpose_text"),
 	}
 
-	poDate := c.PostForm("po_date")
+	poDate := c.FormValue("po_date")
 	if poDate != "" {
 		project.PODate = &poDate
 	}
 
-	if padding := c.PostForm("seq_padding"); padding != "" {
+	if padding := c.FormValue("seq_padding"); padding != "" {
 		if p, err := strconv.Atoi(padding); err == nil {
 			project.SeqPadding = p
 		}
@@ -364,7 +388,7 @@ func buildProjectFromForm(c *gin.Context) *models.Project {
 	return project
 }
 
-func handleProjectFileUploads(c *gin.Context, project *models.Project, errors map[string]string) {
+func handleProjectFileUploads(c echo.Context, project *models.Project, errors map[string]string) {
 	// Handle signature upload
 	if file, err := c.FormFile("company_signature"); err == nil {
 		path, uploadErr := handleImageUpload(file, "sig")
@@ -418,7 +442,7 @@ func handleSignatureUpload(file *multipart.FileHeader, prefixes ...string) (stri
 
 	// Ensure uploads directory exists
 	uploadDir := "./static/uploads"
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+	if mkdirErr := os.MkdirAll(uploadDir, 0o755); mkdirErr != nil {
 		return "", fmt.Errorf("failed to create upload directory")
 	}
 

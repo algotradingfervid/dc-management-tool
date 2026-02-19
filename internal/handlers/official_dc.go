@@ -2,53 +2,70 @@ package handlers
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gorilla/csrf"
+	"github.com/labstack/echo/v4"
+
+	"github.com/narendhupati/dc-management-tool/components/layouts"
+	deliverychallan "github.com/narendhupati/dc-management-tool/components/pages/delivery_challans"
+	"github.com/narendhupati/dc-management-tool/components/partials"
 	"github.com/narendhupati/dc-management-tool/internal/auth"
+	"github.com/narendhupati/dc-management-tool/internal/components"
 	"github.com/narendhupati/dc-management-tool/internal/database"
 	"github.com/narendhupati/dc-management-tool/internal/helpers"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
+// lineItemsToPointers converts a []models.DCLineItem slice to []*models.DCLineItem.
+func lineItemsToPointers(items []models.DCLineItem) []*models.DCLineItem {
+	out := make([]*models.DCLineItem, len(items))
+	for i := range items {
+		out[i] = &items[i]
+	}
+	return out
+}
+
 // ShowOfficialDCDetail shows an Official DC's details.
-func ShowOfficialDCDetail(c *gin.Context) {
+func ShowOfficialDCDetail(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	dcID, err := strconv.Atoi(c.Param("dcid"))
 	if err != nil {
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
-		return
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
 	}
 
 	project, err := database.GetProjectByID(projectID)
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		slog.Error("Error fetching project", slog.Int("project_id", projectID), slog.String("error", err.Error()))
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	dc, err := database.GetDeliveryChallanByID(dcID)
 	if err != nil || dc.ProjectID != projectID {
-		auth.SetFlash(c.Request, "error", "DC not found")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
-		return
+		if err != nil {
+			slog.Error("Error fetching DC", slog.Int("dc_id", dcID), slog.String("error", err.Error()))
+		}
+		auth.SetFlash(c.Request(), "error", "DC not found")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
 	}
 
-	lineItems, _ := database.GetLineItemsByDCID(dcID)
+	lineItemsVal, _ := database.GetLineItemsByDCID(dcID)
 
 	// Load serial numbers for each line item
-	for i := range lineItems {
-		serials, _ := database.GetSerialNumbersByLineItemID(lineItems[i].ID)
-		lineItems[i].SerialNumbers = serials
+	for i := range lineItemsVal {
+		serials, _ := database.GetSerialNumbersByLineItemID(lineItemsVal[i].ID)
+		lineItemsVal[i].SerialNumbers = serials
 	}
+
+	lineItems := lineItemsToPointers(lineItemsVal)
 
 	// Get addresses
 	var shipToAddress *models.Address
@@ -78,7 +95,7 @@ func ShowOfficialDCDetail(c *gin.Context) {
 		}
 	}
 
-	flashType, flashMessage := auth.PopFlash(c.Request)
+	flashType, flashMessage := auth.PopFlash(c.Request())
 
 	var breadcrumbItems []helpers.Breadcrumb
 	breadcrumbItems = append(breadcrumbItems,
@@ -96,72 +113,67 @@ func ShowOfficialDCDetail(c *gin.Context) {
 		)
 	}
 	breadcrumbItems = append(breadcrumbItems, helpers.Breadcrumb{Title: dc.DCNumber, URL: ""})
-	breadcrumbs := helpers.BuildBreadcrumbs(breadcrumbItems...)
+	_ = helpers.BuildBreadcrumbs(breadcrumbItems...)
 
-	c.HTML(http.StatusOK, "delivery_challans/official_detail.html", gin.H{
-		"user":           user,
-		"currentPath":    c.Request.URL.Path,
-		"breadcrumbs":    breadcrumbs,
-		"project":        project,
-		"currentProject": project,
-		"dc":             dc,
-		"lineItems":      lineItems,
-		"shipToAddress":  shipToAddress,
-		"billToAddress":  billToAddress,
-		"shipmentGroup":  shipmentGroup,
-		"siblingDCs":     siblingDCs,
-		"dcPosition":     dcPosition,
-		"officialCount":  officialCount,
-		"activeTab":      "templates",
-		"flashType":      flashType,
-		"flashMessage":   flashMessage,
-		"csrfToken":      csrf.Token(c.Request),
-		"csrfField":      csrf.TemplateField(c.Request),
-	})
+	allProjects, _ := database.GetAccessibleProjects(user)
+
+	pageContent := deliverychallan.OfficialDetail(
+		user,
+		project,
+		allProjects,
+		dc,
+		flashType,
+		flashMessage,
+		csrf.Token(c.Request()),
+		lineItems,
+		shipToAddress,
+		billToAddress,
+		shipmentGroup,
+		siblingDCs,
+		dcPosition,
+		officialCount,
+	)
+	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, project, allProjects, flashType, flashMessage)
+	return components.RenderOK(c, layouts.MainWithContent("Official DC", sidebar, topbar, flashMessage, flashType, pageContent))
 }
 
 // ShowOfficialDCPrintView renders a print-ready view for an Official DC.
-func ShowOfficialDCPrintView(c *gin.Context) {
-	user := auth.GetCurrentUser(c)
-
+func ShowOfficialDCPrintView(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	dcID, err := strconv.Atoi(c.Param("dcid"))
 	if err != nil {
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
-		return
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
 	}
 
 	project, err := database.GetProjectByID(projectID)
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		slog.Error("Error fetching project for print view", slog.Int("project_id", projectID), slog.String("error", err.Error()))
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	dc, err := database.GetDeliveryChallanByID(dcID)
 	if err != nil || dc.ProjectID != projectID {
-		auth.SetFlash(c.Request, "error", "DC not found")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
-		return
+		if err != nil {
+			slog.Error("Error fetching DC for print view", slog.Int("dc_id", dcID), slog.String("error", err.Error()))
+		}
+		auth.SetFlash(c.Request(), "error", "DC not found")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
 	}
 
-	lineItems, _ := database.GetLineItemsByDCID(dcID)
+	lineItemsVal, _ := database.GetLineItemsByDCID(dcID)
 
 	// Load serial numbers for each line item
-	for i := range lineItems {
-		serials, _ := database.GetSerialNumbersByLineItemID(lineItems[i].ID)
-		lineItems[i].SerialNumbers = serials
+	for i := range lineItemsVal {
+		serials, _ := database.GetSerialNumbersByLineItemID(lineItemsVal[i].ID)
+		lineItemsVal[i].SerialNumbers = serials
 	}
 
-	// Calculate total quantity
-	var totalQty int
-	for _, li := range lineItems {
-		totalQty += li.Quantity
-	}
+	lineItems := lineItemsToPointers(lineItemsVal)
 
 	// Get addresses
 	var shipToAddress *models.Address
@@ -176,26 +188,12 @@ func ShowOfficialDCPrintView(c *gin.Context) {
 	// Get company settings
 	company, _ := database.GetCompanySettings()
 
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-		helpers.Breadcrumb{Title: dc.DCNumber, URL: fmt.Sprintf("/projects/%d/dcs/%d", projectID, dcID)},
-		helpers.Breadcrumb{Title: "Official Print View", URL: ""},
-	)
-
-	c.HTML(http.StatusOK, "delivery_challans/official_print.html", gin.H{
-		"user":          user,
-		"currentPath":   c.Request.URL.Path,
-		"breadcrumbs":   breadcrumbs,
-		"project":       project,
-		"currentProject":  project,
-		"dc":            dc,
-		"lineItems":     lineItems,
-		"totalQty":      totalQty,
-		"shipToAddress": shipToAddress,
-		"billToAddress": billToAddress,
-		"company":       company,
-		"activeTab":     "templates",
-	})
+	return components.RenderOK(c, deliverychallan.OfficialPrint(
+		project,
+		dc,
+		lineItems,
+		shipToAddress,
+		billToAddress,
+		company,
+	))
 }
-

@@ -1,0 +1,235 @@
+package htmx
+
+import (
+	"fmt"
+	"strconv"
+	"time"
+
+	"github.com/narendhupati/dc-management-tool/internal/database"
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+// DashboardStatsPartialProps holds props for the dashboard stats HTMX fragment.
+type DashboardStatsPartialProps struct {
+	Stats          *database.DashboardStats
+	RecentDCs      []database.RecentDC
+	RecentActivity []database.RecentActivity
+	CurrentProject *models.Project
+	Range          string
+	NextTransitDC  string
+	NextOfficialDC string
+	DCFormat       string
+}
+
+func dashItoa(i int) string {
+	return strconv.Itoa(i)
+}
+
+func dashTimeAgo(t time.Time) string {
+	since := time.Since(t)
+	switch {
+	case since < time.Minute:
+		return "just now"
+	case since < time.Hour:
+		return fmt.Sprintf("%dm ago", int(since.Minutes()))
+	case since < 24*time.Hour:
+		return fmt.Sprintf("%dh ago", int(since.Hours()))
+	case since < 7*24*time.Hour:
+		return fmt.Sprintf("%dd ago", int(since.Hours()/24))
+	default:
+		return t.Format("Jan 2")
+	}
+}
+
+templ DashboardStatsPartial(props DashboardStatsPartialProps) {
+	<!-- Stats Cards Row 1: Entity Counts -->
+	<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+		<!-- Products -->
+		<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/products", props.CurrentProject.ID)) } class="card hover:shadow-md transition-shadow group">
+			<div class="flex items-center justify-between">
+				<div>
+					<p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Products</p>
+					<p class="text-2xl font-bold text-gray-900 mt-1">{ dashItoa(props.Stats.TotalProducts) }</p>
+				</div>
+				<div class="h-10 w-10 bg-brand-50 rounded-lg flex items-center justify-center group-hover:bg-brand-100">
+					<svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+					</svg>
+				</div>
+			</div>
+		</a>
+		<!-- Templates -->
+		<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/templates", props.CurrentProject.ID)) } class="card hover:shadow-md transition-shadow group">
+			<div class="flex items-center justify-between">
+				<div>
+					<p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Templates</p>
+					<p class="text-2xl font-bold text-gray-900 mt-1">{ dashItoa(props.Stats.TotalTemplates) }</p>
+				</div>
+				<div class="h-10 w-10 bg-purple-50 rounded-lg flex items-center justify-center group-hover:bg-purple-100">
+					<svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
+					</svg>
+				</div>
+			</div>
+		</a>
+		<!-- Addresses -->
+		<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/addresses", props.CurrentProject.ID)) } class="card hover:shadow-md transition-shadow group">
+			<div class="flex items-center justify-between">
+				<div>
+					<p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Addresses</p>
+					<p class="text-2xl font-bold text-gray-900 mt-1">{ dashItoa(props.Stats.TotalBillToAddresses + props.Stats.TotalShipToAddresses) }</p>
+					<p class="text-xs text-gray-400 mt-0.5">{ dashItoa(props.Stats.TotalBillToAddresses) } bill-to · { dashItoa(props.Stats.TotalShipToAddresses) } ship-to</p>
+				</div>
+				<div class="h-10 w-10 bg-teal-50 rounded-lg flex items-center justify-center group-hover:bg-teal-100">
+					<svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+					</svg>
+				</div>
+			</div>
+		</a>
+	</div>
+	<!-- Stats Cards Row 2: DC Breakdown -->
+	<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+		<!-- Transit DCs -->
+		<div class="card">
+			<p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Transit DCs</p>
+			<p class="text-2xl font-bold text-blue-600 mt-1">{ dashItoa(props.Stats.TransitDCs) }</p>
+			<div class="flex gap-3 mt-1 text-xs text-gray-500">
+				<span>{ dashItoa(props.Stats.TransitDCsIssued) } issued</span>
+				<span>{ dashItoa(props.Stats.TransitDCsDraft) } draft</span>
+			</div>
+		</div>
+		<!-- Official DCs -->
+		<div class="card">
+			<p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Official DCs</p>
+			<p class="text-2xl font-bold text-green-600 mt-1">{ dashItoa(props.Stats.OfficialDCs) }</p>
+			<div class="flex gap-3 mt-1 text-xs text-gray-500">
+				<span>{ dashItoa(props.Stats.OfficialDCsIssued) } issued</span>
+				<span>{ dashItoa(props.Stats.OfficialDCsDraft) } draft</span>
+			</div>
+		</div>
+		<!-- Total DCs -->
+		<div class="card">
+			<p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total DCs</p>
+			<p class="text-2xl font-bold text-gray-900 mt-1">{ dashItoa(props.Stats.TotalDCs) }</p>
+			<div class="flex gap-3 mt-1 text-xs text-gray-500">
+				<span>{ dashItoa(props.Stats.IssuedDCs) } issued</span>
+				<span>{ dashItoa(props.Stats.DraftDCs) } draft</span>
+			</div>
+		</div>
+		<!-- Serial Numbers -->
+		<div class="card">
+			<p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Serial Numbers</p>
+			<p class="text-2xl font-bold text-gray-900 mt-1">{ dashItoa(props.Stats.TotalSerialNumbers) }</p>
+			<p class="text-xs text-gray-400 mt-1">used across all DCs</p>
+		</div>
+	</div>
+	<!-- Two-column: Activity Feed + Quick Actions & Project Summary -->
+	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+		<!-- Recent Activity (2/3 width) -->
+		<div class="lg:col-span-2 card">
+			<h3 class="card-title mb-4">Recent Activity</h3>
+			if len(props.RecentActivity) > 0 {
+				<div class="divide-y divide-gray-100">
+					for _, activity := range props.RecentActivity {
+						<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/dcs/%d", activity.ProjectID, activity.EntityID)) } class="flex items-center gap-3 py-3 px-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors">
+							if activity.Status == "issued" {
+								<div class="h-8 w-8 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+									<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+									</svg>
+								</div>
+							} else {
+								<div class="h-8 w-8 rounded-full bg-yellow-50 flex items-center justify-center flex-shrink-0">
+									<svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+									</svg>
+								</div>
+							}
+							<div class="min-w-0 flex-1">
+								<p class="text-sm font-medium text-gray-900 truncate">{ activity.Title }</p>
+								<p class="text-xs text-gray-500">{ activity.Description }</p>
+							</div>
+							<span class="text-xs text-gray-400 flex-shrink-0">{ dashTimeAgo(activity.CreatedAt) }</span>
+						</a>
+					}
+				</div>
+			} else {
+				<div class="text-center py-8">
+					<svg class="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+					</svg>
+					<p class="mt-2 text-sm text-gray-500">No activity yet. Create a delivery challan to get started.</p>
+				</div>
+			}
+		</div>
+		<!-- Right column: Quick Actions + Project Summary -->
+		<div class="space-y-6">
+			<!-- Quick Actions -->
+			<div class="card">
+				<h3 class="card-title mb-4">Quick Actions</h3>
+				<div class="space-y-2">
+					<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/new", props.CurrentProject.ID)) } class="btn btn-ghost flex items-center gap-3 w-full text-brand-700 hover:bg-brand-100 hover:text-brand-900">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+						</svg>
+						New Shipment
+					</a>
+					<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/products", props.CurrentProject.ID)) } class="btn btn-ghost flex items-center gap-3 w-full text-gray-700">
+						<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+						</svg>
+						Add Products
+					</a>
+					<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/addresses", props.CurrentProject.ID)) } class="btn btn-ghost flex items-center gap-3 w-full text-gray-700">
+						<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+						</svg>
+						Upload Addresses
+					</a>
+					<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/dcs-list", props.CurrentProject.ID)) } class="btn btn-ghost flex items-center gap-3 w-full text-gray-700">
+						<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+						</svg>
+						View All DCs
+					</a>
+				</div>
+			</div>
+			<!-- Project Summary -->
+			<div class="card">
+				<h3 class="card-title mb-4">Project Summary</h3>
+				<dl class="space-y-3 text-sm">
+					if props.CurrentProject.TenderRefNumber != "" {
+						<div>
+							<dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">Tender Reference</dt>
+							<dd class="text-gray-900 mt-0.5">{ props.CurrentProject.TenderRefNumber }</dd>
+						</div>
+					}
+					if props.CurrentProject.POReference != "" {
+						<div>
+							<dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">PO Reference</dt>
+							<dd class="text-gray-900 mt-0.5">{ props.CurrentProject.POReference }</dd>
+						</div>
+					}
+					<div>
+						<dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">DC Number Format</dt>
+						<dd class="text-gray-900 mt-0.5 font-mono text-xs">{ props.DCFormat }</dd>
+					</div>
+					if props.NextTransitDC != "" {
+						<div>
+							<dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">Next Transit DC</dt>
+							<dd class="text-blue-600 mt-0.5 font-mono text-xs">{ props.NextTransitDC }</dd>
+						</div>
+					}
+					if props.NextOfficialDC != "" {
+						<div>
+							<dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">Next Official DC</dt>
+							<dd class="text-green-600 mt-0.5 font-mono text-xs">{ props.NextOfficialDC }</dd>
+						</div>
+					}
+				</dl>
+			</div>
+		</div>
+	</div>
+}

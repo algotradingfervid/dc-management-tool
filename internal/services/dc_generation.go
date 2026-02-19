@@ -43,7 +43,7 @@ type ShipmentLineItem struct {
 // ShipmentResult holds the result of creating a shipment group.
 type ShipmentResult struct {
 	GroupID     int
-	TransitDC  *models.DeliveryChallan
+	TransitDC   *models.DeliveryChallan
 	OfficialDCs []*models.DeliveryChallan
 }
 
@@ -78,7 +78,7 @@ func CreateShipmentGroupDCs(db *sql.DB, params ShipmentParams) (*ShipmentResult,
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Parse DC date for financial year
 	dcDate, err := time.Parse("2006-01-02", params.ChallanDate)
@@ -109,7 +109,10 @@ func CreateShipmentGroupDCs(db *sql.DB, params ShipmentParams) (*ShipmentResult,
 	if err != nil {
 		return nil, fmt.Errorf("failed to create shipment group: %w", err)
 	}
-	groupID, _ := sgResult.LastInsertId()
+	groupID, err := sgResult.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get shipment group ID: %w", err)
+	}
 
 	// --- Create Transit DC ---
 	transitSeq, err := getNextSequence(tx, params.ProjectID, DCTypeTransit, fy)
@@ -149,7 +152,10 @@ func CreateShipmentGroupDCs(db *sql.DB, params ShipmentParams) (*ShipmentResult,
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert transit DC: %w", err)
 	}
-	transitDCID, _ := result.LastInsertId()
+	transitDCID, err := result.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transit DC ID: %w", err)
+	}
 	transitDC.ID = int(transitDCID)
 
 	// Insert transit details
@@ -181,7 +187,10 @@ func CreateShipmentGroupDCs(db *sql.DB, params ShipmentParams) (*ShipmentResult,
 		if err != nil {
 			return nil, fmt.Errorf("failed to insert transit line item: %w", err)
 		}
-		liID, _ := liResult.LastInsertId()
+		liID, err := liResult.LastInsertId()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get line item ID: %w", err)
+		}
 
 		// Insert all serial numbers for this product
 		for _, sn := range item.AllSerials {
@@ -228,7 +237,10 @@ func CreateShipmentGroupDCs(db *sql.DB, params ShipmentParams) (*ShipmentResult,
 		if err != nil {
 			return nil, fmt.Errorf("failed to insert official DC: %w", err)
 		}
-		offDCID, _ := result.LastInsertId()
+		offDCID, err := result.LastInsertId()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get official DC ID: %w", err)
+		}
 		offDC.ID = int(offDCID)
 
 		// Insert line items for this official DC (no pricing, no serials - serials tracked on transit DC only)
@@ -253,7 +265,7 @@ func CreateShipmentGroupDCs(db *sql.DB, params ShipmentParams) (*ShipmentResult,
 
 	return &ShipmentResult{
 		GroupID:     int(groupID),
-		TransitDC:  transitDC,
+		TransitDC:   transitDC,
 		OfficialDCs: officialDCs,
 	}, nil
 }

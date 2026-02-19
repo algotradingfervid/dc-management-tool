@@ -2,96 +2,91 @@ package handlers
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gorilla/csrf"
+	"github.com/labstack/echo/v4"
+	"github.com/narendhupati/dc-management-tool/components/layouts"
+	pageshipments "github.com/narendhupati/dc-management-tool/components/pages/shipments"
+	"github.com/narendhupati/dc-management-tool/components/partials"
 	"github.com/narendhupati/dc-management-tool/internal/auth"
+	"github.com/narendhupati/dc-management-tool/internal/components"
 	"github.com/narendhupati/dc-management-tool/internal/database"
-	"github.com/narendhupati/dc-management-tool/internal/helpers"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 	"github.com/narendhupati/dc-management-tool/internal/services"
 )
 
 // ShowCreateShipmentWizard renders step 1 of the shipment wizard.
-func ShowCreateShipmentWizard(c *gin.Context) {
+func ShowCreateShipmentWizard(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	project, err := database.GetProjectByID(projectID)
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Project not found")
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		auth.SetFlash(c.Request(), "error", "Project not found")
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	templates, err := database.GetTemplatesByProjectID(projectID)
 	if err != nil {
-		log.Printf("Error fetching templates: %v", err)
+		slog.Error("Error fetching templates", slog.String("error", err.Error()), slog.Int("projectID", projectID))
 		templates = []*models.DCTemplate{}
 	}
 
 	transporters, err := database.GetTransportersByProjectID(projectID, true)
 	if err != nil {
-		log.Printf("Error fetching transporters: %v", err)
+		slog.Error("Error fetching transporters", slog.String("error", err.Error()), slog.Int("projectID", projectID))
 		transporters = []*models.Transporter{}
 	}
 
-	flashType, flashMessage := auth.PopFlash(c.Request)
+	flashType, flashMessage := auth.PopFlash(c.Request())
+	allProjects, _ := database.GetAccessibleProjects(user)
 
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-		helpers.Breadcrumb{Title: "New Shipment", URL: ""},
+	pageContent := pageshipments.WizardStep1(
+		user,
+		project,
+		allProjects,
+		templates,
+		transporters,
+		flashType,
+		flashMessage,
+		csrf.Token(c.Request()),
 	)
-
-	c.HTML(http.StatusOK, "shipments/wizard_step1.html", gin.H{
-		"user":           user,
-		"currentPath":    c.Request.URL.Path,
-		"breadcrumbs":    breadcrumbs,
-		"project":        project,
-		"currentProject": project,
-		"templates":      templates,
-		"transporters":   transporters,
-		"flashType":      flashType,
-		"flashMessage":   flashMessage,
-		"csrfField":      csrf.TemplateField(c.Request),
-	})
+	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, project, allProjects, flashType, flashMessage)
+	return components.RenderOK(c, layouts.MainWithContent("Shipment Wizard", sidebar, topbar, flashMessage, flashType, pageContent))
 }
 
 // ShipmentWizardStep2 processes step 1 data and renders step 2 (address selection).
-func ShipmentWizardStep2(c *gin.Context) {
+func ShipmentWizardStep2(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	project, err := database.GetProjectByID(projectID)
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Project not found")
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		auth.SetFlash(c.Request(), "error", "Project not found")
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	// Parse step 1 data
-	templateID, _ := strconv.Atoi(c.PostForm("template_id"))
-	numSets, _ := strconv.Atoi(c.PostForm("num_sets"))
-	challanDate := c.PostForm("challan_date")
-	transporterName := c.PostForm("transporter_name")
-	vehicleNumber := c.PostForm("vehicle_number")
-	ewayBillNumber := c.PostForm("eway_bill_number")
-	docketNumber := c.PostForm("docket_number")
-	taxType := c.PostForm("tax_type")
-	reverseCharge := c.PostForm("reverse_charge")
+	templateID, _ := strconv.Atoi(c.FormValue("template_id"))
+	numSets, _ := strconv.Atoi(c.FormValue("num_sets"))
+	challanDate := c.FormValue("challan_date")
+	transporterName := c.FormValue("transporter_name")
+	vehicleNumber := c.FormValue("vehicle_number")
+	ewayBillNumber := c.FormValue("eway_bill_number")
+	docketNumber := c.FormValue("docket_number")
+	taxType := c.FormValue("tax_type")
+	reverseCharge := c.FormValue("reverse_charge")
 
 	// Validate
 	errors := make(map[string]string)
@@ -112,25 +107,23 @@ func ShipmentWizardStep2(c *gin.Context) {
 	}
 
 	if len(errors) > 0 {
-		auth.SetFlash(c.Request, "error", "Please fix the errors below")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", "Please fix the errors below")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 	}
 
 	// Load template products
 	products, err := database.GetTemplateProducts(templateID)
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Failed to load template products")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", "Failed to load template products")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 	}
+	_ = products
 
 	// Validate template belongs to project
 	tmpl, err := database.GetTemplateByID(templateID)
 	if err != nil || tmpl.ProjectID != projectID {
-		auth.SetFlash(c.Request, "error", "Template not found or doesn't belong to this project")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", "Template not found or doesn't belong to this project")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 	}
 
 	// Peek at DC numbers
@@ -157,79 +150,76 @@ func ShipmentWizardStep2(c *gin.Context) {
 		shipToAddresses, _ = database.GetAllAddressesByConfigID(shipToConfig.ID)
 	}
 
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-		helpers.Breadcrumb{Title: "New Shipment - Addresses", URL: ""},
-	)
+	allProjects, _ := database.GetAccessibleProjects(user)
 
-	c.HTML(http.StatusOK, "shipments/wizard_step2.html", gin.H{
-		"user":                  user,
-		"currentPath":           c.Request.URL.Path,
-		"breadcrumbs":           breadcrumbs,
-		"project":               project,
-		"currentProject":        project,
-		"products":              products,
-		"template":              tmpl,
-		"numSets":               numSets,
-		"transitDCNumber":       transitDCNumber,
-		"officialDCNumber":      officialDCNumber,
-		"billFromAddresses":     billFromAddresses,
-		"dispatchFromAddresses": dispatchFromAddresses,
-		"billToAddresses":       billToAddresses,
-		"shipToAddresses":       shipToAddresses,
-		// Carry forward step 1 data
-		"templateID":      templateID,
-		"challanDate":     challanDate,
-		"transporterName": transporterName,
-		"vehicleNumber":   vehicleNumber,
-		"ewayBillNumber":  ewayBillNumber,
-		"docketNumber":    docketNumber,
-		"taxType":         taxType,
-		"reverseCharge":   reverseCharge,
-		"csrfField":       csrf.TemplateField(c.Request),
-	})
+	pageContent := pageshipments.WizardStep2(
+		user,
+		project,
+		allProjects,
+		tmpl,
+		numSets,
+		challanDate,
+		transitDCNumber,
+		officialDCNumber,
+		strconv.Itoa(templateID),
+		transporterName,
+		vehicleNumber,
+		ewayBillNumber,
+		docketNumber,
+		taxType,
+		reverseCharge,
+		billFromAddresses,
+		dispatchFromAddresses,
+		billToAddresses,
+		shipToAddresses,
+		csrf.Token(c.Request()),
+	)
+	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, project, allProjects, "", "")
+	return components.RenderOK(c, layouts.MainWithContent("Shipment Wizard", sidebar, topbar, "", "", pageContent))
 }
 
 // ShipmentWizardStep3 processes step 2 (addresses) and renders step 3 (serial entry).
-func ShipmentWizardStep3(c *gin.Context) {
+func ShipmentWizardStep3(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	project, err := database.GetProjectByID(projectID)
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Project not found")
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		auth.SetFlash(c.Request(), "error", "Project not found")
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	// Parse step 1 carry-forward data
-	templateID, _ := strconv.Atoi(c.PostForm("template_id"))
-	numSets, _ := strconv.Atoi(c.PostForm("num_sets"))
-	challanDate := c.PostForm("challan_date")
-	transporterName := c.PostForm("transporter_name")
-	vehicleNumber := c.PostForm("vehicle_number")
-	ewayBillNumber := c.PostForm("eway_bill_number")
-	docketNumber := c.PostForm("docket_number")
-	taxType := c.PostForm("tax_type")
-	reverseCharge := c.PostForm("reverse_charge")
+	templateID, _ := strconv.Atoi(c.FormValue("template_id"))
+	numSets, _ := strconv.Atoi(c.FormValue("num_sets"))
+	challanDate := c.FormValue("challan_date")
+	transporterName := c.FormValue("transporter_name")
+	vehicleNumber := c.FormValue("vehicle_number")
+	ewayBillNumber := c.FormValue("eway_bill_number")
+	docketNumber := c.FormValue("docket_number")
+	taxType := c.FormValue("tax_type")
+	reverseCharge := c.FormValue("reverse_charge")
 
 	// Parse step 2 data (addresses)
-	billFromAddressID, _ := strconv.Atoi(c.PostForm("bill_from_address_id"))
-	dispatchFromAddressID, _ := strconv.Atoi(c.PostForm("dispatch_from_address_id"))
-	billToAddressID, _ := strconv.Atoi(c.PostForm("bill_to_address_id"))
-	transitShipToAddrID, _ := strconv.Atoi(c.PostForm("transit_ship_to_address_id"))
+	billFromAddressID, _ := strconv.Atoi(c.FormValue("bill_from_address_id"))
+	dispatchFromAddressID, _ := strconv.Atoi(c.FormValue("dispatch_from_address_id"))
+	billToAddressID, _ := strconv.Atoi(c.FormValue("bill_to_address_id"))
+	transitShipToAddrID, _ := strconv.Atoi(c.FormValue("transit_ship_to_address_id"))
 
 	// Parse multiple ship-to address selections
-	shipToIDStrs := c.PostFormArray("ship_to_address_ids")
+	if parseErr := c.Request().ParseMultipartForm(32 << 20); parseErr != nil {
+		// Fall back to regular form parsing if multipart fails
+		_ = c.Request().ParseForm()
+	}
+	shipToIDStrs := c.Request().PostForm["ship_to_address_ids"]
 	var shipToAddressIDs []int
 	for _, s := range shipToIDStrs {
-		id, err := strconv.Atoi(s)
-		if err == nil && id > 0 {
+		id, idErr := strconv.Atoi(s)
+		if idErr == nil && id > 0 {
 			shipToAddressIDs = append(shipToAddressIDs, id)
 		}
 	}
@@ -264,7 +254,7 @@ func ShipmentWizardStep3(c *gin.Context) {
 		for _, msg := range validationErrors {
 			msgs = append(msgs, msg)
 		}
-		auth.SetFlash(c.Request, "error", strings.Join(msgs, ". "))
+		auth.SetFlash(c.Request(), "error", strings.Join(msgs, ". "))
 
 		// Re-render step 2 instead of redirecting to step 1
 		billFromConfig, _ := database.GetOrCreateAddressConfig(projectID, "bill_from")
@@ -289,49 +279,43 @@ func ShipmentWizardStep3(c *gin.Context) {
 		tmpl, _ := database.GetTemplateByID(templateID)
 		transitDCNumber, _ := services.PeekNextDCNumber(database.DB, projectID, services.DCTypeTransit)
 		officialDCNumber, _ := services.PeekNextDCNumber(database.DB, projectID, services.DCTypeOfficial)
-		flashType, flashMessage := auth.PopFlash(c.Request)
+		flashType, flashMessage := auth.PopFlash(c.Request())
+		allProjects, _ := database.GetAccessibleProjects(user)
+		_ = flashType
+		_ = flashMessage
 
-		breadcrumbs := helpers.BuildBreadcrumbs(
-			helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-			helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-			helpers.Breadcrumb{Title: "New Shipment - Addresses", URL: ""},
+		pageContent := pageshipments.WizardStep2(
+			user,
+			project,
+			allProjects,
+			tmpl,
+			numSets,
+			challanDate,
+			transitDCNumber,
+			officialDCNumber,
+			strconv.Itoa(templateID),
+			transporterName,
+			vehicleNumber,
+			ewayBillNumber,
+			docketNumber,
+			taxType,
+			reverseCharge,
+			billFromAddresses,
+			dispatchFromAddresses,
+			billToAddresses,
+			shipToAddresses,
+			csrf.Token(c.Request()),
 		)
-
-		c.HTML(http.StatusOK, "shipments/wizard_step2.html", gin.H{
-			"user":                  user,
-			"currentPath":           c.Request.URL.Path,
-			"breadcrumbs":           breadcrumbs,
-			"project":               project,
-			"currentProject":        project,
-			"template":              tmpl,
-			"numSets":               numSets,
-			"transitDCNumber":       transitDCNumber,
-			"officialDCNumber":      officialDCNumber,
-			"billFromAddresses":     billFromAddresses,
-			"dispatchFromAddresses": dispatchFromAddresses,
-			"billToAddresses":       billToAddresses,
-			"shipToAddresses":       shipToAddresses,
-			"templateID":            templateID,
-			"challanDate":           challanDate,
-			"transporterName":       transporterName,
-			"vehicleNumber":         vehicleNumber,
-			"ewayBillNumber":        ewayBillNumber,
-			"docketNumber":          docketNumber,
-			"taxType":               taxType,
-			"reverseCharge":         reverseCharge,
-			"flashType":             flashType,
-			"flashMessage":          flashMessage,
-			"csrfField":             csrf.TemplateField(c.Request),
-		})
-		return
+		sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+		topbar := partials.Topbar(user, project, allProjects, "", "")
+		return components.RenderOK(c, layouts.MainWithContent("Shipment Wizard", sidebar, topbar, "", "", pageContent))
 	}
 
 	// Load template products with quantities
 	products, err := database.GetTemplateProducts(templateID)
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Failed to load template products")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", "Failed to load template products")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 	}
 
 	// Load ship-to address details for serial assignment UI
@@ -357,71 +341,68 @@ func ShipmentWizardStep3(c *gin.Context) {
 		shipToIDStrings[i] = strconv.Itoa(id)
 	}
 
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-		helpers.Breadcrumb{Title: "New Shipment - Serials", URL: ""},
-	)
+	allProjects, _ := database.GetAccessibleProjects(user)
 
-	c.HTML(http.StatusOK, "shipments/wizard_step3.html", gin.H{
-		"user":                  user,
-		"currentPath":           c.Request.URL.Path,
-		"breadcrumbs":           breadcrumbs,
-		"project":               project,
-		"currentProject":        project,
-		"products":              products,
-		"numSets":               numSets,
-		"shipToAddresses":       shipToAddresses,
-		// Carry forward all previous data
-		"templateID":            templateID,
-		"challanDate":           challanDate,
-		"transporterName":       transporterName,
-		"vehicleNumber":         vehicleNumber,
-		"ewayBillNumber":        ewayBillNumber,
-		"docketNumber":          docketNumber,
-		"taxType":               taxType,
-		"reverseCharge":         reverseCharge,
-		"billFromAddressID":     billFromAddressID,
-		"dispatchFromAddressID": dispatchFromAddressID,
-		"billToAddressID":       billToAddressID,
-		"transitShipToAddrID":   transitShipToAddrID,
-		"shipToAddressIDs":      shipToIDStrings,
-		"csrfField":             csrf.TemplateField(c.Request),
-	})
+	pageContent := pageshipments.WizardStep3(
+		user,
+		project,
+		allProjects,
+		products,
+		numSets,
+		challanDate,
+		strconv.Itoa(templateID),
+		transporterName,
+		vehicleNumber,
+		ewayBillNumber,
+		docketNumber,
+		taxType,
+		reverseCharge,
+		strconv.Itoa(billFromAddressID),
+		strconv.Itoa(dispatchFromAddressID),
+		strconv.Itoa(billToAddressID),
+		strconv.Itoa(transitShipToAddrID),
+		shipToIDStrings,
+		shipToAddresses,
+		csrf.Token(c.Request()),
+	)
+	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, project, allProjects, "", "")
+	return components.RenderOK(c, layouts.MainWithContent("Shipment Wizard", sidebar, topbar, "", "", pageContent))
 }
 
 // ShipmentWizardStep4 processes step 3 (serials) and renders review page.
-func ShipmentWizardStep4(c *gin.Context) {
+func ShipmentWizardStep4(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	project, err := database.GetProjectByID(projectID)
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Project not found")
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		auth.SetFlash(c.Request(), "error", "Project not found")
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	// Parse all carry-forward data
-	templateID, _ := strconv.Atoi(c.PostForm("template_id"))
-	numSets, _ := strconv.Atoi(c.PostForm("num_sets"))
-	challanDate := c.PostForm("challan_date")
-	transporterName := c.PostForm("transporter_name")
-	vehicleNumber := c.PostForm("vehicle_number")
-	ewayBillNumber := c.PostForm("eway_bill_number")
-	docketNumber := c.PostForm("docket_number")
-	taxType := c.PostForm("tax_type")
-	reverseCharge := c.PostForm("reverse_charge")
-	billFromAddressID, _ := strconv.Atoi(c.PostForm("bill_from_address_id"))
-	dispatchFromAddressID, _ := strconv.Atoi(c.PostForm("dispatch_from_address_id"))
-	billToAddressID, _ := strconv.Atoi(c.PostForm("bill_to_address_id"))
-	transitShipToAddrID, _ := strconv.Atoi(c.PostForm("transit_ship_to_address_id"))
+	templateID, _ := strconv.Atoi(c.FormValue("template_id"))
+	numSets, _ := strconv.Atoi(c.FormValue("num_sets"))
+	challanDate := c.FormValue("challan_date")
+	transporterName := c.FormValue("transporter_name")
+	vehicleNumber := c.FormValue("vehicle_number")
+	ewayBillNumber := c.FormValue("eway_bill_number")
+	docketNumber := c.FormValue("docket_number")
+	taxType := c.FormValue("tax_type")
+	reverseCharge := c.FormValue("reverse_charge")
+	billFromAddressID, _ := strconv.Atoi(c.FormValue("bill_from_address_id"))
+	dispatchFromAddressID, _ := strconv.Atoi(c.FormValue("dispatch_from_address_id"))
+	billToAddressID, _ := strconv.Atoi(c.FormValue("bill_to_address_id"))
+	transitShipToAddrID, _ := strconv.Atoi(c.FormValue("transit_ship_to_address_id"))
 
-	shipToIDStrs := c.PostFormArray("ship_to_address_ids")
+	if parseErr := c.Request().ParseMultipartForm(32 << 20); parseErr != nil {
+		_ = c.Request().ParseForm()
+	}
+	shipToIDStrs := c.Request().PostForm["ship_to_address_ids"]
 	var shipToAddressIDs []int
 	for _, s := range shipToIDStrs {
 		id, _ := strconv.Atoi(s)
@@ -433,27 +414,21 @@ func ShipmentWizardStep4(c *gin.Context) {
 	// Load template products
 	products, err := database.GetTemplateProducts(templateID)
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Failed to load template products")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", "Failed to load template products")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 	}
 
 	// Parse serial numbers per product
-	type productSerialData struct {
-		ProductID   int
-		AllSerials  []string
-		Assignments map[int][]string // shipToAddrID -> serials
-	}
-	var serialData []productSerialData
+	var serialData []pageshipments.WizardSerialData
 
 	for _, p := range products {
-		pd := productSerialData{
+		pd := pageshipments.WizardSerialData{
 			ProductID:   p.ID,
 			Assignments: make(map[int][]string),
 		}
 
 		// All serials for this product
-		serialsRaw := c.PostForm(fmt.Sprintf("serials_%d", p.ID))
+		serialsRaw := c.FormValue(fmt.Sprintf("serials_%d", p.ID))
 		if serialsRaw != "" {
 			for _, sn := range strings.Split(serialsRaw, "\n") {
 				sn = strings.TrimSpace(sn)
@@ -465,7 +440,7 @@ func ShipmentWizardStep4(c *gin.Context) {
 
 		// Serial assignments per ship-to address
 		for _, shipToID := range shipToAddressIDs {
-			assignRaw := c.PostForm(fmt.Sprintf("assign_%d_%d", p.ID, shipToID))
+			assignRaw := c.FormValue(fmt.Sprintf("assign_%d_%d", p.ID, shipToID))
 			if assignRaw != "" {
 				for _, sn := range strings.Split(assignRaw, "\n") {
 					sn = strings.TrimSpace(sn)
@@ -506,9 +481,8 @@ func ShipmentWizardStep4(c *gin.Context) {
 	}
 
 	if len(validationErrors) > 0 {
-		auth.SetFlash(c.Request, "error", "Serial number validation failed")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", "Serial number validation failed")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 	}
 
 	// Load template for display
@@ -530,72 +504,70 @@ func ShipmentWizardStep4(c *gin.Context) {
 		}
 	}
 
-	// Build serialized serial data for hidden fields
+	// Build serialized ship-to IDs for hidden fields
 	shipToIDStrings := make([]string, len(shipToAddressIDs))
 	for i, id := range shipToAddressIDs {
 		shipToIDStrings[i] = strconv.Itoa(id)
 	}
 
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-		helpers.Breadcrumb{Title: "New Shipment - Review", URL: ""},
-	)
+	allProjects, _ := database.GetAccessibleProjects(user)
 
-	c.HTML(http.StatusOK, "shipments/wizard_step4.html", gin.H{
-		"user":                  user,
-		"currentPath":           c.Request.URL.Path,
-		"breadcrumbs":           breadcrumbs,
-		"project":               project,
-		"currentProject":        project,
-		"products":              products,
-		"template":              tmpl,
-		"numSets":               numSets,
-		"serialData":            serialData,
-		"shipToAddresses":       shipToAddresses,
-		// Carry forward all data
-		"templateID":            templateID,
-		"challanDate":           challanDate,
-		"transporterName":       transporterName,
-		"vehicleNumber":         vehicleNumber,
-		"ewayBillNumber":        ewayBillNumber,
-		"docketNumber":          docketNumber,
-		"taxType":               taxType,
-		"reverseCharge":         reverseCharge,
-		"billFromAddressID":     billFromAddressID,
-		"dispatchFromAddressID": dispatchFromAddressID,
-		"billToAddressID":       billToAddressID,
-		"transitShipToAddrID":   transitShipToAddrID,
-		"shipToAddressIDs":      shipToIDStrings,
-		"csrfField":             csrf.TemplateField(c.Request),
-	})
+	pageContent := pageshipments.WizardStep4(
+		user,
+		project,
+		allProjects,
+		tmpl,
+		products,
+		numSets,
+		challanDate,
+		transporterName,
+		vehicleNumber,
+		ewayBillNumber,
+		docketNumber,
+		taxType,
+		reverseCharge,
+		strconv.Itoa(templateID),
+		strconv.Itoa(billFromAddressID),
+		strconv.Itoa(dispatchFromAddressID),
+		strconv.Itoa(billToAddressID),
+		strconv.Itoa(transitShipToAddrID),
+		shipToIDStrings,
+		shipToAddresses,
+		serialData,
+		csrf.Token(c.Request()),
+	)
+	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, project, allProjects, "", "")
+	return components.RenderOK(c, layouts.MainWithContent("Shipment Wizard", sidebar, topbar, "", "", pageContent))
 }
 
 // CreateShipment processes the final submission and creates all DCs.
-func CreateShipment(c *gin.Context) {
+func CreateShipment(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	// Re-parse all data from hidden fields
-	templateID, _ := strconv.Atoi(c.PostForm("template_id"))
-	numSets, _ := strconv.Atoi(c.PostForm("num_sets"))
-	challanDate := c.PostForm("challan_date")
-	transporterName := c.PostForm("transporter_name")
-	vehicleNumber := c.PostForm("vehicle_number")
-	ewayBillNumber := c.PostForm("eway_bill_number")
-	docketNumber := c.PostForm("docket_number")
-	taxType := c.PostForm("tax_type")
-	reverseCharge := c.PostForm("reverse_charge")
-	billFromAddressID, _ := strconv.Atoi(c.PostForm("bill_from_address_id"))
-	dispatchFromAddressID, _ := strconv.Atoi(c.PostForm("dispatch_from_address_id"))
-	billToAddressID, _ := strconv.Atoi(c.PostForm("bill_to_address_id"))
-	transitShipToAddrID, _ := strconv.Atoi(c.PostForm("transit_ship_to_address_id"))
+	templateID, _ := strconv.Atoi(c.FormValue("template_id"))
+	numSets, _ := strconv.Atoi(c.FormValue("num_sets"))
+	challanDate := c.FormValue("challan_date")
+	transporterName := c.FormValue("transporter_name")
+	vehicleNumber := c.FormValue("vehicle_number")
+	ewayBillNumber := c.FormValue("eway_bill_number")
+	docketNumber := c.FormValue("docket_number")
+	taxType := c.FormValue("tax_type")
+	reverseCharge := c.FormValue("reverse_charge")
+	billFromAddressID, _ := strconv.Atoi(c.FormValue("bill_from_address_id"))
+	dispatchFromAddressID, _ := strconv.Atoi(c.FormValue("dispatch_from_address_id"))
+	billToAddressID, _ := strconv.Atoi(c.FormValue("bill_to_address_id"))
+	transitShipToAddrID, _ := strconv.Atoi(c.FormValue("transit_ship_to_address_id"))
 
-	shipToIDStrs := c.PostFormArray("ship_to_address_ids")
+	if parseErr := c.Request().ParseMultipartForm(32 << 20); parseErr != nil {
+		_ = c.Request().ParseForm()
+	}
+	shipToIDStrs := c.Request().PostForm["ship_to_address_ids"]
 	var shipToAddressIDs []int
 	for _, s := range shipToIDStrs {
 		id, _ := strconv.Atoi(s)
@@ -606,30 +578,26 @@ func CreateShipment(c *gin.Context) {
 
 	// Re-validate
 	if templateID == 0 || numSets < 1 || challanDate == "" {
-		auth.SetFlash(c.Request, "error", "Invalid shipment data")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", "Invalid shipment data")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 	}
 	if len(shipToAddressIDs) != numSets {
-		auth.SetFlash(c.Request, "error", fmt.Sprintf("Expected %d ship-to addresses, got %d", numSets, len(shipToAddressIDs)))
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", fmt.Sprintf("Expected %d ship-to addresses, got %d", numSets, len(shipToAddressIDs)))
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 	}
 
 	// Validate template belongs to project
 	tmpl, err := database.GetTemplateByID(templateID)
 	if err != nil || tmpl.ProjectID != projectID {
-		auth.SetFlash(c.Request, "error", "Template not found or doesn't belong to this project")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", "Template not found or doesn't belong to this project")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 	}
 
 	// Load template products
 	products, err := database.GetTemplateProducts(templateID)
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Failed to load template products")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", "Failed to load template products")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 	}
 
 	// Build line items with serials
@@ -644,7 +612,7 @@ func CreateShipment(c *gin.Context) {
 		}
 
 		// Parse all serials
-		serialsRaw := c.PostForm(fmt.Sprintf("serials_%d", p.ID))
+		serialsRaw := c.FormValue(fmt.Sprintf("serials_%d", p.ID))
 		if serialsRaw != "" {
 			for _, sn := range strings.Split(serialsRaw, "\n") {
 				sn = strings.TrimSpace(sn)
@@ -656,7 +624,7 @@ func CreateShipment(c *gin.Context) {
 
 		// Parse serial assignments
 		for _, shipToID := range shipToAddressIDs {
-			assignRaw := c.PostForm(fmt.Sprintf("assign_%d_%d", p.ID, shipToID))
+			assignRaw := c.FormValue(fmt.Sprintf("assign_%d_%d", p.ID, shipToID))
 			if assignRaw != "" {
 				for _, sn := range strings.Split(assignRaw, "\n") {
 					sn = strings.TrimSpace(sn)
@@ -674,18 +642,16 @@ func CreateShipment(c *gin.Context) {
 	for i, item := range lineItems {
 		expectedTotal := products[i].DefaultQuantity * numSets
 		if len(item.AllSerials) > 0 && len(item.AllSerials) != expectedTotal {
-			auth.SetFlash(c.Request, "error", fmt.Sprintf("Product %s: expected %d serials, got %d", products[i].ItemName, expectedTotal, len(item.AllSerials)))
-			c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
-			return
+			auth.SetFlash(c.Request(), "error", fmt.Sprintf("Product %s: expected %d serials, got %d", products[i].ItemName, expectedTotal, len(item.AllSerials)))
+			return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 		}
 
 		// Check duplicates within same product
 		seen := make(map[string]bool)
 		for _, sn := range item.AllSerials {
 			if seen[sn] {
-				auth.SetFlash(c.Request, "error", fmt.Sprintf("Duplicate serial %s for product %s", sn, products[i].ItemName))
-				c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
-				return
+				auth.SetFlash(c.Request(), "error", fmt.Sprintf("Duplicate serial %s for product %s", sn, products[i].ItemName))
+				return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 			}
 			seen[sn] = true
 		}
@@ -693,9 +659,8 @@ func CreateShipment(c *gin.Context) {
 		// Check assignments don't exceed qty_per_set
 		for shipToID, assigned := range item.Assignments {
 			if len(assigned) > products[i].DefaultQuantity {
-				auth.SetFlash(c.Request, "error", fmt.Sprintf("Too many serials assigned for product %s to destination %d", products[i].ItemName, shipToID))
-				c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
-				return
+				auth.SetFlash(c.Request(), "error", fmt.Sprintf("Too many serials assigned for product %s to destination %d", products[i].ItemName, shipToID))
+				return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 			}
 		}
 	}
@@ -703,14 +668,13 @@ func CreateShipment(c *gin.Context) {
 	// Check for duplicate serials in project
 	for _, item := range lineItems {
 		if len(item.AllSerials) > 0 {
-			conflicts, err := database.CheckSerialsInProject(projectID, item.AllSerials, nil)
-			if err != nil {
-				log.Printf("Error checking serials: %v", err)
+			conflicts, conflictsErr := database.CheckSerialsInProject(projectID, item.AllSerials, nil)
+			if conflictsErr != nil {
+				slog.Error("Error checking serials", slog.String("error", conflictsErr.Error()), slog.Int("projectID", projectID))
 			}
 			if len(conflicts) > 0 {
-				auth.SetFlash(c.Request, "error", fmt.Sprintf("Serial %s already exists in DC %s", conflicts[0].SerialNumber, conflicts[0].DCNumber))
-				c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
-				return
+				auth.SetFlash(c.Request(), "error", fmt.Sprintf("Serial %s already exists in DC %s", conflicts[0].SerialNumber, conflicts[0].DCNumber))
+				return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 			}
 		}
 	}
@@ -737,157 +701,149 @@ func CreateShipment(c *gin.Context) {
 
 	result, err := services.CreateShipmentGroupDCs(database.DB, params)
 	if err != nil {
-		log.Printf("Error creating shipment: %v", err)
-		auth.SetFlash(c.Request, "error", fmt.Sprintf("Failed to create shipment: %v", err))
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
-		return
+		slog.Error("Error creating shipment", slog.String("error", err.Error()), slog.Int("projectID", projectID))
+		auth.SetFlash(c.Request(), "error", fmt.Sprintf("Failed to create shipment: %v", err))
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 	}
 
-	auth.SetFlash(c.Request, "success", fmt.Sprintf("Shipment created successfully with %d DCs", 1+len(result.OfficialDCs)))
-	c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/%d", projectID, result.GroupID))
+	auth.SetFlash(c.Request(), "success", fmt.Sprintf("Shipment created successfully with %d DCs", 1+len(result.OfficialDCs)))
+	return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/%d", projectID, result.GroupID))
 }
 
 // ShowShipmentGroup displays a shipment group detail page.
-func ShowShipmentGroup(c *gin.Context) {
+func ShowShipmentGroup(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	project, err := database.GetProjectByID(projectID)
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Project not found")
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		auth.SetFlash(c.Request(), "error", "Project not found")
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	groupID, err := strconv.Atoi(c.Param("gid"))
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Invalid shipment group ID")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/dashboard", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", "Invalid shipment group ID")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/dashboard", projectID))
 	}
 
 	group, err := database.GetShipmentGroup(groupID)
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Shipment group not found")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/dashboard", projectID))
-		return
+		auth.SetFlash(c.Request(), "error", "Shipment group not found")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/dashboard", projectID))
 	}
 
 	// Get all DCs in this group
-	dcs, err := database.GetShipmentGroupDCs(groupID)
+	dcPtrs, err := database.GetShipmentGroupDCs(groupID)
 	if err != nil {
-		log.Printf("Error fetching shipment group DCs: %v", err)
-		dcs = []*models.DeliveryChallan{}
+		slog.Error("Error fetching shipment group DCs", slog.String("error", err.Error()), slog.Int("groupID", groupID))
+		dcPtrs = []*models.DeliveryChallan{}
 	}
 
-	flashType, flashMessage := auth.PopFlash(c.Request)
+	// Convert []*models.DeliveryChallan to []models.DeliveryChallan
+	dcs := make([]models.DeliveryChallan, len(dcPtrs))
+	for i, dc := range dcPtrs {
+		dcs[i] = *dc
+	}
 
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-		helpers.Breadcrumb{Title: "Shipment Group", URL: ""},
+	flashType, flashMessage := auth.PopFlash(c.Request())
+	allProjects, _ := database.GetAccessibleProjects(user)
+
+	pageContent := pageshipments.GroupDetail(
+		user,
+		project,
+		allProjects,
+		group,
+		dcs,
+		flashType,
+		flashMessage,
+		csrf.Token(c.Request()),
 	)
-
-	c.HTML(http.StatusOK, "shipments/group_detail.html", gin.H{
-		"user":           user,
-		"currentPath":    c.Request.URL.Path,
-		"breadcrumbs":    breadcrumbs,
-		"project":        project,
-		"currentProject": project,
-		"group":          group,
-		"dcs":            dcs,
-		"flashType":      flashType,
-		"flashMessage":   flashMessage,
-		"csrfField":      csrf.TemplateField(c.Request),
-	})
+	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, project, allProjects, flashType, flashMessage)
+	return components.RenderOK(c, layouts.MainWithContent("Shipment Wizard", sidebar, topbar, flashMessage, flashType, pageContent))
 }
 
 // ListShipmentGroups shows all shipment groups for a project.
-func ListShipmentGroups(c *gin.Context) {
+func ListShipmentGroups(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	project, err := database.GetProjectByID(projectID)
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Project not found")
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		auth.SetFlash(c.Request(), "error", "Project not found")
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
-	groups, err := database.GetShipmentGroupsByProjectID(projectID)
+	groupPtrs, err := database.GetShipmentGroupsByProjectID(projectID)
 	if err != nil {
-		log.Printf("Error fetching shipment groups: %v", err)
-		groups = []*models.ShipmentGroup{}
+		slog.Error("Error fetching shipment groups", slog.String("error", err.Error()), slog.Int("projectID", projectID))
+		groupPtrs = []*models.ShipmentGroup{}
 	}
 
-	flashType, flashMessage := auth.PopFlash(c.Request)
+	// Convert []*models.ShipmentGroup to []models.ShipmentGroup
+	groups := make([]models.ShipmentGroup, len(groupPtrs))
+	for i, g := range groupPtrs {
+		groups[i] = *g
+	}
 
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d/dashboard", project.ID)},
-		helpers.Breadcrumb{Title: "Shipment Groups"},
+	flashType, flashMessage := auth.PopFlash(c.Request())
+	allProjects, _ := database.GetAccessibleProjects(user)
+
+	pageContent := pageshipments.List(
+		user,
+		project,
+		allProjects,
+		groups,
+		flashType,
+		flashMessage,
 	)
-
-	c.HTML(http.StatusOK, "shipments/list.html", gin.H{
-		"user":           user,
-		"currentPath":    c.Request.URL.Path,
-		"breadcrumbs":    breadcrumbs,
-		"project":        project,
-		"currentProject": project,
-		"groups":         groups,
-		"flashType":      flashType,
-		"flashMessage":   flashMessage,
-		"csrfField":      csrf.TemplateField(c.Request),
-	})
+	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, project, allProjects, flashType, flashMessage)
+	return components.RenderOK(c, layouts.MainWithContent("Shipment Wizard", sidebar, topbar, flashMessage, flashType, pageContent))
 }
 
 // IssueShipmentGroup issues all draft DCs in a shipment group.
-func IssueShipmentGroup(c *gin.Context) {
+func IssueShipmentGroup(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid project ID"})
 	}
 
 	groupID, err := strconv.Atoi(c.Param("gid"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid group ID"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid group ID"})
 	}
 
 	group, err := database.GetShipmentGroup(groupID)
 	if err != nil || group.ProjectID != projectID {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Shipment group not found"})
-		return
+		return c.JSON(http.StatusNotFound, map[string]interface{}{"error": "Shipment group not found"})
 	}
 
 	if group.Status == "issued" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Shipment group is already issued"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Shipment group is already issued"})
 	}
 
 	count, err := database.IssueAllDCsInGroup(groupID, user.ID)
 	if err != nil {
-		log.Printf("Error issuing DCs in group %d: %v", groupID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to issue DCs"})
-		return
+		slog.Error("Error issuing DCs in group", slog.String("error", err.Error()), slog.Int("groupID", groupID))
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "Failed to issue DCs"})
 	}
 
 	// Update group status
 	if err := database.UpdateShipmentGroupStatus(groupID, "issued"); err != nil {
-		log.Printf("Error updating group status: %v", err)
+		slog.Error("Error updating group status", slog.String("error", err.Error()), slog.Int("groupID", groupID))
 	}
 
-	auth.SetFlash(c.Request, "success", fmt.Sprintf("Successfully issued %d DCs", count))
-	c.JSON(http.StatusOK, gin.H{
+	auth.SetFlash(c.Request(), "success", fmt.Sprintf("Successfully issued %d DCs", count))
+	return c.JSON(http.StatusOK, map[string]interface{}{
 		"success":  true,
 		"message":  fmt.Sprintf("Successfully issued %d DCs", count),
 		"redirect": fmt.Sprintf("/projects/%d/shipments/%d", projectID, groupID),

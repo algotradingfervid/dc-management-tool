@@ -1,41 +1,39 @@
 package middleware
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"github.com/narendhupati/dc-management-tool/internal/auth"
 	"github.com/narendhupati/dc-management-tool/internal/database"
 )
 
-func RequireAuth() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		userID := auth.GetUserID(c.Request)
-		if userID == 0 {
-			c.Redirect(http.StatusFound, "/login")
-			c.Abort()
-			return
-		}
+func RequireAuth() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			userID := auth.GetUserID(c.Request())
+			if userID == 0 {
+				return c.Redirect(http.StatusFound, "/login")
+			}
 
-		user, err := database.GetUserByID(userID)
-		if err != nil {
-			log.Printf("Failed to load user from session: %v", err)
-			auth.DestroySession(c.Request)
-			c.Redirect(http.StatusFound, "/login")
-			c.Abort()
-			return
-		}
+			user, err := database.GetUserByID(userID)
+			if err != nil {
+				slog.Error("Failed to load user from session",
+					slog.Int("user_id", userID),
+					slog.String("error", err.Error()),
+				)
+				_ = auth.DestroySession(c.Request())
+				return c.Redirect(http.StatusFound, "/login")
+			}
 
-		// Check if user is deactivated
-		if !user.IsActive {
-			auth.DestroySession(c.Request)
-			c.Redirect(http.StatusFound, "/login")
-			c.Abort()
-			return
-		}
+			if !user.IsActive {
+				_ = auth.DestroySession(c.Request())
+				return c.Redirect(http.StatusFound, "/login")
+			}
 
-		auth.SetCurrentUser(c, user)
-		c.Next()
+			auth.SetCurrentUser(c, user)
+			return next(c)
+		}
 	}
 }

@@ -1,0 +1,308 @@
+package deliverychallan
+
+import (
+	"fmt"
+
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+// Step4HiddenField is a name/value pair rendered as a hidden form input.
+// Used to carry forward all wizard state to the final create submission.
+type Step4HiddenField struct {
+	Name  string
+	Value string
+}
+
+// Step4SerialProductData holds per-product serial assignment data for the
+// review page.  Assignments maps ship-to address ID → serial numbers.
+type Step4SerialProductData struct {
+	ProductID   int
+	AllSerials  []string
+	Assignments map[int][]string // shipToAddrID -> serials
+}
+
+func step4ProjectIDStr(p *models.Project) string {
+	if p == nil {
+		return ""
+	}
+	return fmt.Sprintf("%d", p.ID)
+}
+
+func step4TemplateIDStr(t *models.DCTemplate) string {
+	if t == nil {
+		return ""
+	}
+	return fmt.Sprintf("%d", t.ID)
+}
+
+func step4TaxTypeLabel(taxType string) string {
+	if taxType == "cgst_sgst" {
+		return "CGST + SGST"
+	}
+	return "IGST"
+}
+
+func step4OrDash(s string) string {
+	if s == "" {
+		return "\u2014"
+	}
+	return s
+}
+
+func step4AddressLabel(a *models.Address) string {
+	return a.DisplayName()
+}
+
+func step4FindAddress(addresses []*models.Address, id int) *models.Address {
+	for _, a := range addresses {
+		if a.ID == id {
+			return a
+		}
+	}
+	return nil
+}
+
+func step4SerialCount(data []Step4SerialProductData) int {
+	count := 0
+	for _, d := range data {
+		count += len(d.AllSerials)
+	}
+	return count
+}
+
+func step4FindSerials(data []Step4SerialProductData, productID int) []string {
+	for _, d := range data {
+		if d.ProductID == productID {
+			return d.AllSerials
+		}
+	}
+	return nil
+}
+
+func step4FindAssignedSerials(data []Step4SerialProductData, productID int, shipToID int) []string {
+	for _, d := range data {
+		if d.ProductID == productID {
+			return d.Assignments[shipToID]
+		}
+	}
+	return nil
+}
+
+func step4JoinSerials(serials []string) string {
+	result := ""
+	for i, s := range serials {
+		if i > 0 {
+			result += ", "
+		}
+		result += s
+	}
+	return result
+}
+
+// WizardStep4 renders the review step of the shipment wizard.
+//
+// Props:
+//   - user, currentProject, allProjects: standard layout data
+//   - tmpl: the selected DC template (for display name)
+//   - products: template products with DefaultQuantity
+//   - numSets: number of official DC sets
+//   - serialData: per-product serial/assignment data entered in step 3
+//   - shipToAddresses: the ship-to Address objects (resolved from IDs)
+//   - hiddenFields: all form fields to carry forward to the create action
+//   - csrfToken: CSRF token string
+//   - Scalar carry-forward display fields (transporter, tax, addresses)
+templ WizardStep4(
+	user *models.User,
+	currentProject *models.Project,
+	allProjects []*models.Project,
+	tmpl *models.DCTemplate,
+	products []*models.TemplateProductRow,
+	numSets int,
+	serialData []Step4SerialProductData,
+	shipToAddresses []*models.Address,
+	hiddenFields []Step4HiddenField,
+	csrfToken string,
+	// Display fields
+	challanDate string,
+	taxType string,
+	transporterName string,
+	vehicleNumber string,
+	docketNumber string,
+	ewayBillNumber string,
+	billFromAddress string,
+	dispatchFromAddress string,
+	billToAddress string,
+	transitShipToAddrID int,
+) {
+	<div class="max-w-5xl mx-auto">
+		@wizardSteps(4)
+		<form method="POST" action={ templ.SafeURL("/projects/" + step4ProjectIDStr(currentProject) + "/shipments/wizard/create") } id="wizard-step4-form">
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			for _, f := range hiddenFields {
+				<input type="hidden" name={ f.Name } value={ f.Value }/>
+			}
+			<!-- Shipment Summary -->
+			<div class="card mb-6">
+				<h2 class="text-lg font-semibold text-gray-900 mb-4">Shipment Summary</h2>
+				<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+					<div>
+						<p class="text-sm text-gray-500">Template</p>
+						<p class="font-medium">
+							if tmpl != nil {
+								{ tmpl.Name }
+							} else {
+								&mdash;
+							}
+						</p>
+					</div>
+					<div>
+						<p class="text-sm text-gray-500">Number of Sets</p>
+						<p class="font-medium">{ fmt.Sprintf("%d", numSets) }</p>
+					</div>
+					<div>
+						<p class="text-sm text-gray-500">Challan Date</p>
+						<p class="font-medium">{ step4OrDash(challanDate) }</p>
+					</div>
+					<div>
+						<p class="text-sm text-gray-500">Tax Type</p>
+						<p class="font-medium">{ step4TaxTypeLabel(taxType) }</p>
+					</div>
+				</div>
+			</div>
+			<!-- Transport Details -->
+			<div class="card mb-6">
+				<h2 class="text-lg font-semibold text-gray-900 mb-4">Transport Details</h2>
+				<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+					<div>
+						<p class="text-sm text-gray-500">Transporter</p>
+						<p class="font-medium">{ step4OrDash(transporterName) }</p>
+					</div>
+					<div>
+						<p class="text-sm text-gray-500">Vehicle Number</p>
+						<p class="font-medium">{ step4OrDash(vehicleNumber) }</p>
+					</div>
+					<div>
+						<p class="text-sm text-gray-500">Docket Number</p>
+						<p class="font-medium">{ step4OrDash(docketNumber) }</p>
+					</div>
+					<div>
+						<p class="text-sm text-gray-500">E-Way Bill</p>
+						<p class="font-medium">{ step4OrDash(ewayBillNumber) }</p>
+					</div>
+				</div>
+			</div>
+			<!-- Addresses -->
+			<div class="card mb-6">
+				<h2 class="text-lg font-semibold text-gray-900 mb-4">Addresses</h2>
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+					if billFromAddress != "" {
+						<div>
+							<p class="text-sm font-medium text-gray-500 mb-1">Bill From</p>
+							<div class="p-3 bg-gray-50 rounded-lg text-sm">{ billFromAddress }</div>
+						</div>
+					}
+					if dispatchFromAddress != "" {
+						<div>
+							<p class="text-sm font-medium text-gray-500 mb-1">Dispatch From</p>
+							<div class="p-3 bg-gray-50 rounded-lg text-sm">{ dispatchFromAddress }</div>
+						</div>
+					}
+					<div>
+						<p class="text-sm font-medium text-gray-500 mb-1">Bill To</p>
+						<div class="p-3 bg-gray-50 rounded-lg text-sm">{ step4OrDash(billToAddress) }</div>
+					</div>
+				</div>
+			</div>
+			<!-- Transit DC Preview -->
+			<div class="card mb-6 border-l-4 border-blue-500">
+				<h2 class="text-lg font-semibold text-gray-900 mb-4">
+					<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-2">Transit</span>
+					Transit DC
+				</h2>
+				if addr := step4FindAddress(shipToAddresses, transitShipToAddrID); addr != nil {
+					<p class="text-sm text-gray-500 mb-4">Ship To: { step4AddressLabel(addr) }</p>
+				} else {
+					<p class="text-sm text-gray-500 mb-4">Ship To: &mdash;</p>
+				}
+				<div class="overflow-x-auto">
+					<table class="w-full text-sm">
+						<thead class="bg-gray-50">
+							<tr>
+								<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+								<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">HSN</th>
+								<th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
+								<th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Rate</th>
+								<th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-gray-200">
+							for _, p := range products {
+								<tr>
+									<td class="px-4 py-2">{ p.ItemName }</td>
+									<td class="px-4 py-2">{ p.HSNCode }</td>
+									<td class="px-4 py-2 text-right">{ fmt.Sprintf("%d", p.DefaultQuantity*numSets) }</td>
+									<td class="px-4 py-2 text-right">&#x20B9;{ fmt.Sprintf("%.2f", p.PerUnitPrice) }</td>
+									<td class="px-4 py-2 text-right">&#x20B9;{ fmt.Sprintf("%.2f", p.PerUnitPrice*float64(p.DefaultQuantity*numSets)) }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+			<!-- Official DCs Preview (one card per ship-to set) -->
+			for i, addr := range shipToAddresses {
+				if addr.ID != transitShipToAddrID {
+					<div class="card mb-4 border-l-4 border-purple-500">
+						<h3 class="text-md font-semibold text-gray-900 mb-2">
+							<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 mr-2">Official</span>
+							Official DC - Set { fmt.Sprintf("%d", i+1) }
+						</h3>
+						<p class="text-sm text-gray-500 mb-3">Ship To: { step4AddressLabel(addr) }</p>
+						<div class="overflow-x-auto">
+							<table class="w-full text-sm">
+								<thead class="bg-gray-50">
+									<tr>
+										<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+										<th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
+										<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Serials</th>
+									</tr>
+								</thead>
+								<tbody class="divide-y divide-gray-200">
+									for _, p := range products {
+										<tr>
+											<td class="px-4 py-2">{ p.ItemName }</td>
+											<td class="px-4 py-2 text-right">{ fmt.Sprintf("%d", len(step4FindAssignedSerials(serialData, p.ID, addr.ID))) }</td>
+											<td class="px-4 py-2 text-sm text-gray-600">{ step4JoinSerials(step4FindAssignedSerials(serialData, p.ID, addr.ID)) }</td>
+										</tr>
+									}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				}
+			}
+			<!-- Summary Stats -->
+			<div class="card mb-6 bg-brand-50">
+				<div class="grid grid-cols-3 gap-4 text-center">
+					<div>
+						<p class="text-2xl font-bold text-brand-700">{ fmt.Sprintf("%d", 1+numSets) }</p>
+						<p class="text-sm text-gray-600">Total DCs</p>
+					</div>
+					<div>
+						<p class="text-2xl font-bold text-brand-700">{ fmt.Sprintf("%d", len(products)) }</p>
+						<p class="text-sm text-gray-600">Products</p>
+					</div>
+					<div>
+						<p class="text-2xl font-bold text-brand-700">{ fmt.Sprintf("%d", step4SerialCount(serialData)) }</p>
+						<p class="text-sm text-gray-600">Serial Numbers</p>
+					</div>
+				</div>
+			</div>
+			<!-- Actions -->
+			<div class="flex justify-between items-center">
+				<a href="javascript:history.back()" class="btn btn-secondary">&#x2190; Back</a>
+				<button type="submit" class="btn btn-primary bg-green-600 hover:bg-green-700 focus:ring-green-500">Create Shipment</button>
+			</div>
+		</form>
+	</div>
+}

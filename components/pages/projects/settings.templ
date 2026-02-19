@@ -1,0 +1,280 @@
+package projects
+
+import (
+	"fmt"
+
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+templ Settings(user *models.User, currentProject *models.Project, allProjects []*models.Project, errors map[string]string, csrfToken string, flashType string, flashMessage string) {
+	<div class="max-w-4xl mx-auto space-y-6">
+		<!-- Header -->
+		<div class="flex items-center justify-between">
+			<div>
+				<h1 class="text-2xl font-bold text-gray-900">Project Settings</h1>
+				if currentProject != nil {
+					<p class="text-sm text-gray-500 mt-1">Configure { currentProject.Name }</p>
+				}
+			</div>
+			if currentProject != nil {
+				<a href={ templ.SafeURL("/projects/" + projectIDStr(currentProject)) } class="btn btn-secondary text-sm">Back to Project</a>
+			}
+		</div>
+		<!-- Flash Messages -->
+		if flashType != "" {
+			<script>
+				document.addEventListener('DOMContentLoaded', function() {
+					showToast(document.getElementById('settings-flash-data').dataset.message, document.getElementById('settings-flash-data').dataset.type);
+				});
+			</script>
+			<div id="settings-flash-data" class="hidden" data-message={ flashMessage } data-type={ flashType }></div>
+		}
+		if currentProject != nil {
+			<!-- Tabs -->
+			<div class="border-b border-gray-200">
+				<nav class="-mb-px flex space-x-8" id="settings-tabs">
+					<a
+						href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/settings?tab=general") }
+						class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-brand-500 text-brand-600"
+						data-tab="general"
+					>General</a>
+					<a
+						href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/settings?tab=company") }
+						class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+						data-tab="company"
+					>Company Info</a>
+					<a
+						href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/settings?tab=dc_config") }
+						class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+						data-tab="dc_config"
+					>DC Configuration</a>
+					<a
+						href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/settings?tab=tender") }
+						class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+						data-tab="tender"
+					>Tender/PO</a>
+				</nav>
+			</div>
+			<!-- Tab Content -->
+			<form method="POST" action={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/settings") } enctype="multipart/form-data" class="space-y-6">
+				<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+				<input type="hidden" name="tab" value="general"/>
+				<!-- General Tab -->
+				<div class="card space-y-4">
+					<h2 class="text-lg font-semibold text-gray-900">General Information</h2>
+					<div>
+						<label for="name" class="block text-sm font-medium text-gray-700">Project Name *</label>
+						<input
+							type="text"
+							id="name"
+							name="name"
+							value={ currentProject.Name }
+							required
+							class={ "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm", templ.KV("border-red-300", errors["name"] != "") }
+						/>
+						if errors["name"] != "" {
+							<p class="mt-1 text-sm text-red-600">{ errors["name"] }</p>
+						}
+					</div>
+					<div>
+						<label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+						<textarea id="description" name="description" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">{ currentProject.Description }</textarea>
+					</div>
+					<div>
+						<label for="dc_prefix" class="block text-sm font-medium text-gray-700">DC Prefix *</label>
+						<input
+							type="text"
+							id="dc_prefix"
+							name="dc_prefix"
+							value={ currentProject.DCPrefix }
+							required
+							maxlength="10"
+							class={ "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm", templ.KV("border-red-300", errors["dc_prefix"] != "") }
+						/>
+						<p class="mt-1 text-sm text-gray-500">Used as prefix in delivery challan numbers (max 10 chars)</p>
+						if errors["dc_prefix"] != "" {
+							<p class="mt-1 text-sm text-red-600">{ errors["dc_prefix"] }</p>
+						}
+					</div>
+				</div>
+				<!-- Company Info section -->
+				<div class="card space-y-4">
+					<h2 class="text-lg font-semibold text-gray-900">Company Information</h2>
+					<div>
+						<label for="bill_from_address" class="block text-sm font-medium text-gray-700">Bill From Address</label>
+						<textarea id="bill_from_address" name="bill_from_address" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">{ currentProject.BillFromAddress }</textarea>
+						<p class="mt-1 text-sm text-gray-500">Company billing address shown on DCs</p>
+					</div>
+					<div>
+						<label for="dispatch_from_address" class="block text-sm font-medium text-gray-700">Dispatch From Address</label>
+						<textarea id="dispatch_from_address" name="dispatch_from_address" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">{ currentProject.DispatchFromAddress }</textarea>
+						<p class="mt-1 text-sm text-gray-500">Warehouse/dispatch location</p>
+					</div>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div>
+							<label for="company_gstin" class="block text-sm font-medium text-gray-700">GSTIN</label>
+							<input
+								type="text"
+								id="company_gstin"
+								name="company_gstin"
+								value={ currentProject.CompanyGSTIN }
+								maxlength="15"
+								class={ "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm", templ.KV("border-red-300", errors["company_gstin"] != "") }
+							/>
+							if errors["company_gstin"] != "" {
+								<p class="mt-1 text-sm text-red-600">{ errors["company_gstin"] }</p>
+							}
+						</div>
+						<div>
+							<label for="company_email" class="block text-sm font-medium text-gray-700">Company Email</label>
+							<input
+								type="email"
+								id="company_email"
+								name="company_email"
+								value={ currentProject.CompanyEmail }
+								class={ "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm", templ.KV("border-red-300", errors["company_email"] != "") }
+							/>
+							if errors["company_email"] != "" {
+								<p class="mt-1 text-sm text-red-600">{ errors["company_email"] }</p>
+							}
+						</div>
+					</div>
+					<div>
+						<label for="company_cin" class="block text-sm font-medium text-gray-700">Company CIN</label>
+						<input type="text" id="company_cin" name="company_cin" value={ currentProject.CompanyCIN } class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"/>
+					</div>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div>
+							<label class="block text-sm font-medium text-gray-700">Company Signature</label>
+							if currentProject.CompanySignaturePath != "" {
+								<div class="mt-1 mb-2">
+									<img src={ "/static/uploads/" + currentProject.CompanySignaturePath } alt="Current signature" class="h-16 border rounded p-1"/>
+								</div>
+							}
+							<input type="file" name="company_signature" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"/>
+							if errors["company_signature"] != "" {
+								<p class="mt-1 text-sm text-red-600">{ errors["company_signature"] }</p>
+							}
+						</div>
+						<div>
+							<label class="block text-sm font-medium text-gray-700">Company Seal</label>
+							if currentProject.CompanySealPath != "" {
+								<div class="mt-1 mb-2">
+									<img src={ "/static/uploads/" + currentProject.CompanySealPath } alt="Current seal" class="h-16 border rounded p-1"/>
+								</div>
+							}
+							<input type="file" name="company_seal" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"/>
+							if errors["company_seal"] != "" {
+								<p class="mt-1 text-sm text-red-600">{ errors["company_seal"] }</p>
+							}
+						</div>
+					</div>
+				</div>
+				<!-- DC Configuration section -->
+				<div class="card space-y-4">
+					<h2 class="text-lg font-semibold text-gray-900">DC Number Format</h2>
+					<div>
+						<label for="dc_number_format" class="block text-sm font-medium text-gray-700">Number Format Pattern</label>
+						<input
+							type="text"
+							id="dc_number_format"
+							name="dc_number_format"
+							value={ currentProject.DCNumberFormat }
+							class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm font-mono"
+							oninput="updateDCPreview()"
+						/>
+						<p class="mt-1 text-sm text-gray-500">
+							Available tokens: <code class="bg-gray-100 px-1 rounded">{ "{PREFIX}" }</code>
+							<code class="bg-gray-100 px-1 rounded">{ "{PROJECT_CODE}" }</code>
+							<code class="bg-gray-100 px-1 rounded">{ "{FY}" }</code>
+							<code class="bg-gray-100 px-1 rounded">{ "{SEQ}" }</code>
+							<code class="bg-gray-100 px-1 rounded">{ "{TYPE}" }</code>
+						</p>
+					</div>
+					<div>
+						<label class="block text-sm font-medium text-gray-700">Live Preview</label>
+						<div id="dc-preview" class="mt-1 p-3 bg-gray-50 rounded-md border border-gray-200 font-mono text-lg text-brand-700">
+							{ currentProject.DCNumberFormat }
+						</div>
+					</div>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div>
+							<label for="seq_padding" class="block text-sm font-medium text-gray-700">Sequence Padding (digits)</label>
+							<select id="seq_padding" name="seq_padding" onchange="updateDCPreview()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
+								<option value="2" selected?={ currentProject.SeqPadding == 2 }>2 (01, 02...)</option>
+								<option value="3" selected?={ currentProject.SeqPadding == 3 }>3 (001, 002...)</option>
+								<option value="4" selected?={ currentProject.SeqPadding == 4 }>4 (0001, 0002...)</option>
+								<option value="5" selected?={ currentProject.SeqPadding == 5 }>5 (00001, 00002...)</option>
+								<option value="6" selected?={ currentProject.SeqPadding == 6 }>6 (000001, 000002...)</option>
+							</select>
+							if errors["seq_padding"] != "" {
+								<p class="mt-1 text-sm text-red-600">{ errors["seq_padding"] }</p>
+							}
+						</div>
+						<div>
+							<label for="dc_number_separator" class="block text-sm font-medium text-gray-700">Separator (legacy)</label>
+							<input type="text" id="dc_number_separator" name="dc_number_separator" value={ currentProject.DCNumberSeparator } maxlength="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"/>
+						</div>
+					</div>
+					<div>
+						<label for="purpose_text" class="block text-sm font-medium text-gray-700">Purpose Text</label>
+						<input type="text" id="purpose_text" name="purpose_text" value={ currentProject.PurposeText } class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"/>
+						<p class="mt-1 text-sm text-gray-500">Default purpose text shown on delivery challans</p>
+					</div>
+				</div>
+				<!-- Tender/PO section -->
+				<div class="card space-y-4">
+					<h2 class="text-lg font-semibold text-gray-900">Tender &amp; Purchase Order</h2>
+					<div>
+						<label for="tender_ref_number" class="block text-sm font-medium text-gray-700">Tender Reference Number</label>
+						<input type="text" id="tender_ref_number" name="tender_ref_number" value={ currentProject.TenderRefNumber } class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"/>
+					</div>
+					<div>
+						<label for="tender_ref_details" class="block text-sm font-medium text-gray-700">Tender Reference Details</label>
+						<textarea id="tender_ref_details" name="tender_ref_details" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">{ currentProject.TenderRefDetails }</textarea>
+					</div>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div>
+							<label for="po_reference" class="block text-sm font-medium text-gray-700">PO Reference</label>
+							<input type="text" id="po_reference" name="po_reference" value={ currentProject.POReference } class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"/>
+						</div>
+						<div>
+							<label for="po_date" class="block text-sm font-medium text-gray-700">PO Date</label>
+							if currentProject.PODate != nil {
+								<input type="date" id="po_date" name="po_date" value={ *currentProject.PODate } class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"/>
+							} else {
+								<input type="date" id="po_date" name="po_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"/>
+							}
+						</div>
+					</div>
+				</div>
+				<!-- Save Button -->
+				<div class="flex justify-end">
+					<button type="submit" class="btn btn-primary">Save Settings</button>
+				</div>
+			</form>
+			<!-- Data attributes for JS -->
+			<div
+				id="dc-preview-data"
+				class="hidden"
+				data-project-id={ fmt.Sprintf("%d", currentProject.ID) }
+				data-project-prefix={ currentProject.DCPrefix }
+			></div>
+			<script>
+				function updateDCPreview() {
+					const previewData = document.getElementById('dc-preview-data');
+					const projectId = previewData.dataset.projectId;
+					const prefix = previewData.dataset.projectPrefix;
+					const format = document.getElementById('dc_number_format').value;
+					const padding = document.getElementById('seq_padding').value;
+
+					fetch(`/projects/${projectId}/settings/dc-preview?format=${encodeURIComponent(format)}&prefix=${encodeURIComponent(prefix)}&padding=${padding}`)
+						.then(r => r.json())
+						.then(data => {
+							document.getElementById('dc-preview').textContent = data.preview;
+						});
+				}
+			</script>
+		}
+	</div>
+}

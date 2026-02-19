@@ -1,0 +1,134 @@
+package shipments
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+templ WizardStep4(
+	user *models.User,
+	currentProject *models.Project,
+	allProjects []*models.Project,
+	tmpl *models.DCTemplate,
+	products []*models.TemplateProductRow,
+	numSets int,
+	challanDate string,
+	transporterName string,
+	vehicleNumber string,
+	ewayBillNumber string,
+	docketNumber string,
+	taxType string,
+	reverseCharge string,
+	templateID string,
+	billFromAddressID string,
+	dispatchFromAddressID string,
+	billToAddressID string,
+	transitShipToAddrID string,
+	shipToAddressIDs []string,
+	shipToAddresses []*models.Address,
+	serialData []WizardSerialData,
+	csrfToken string,
+) {
+	<div class="max-w-4xl mx-auto">
+		<h1 class="text-2xl font-bold mb-6">Create New Shipment - Review &amp; Confirm</h1>
+		<div class="bg-white shadow rounded-lg p-6 mb-6">
+			<h2 class="text-lg font-medium mb-4">Shipment Summary</h2>
+			<dl class="grid grid-cols-2 gap-4 text-sm">
+				<div>
+					<dt class="text-gray-500">Template</dt>
+					<dd class="font-medium">
+						if tmpl != nil {
+							{ tmpl.Name }
+						}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-gray-500">Number of Sets</dt>
+					<dd class="font-medium">{ strconv.Itoa(numSets) }</dd>
+				</div>
+				<div>
+					<dt class="text-gray-500">Challan Date</dt>
+					<dd class="font-medium">{ challanDate }</dd>
+				</div>
+				<div>
+					<dt class="text-gray-500">Transporter</dt>
+					<dd class="font-medium">{ transporterName }</dd>
+				</div>
+				<div>
+					<dt class="text-gray-500">Vehicle</dt>
+					<dd class="font-medium">{ vehicleNumber }</dd>
+				</div>
+				<div>
+					<dt class="text-gray-500">Tax Type</dt>
+					<dd class="font-medium">{ taxType }</dd>
+				</div>
+			</dl>
+		</div>
+		<div class="bg-white shadow rounded-lg p-6 mb-6">
+			<h2 class="text-lg font-medium mb-4">Products</h2>
+			<table class="min-w-full divide-y divide-gray-200">
+				<thead>
+					<tr>
+						<th class="text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+						<th class="text-left text-xs font-medium text-gray-500 uppercase">Qty/Set</th>
+						<th class="text-left text-xs font-medium text-gray-500 uppercase">Total Qty</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, p := range products {
+						<tr>
+							<td class="py-2">{ p.ItemName }</td>
+							<td class="py-2">{ strconv.Itoa(p.DefaultQuantity) }</td>
+							<td class="py-2">{ strconv.Itoa(p.DefaultQuantity * numSets) }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		<div class="bg-white shadow rounded-lg p-6 mb-6">
+			<h2 class="text-lg font-medium mb-4">Destinations</h2>
+			<ul class="list-disc pl-5 text-sm">
+				for _, a := range shipToAddresses {
+					<li>{ a.DisplayName() }</li>
+				}
+			</ul>
+		</div>
+		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments", currentProject.ID)) }>
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			<!-- All hidden data -->
+			<input type="hidden" name="template_id" value={ templateID }/>
+			<input type="hidden" name="num_sets" value={ strconv.Itoa(numSets) }/>
+			<input type="hidden" name="challan_date" value={ challanDate }/>
+			<input type="hidden" name="transporter_name" value={ transporterName }/>
+			<input type="hidden" name="vehicle_number" value={ vehicleNumber }/>
+			<input type="hidden" name="eway_bill_number" value={ ewayBillNumber }/>
+			<input type="hidden" name="docket_number" value={ docketNumber }/>
+			<input type="hidden" name="tax_type" value={ taxType }/>
+			<input type="hidden" name="reverse_charge" value={ reverseCharge }/>
+			<input type="hidden" name="bill_from_address_id" value={ billFromAddressID }/>
+			<input type="hidden" name="dispatch_from_address_id" value={ dispatchFromAddressID }/>
+			<input type="hidden" name="bill_to_address_id" value={ billToAddressID }/>
+			<input type="hidden" name="transit_ship_to_address_id" value={ transitShipToAddrID }/>
+			for _, id := range shipToAddressIDs {
+				<input type="hidden" name="ship_to_address_ids" value={ id }/>
+			}
+			<!-- Serial data -->
+			for _, sd := range serialData {
+				<input type="hidden" name={ fmt.Sprintf("serials_%d", sd.ProductID) } value={ joinStrings(sd.AllSerials, "\n") }/>
+				for shipToID, serials := range sd.Assignments {
+					<input type="hidden" name={ fmt.Sprintf("assign_%d_%d", sd.ProductID, shipToID) } value={ joinStrings(serials, "\n") }/>
+				}
+			}
+			<div class="mt-6 flex justify-between">
+				<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/new", currentProject.ID)) } class="text-gray-600 hover:text-gray-800 px-4 py-2">
+					← Start Over
+				</a>
+				<button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700">
+					Create Shipment
+				</button>
+			</div>
+		</form>
+	</div>
+}

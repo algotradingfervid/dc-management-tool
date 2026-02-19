@@ -2,70 +2,142 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gorilla/csrf"
+	echov4 "github.com/labstack/echo/v4"
+	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/narendhupati/dc-management-tool/internal/auth"
 	"github.com/narendhupati/dc-management-tool/internal/config"
 	"github.com/narendhupati/dc-management-tool/internal/database"
 	"github.com/narendhupati/dc-management-tool/internal/handlers"
-	"github.com/narendhupati/dc-management-tool/internal/helpers"
-	"github.com/narendhupati/dc-management-tool/internal/middleware"
+	appmiddleware "github.com/narendhupati/dc-management-tool/internal/middleware"
+	"github.com/narendhupati/dc-management-tool/internal/migrations"
+	staticfiles "github.com/narendhupati/dc-management-tool/static"
 )
+
+func initLogger(env string) {
+	var handler slog.Handler
+	if env == "development" {
+		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level:     slog.LevelDebug,
+			AddSource: true,
+		})
+	} else {
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelInfo,
+		})
+	}
+	slog.SetDefault(slog.New(handler))
+}
 
 func main() {
 	cfg := config.Load()
+	initLogger(cfg.Environment)
+
+	// Ensure upload directory exists (not embedded, lives on disk)
+	if err := os.MkdirAll(cfg.UploadPath, 0o755); err != nil {
+		slog.Error("Failed to create upload directory", slog.String("path", cfg.UploadPath), slog.String("error", err.Error()))
+		os.Exit(1)
+	}
 
 	db, err := database.Init(cfg.DatabasePath)
 	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		slog.Error("Failed to initialize database", slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 	defer db.Close()
 
 	// Run migrations
-	if err := database.RunMigrations(db, "./migrations"); err != nil {
-		log.Fatalf("Failed to run migrations: %v", err)
+	if err := database.RunMigrationsWithGoose(db, migrations.FS); err != nil {
+		slog.Error("Failed to run migrations", slog.String("error", err.Error()))
+		os.Exit(1) //nolint:gocritic
 	}
 
 	// Initialize SCS session manager with SQLite store
 	isSecure := cfg.Environment == "production"
 	auth.InitSessionManager(db, isSecure)
 
-	if cfg.Environment == "production" {
-		gin.SetMode(gin.ReleaseMode)
+	e := echov4.New()
+	e.HideBanner = true
+
+	// Embedded CSS/JS served from binary
+	e.StaticFS("/static", staticfiles.FS)
+	// User uploads served from disk (more specific path, takes priority)
+	e.Static("/static/uploads", cfg.UploadPath)
+
+	// CSRF middleware setup
+	csrfOpts := []csrf.Option{
+		csrf.Secure(isSecure),
+		csrf.SameSite(csrf.SameSiteLaxMode),
+	}
+	if !isSecure {
+		csrfOpts = append(csrfOpts, csrf.TrustedOrigins([]string{"localhost:" + cfg.ServerAddress[1:]}))
+	}
+	csrfProtect := csrf.Protect([]byte(cfg.SessionSecret), csrfOpts...)
+
+	// Wrap SCS session manager as Echo middleware
+	sessionMiddleware := func(next echov4.HandlerFunc) echov4.HandlerFunc {
+		return func(c echov4.Context) error {
+			var handlerErr error
+			auth.SessionManager.LoadAndSave(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					// Update both request and response writer so SCS can inject the
+					// session cookie before WriteHeader is committed on the wire.
+					c.SetRequest(r)
+					c.Response().Writer = w
+					handlerErr = next(c)
+				}),
+			).ServeHTTP(c.Response().Writer, c.Request())
+			return handlerErr
+		}
 	}
 
-	router := gin.Default()
-
-	// Set up custom template renderer with composition support
-	renderer, err := helpers.NewTemplateRenderer("./templates", helpers.TemplateFuncs())
-	if err != nil {
-		log.Fatalf("Failed to load templates: %v", err)
+	// Wrap gorilla/csrf as Echo middleware
+	csrfMiddleware := func(next echov4.HandlerFunc) echov4.HandlerFunc {
+		return func(c echov4.Context) error {
+			var handlerErr error
+			var innerHandler http.Handler = http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+				c.SetRequest(r)
+				handlerErr = next(c)
+			})
+			if !isSecure {
+				innerHandler = http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+					c.SetRequest(csrf.PlaintextHTTPRequest(r))
+					handlerErr = next(c)
+				})
+			}
+			csrfProtect(innerHandler).ServeHTTP(c.Response().Writer, c.Request())
+			return handlerErr
+		}
 	}
-	router.HTMLRender = renderer
 
-	router.Static("/static", "./static")
+	// Global middleware: recover, logging, session, CSRF
+	e.Use(echomiddleware.Recover())
+	e.Use(appmiddleware.RequestLoggingMiddleware())
+	e.Use(sessionMiddleware)
+	e.Use(csrfMiddleware)
 
 	// Public routes
-	router.GET("/login", handlers.ShowLogin)
-	router.POST("/login", handlers.ProcessLogin)
-	router.GET("/logout", handlers.Logout)
-	router.GET("/health", handlers.HealthCheck)
+	e.GET("/login", handlers.ShowLogin)
+	e.POST("/login", handlers.ProcessLogin)
+	e.GET("/logout", handlers.Logout)
+	e.GET("/health", handlers.HealthCheck)
+	e.GET("/ready", handlers.ReadinessCheck)
 
 	// Protected routes
-	protected := router.Group("/")
-	protected.Use(middleware.RequireAuth())
+	protected := e.Group("")
+	protected.Use(appmiddleware.RequireAuth())
 	{
 		// Root redirect — sends user to their last project or project selector
-		protected.GET("/", func(c *gin.Context) {
+		protected.GET("/", func(c echov4.Context) error {
 			user := auth.GetCurrentUser(c)
 			if user != nil {
-				handlers.RedirectToProject(c, user.ID)
-			} else {
-				c.Redirect(http.StatusFound, "/login")
+				return handlers.RedirectToProject(c, user.ID)
 			}
+			return c.Redirect(http.StatusFound, "/login")
 		})
 
 		// Project selector page
@@ -81,8 +153,8 @@ func main() {
 	}
 
 	// Admin routes (requires admin role)
-	adminRoutes := router.Group("/admin")
-	adminRoutes.Use(middleware.RequireAuth(), middleware.RequireRole("admin"))
+	adminRoutes := e.Group("/admin")
+	adminRoutes.Use(appmiddleware.RequireAuth(), appmiddleware.RequireRole("admin"))
 	{
 		adminRoutes.GET("/users", handlers.ListUsers)
 		adminRoutes.GET("/users/new", handlers.ShowCreateUserForm)
@@ -94,8 +166,8 @@ func main() {
 	}
 
 	// Project-scoped routes (with project context middleware)
-	projectRoutes := router.Group("/projects/:id")
-	projectRoutes.Use(middleware.RequireAuth(), middleware.ProjectContext())
+	projectRoutes := e.Group("/projects/:id")
+	projectRoutes.Use(appmiddleware.RequireAuth(), appmiddleware.ProjectContext())
 	{
 		// Dashboard
 		projectRoutes.GET("/dashboard", handlers.ShowDashboard)
@@ -196,43 +268,20 @@ func main() {
 		projectRoutes.GET("/reports/serial/export", handlers.ExportSerialExcel)
 
 		// Legacy address redirects (for backward compatibility)
-		projectRoutes.GET("/bill-to", func(c *gin.Context) {
-			c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/projects/%s/addresses?tab=bill_to", c.Param("id")))
+		projectRoutes.GET("/bill-to", func(c echov4.Context) error {
+			return c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/projects/%s/addresses?tab=bill_to", c.Param("id")))
 		})
-		projectRoutes.GET("/ship-to", func(c *gin.Context) {
-			c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/projects/%s/addresses?tab=ship_to", c.Param("id")))
+		projectRoutes.GET("/ship-to", func(c echov4.Context) error {
+			return c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/projects/%s/addresses?tab=ship_to", c.Param("id")))
 		})
 	}
 
-	// Wrap with SCS session middleware + CSRF middleware
-	csrfOpts := []csrf.Option{
-		csrf.Secure(isSecure),
-		csrf.SameSite(csrf.SameSiteLaxMode),
-	}
-	if !isSecure {
-		csrfOpts = append(csrfOpts, csrf.TrustedOrigins([]string{"localhost:" + cfg.ServerAddress[1:]}))
-	}
-	csrfMiddleware := csrf.Protect(
-		[]byte(cfg.SessionSecret),
-		csrfOpts...,
+	slog.Info("Starting server",
+		slog.String("address", cfg.ServerAddress),
+		slog.String("environment", cfg.Environment),
 	)
-
-	// Stack: CSRF wraps SCS wraps Gin router
-	innerHandler := csrfMiddleware(auth.SessionManager.LoadAndSave(router))
-
-	// Wrap with plaintext HTTP context for non-TLS (development) environments
-	// gorilla/csrf v1.7.3 defaults to TLS mode unless PlaintextHTTPContextKey is set
-	var handler http.Handler
-	if !isSecure {
-		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			innerHandler.ServeHTTP(w, csrf.PlaintextHTTPRequest(r))
-		})
-	} else {
-		handler = innerHandler
-	}
-
-	log.Printf("Starting server on %s in %s mode", cfg.ServerAddress, cfg.Environment)
-	if err := http.ListenAndServe(cfg.ServerAddress, handler); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	if err := e.Start(cfg.ServerAddress); err != nil && err != http.ErrServerClosed {
+		slog.Error("Failed to start server", slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 }

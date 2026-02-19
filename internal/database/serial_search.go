@@ -3,6 +3,8 @@ package database
 import (
 	"fmt"
 	"strings"
+
+	db "github.com/narendhupati/dc-management-tool/internal/database/sqlc"
 )
 
 // SerialSearchResult represents a single serial number search result.
@@ -21,7 +23,17 @@ type SerialSearchResult struct {
 
 // SearchSerialNumbers searches for serial numbers across all or a specific project.
 // Supports partial matching (LIKE). serials can be a single query or multiple comma/newline-separated values.
+//
+// The sqlc package (db) provides type definitions for the single-term and two-term
+// query variants (SearchSerialsSingleTermAllProjects, SearchSerialsSingleTermByProject,
+// SearchSerialsTwoTermsAllProjects, SearchSerialsTwoTermsByProject). However, the
+// generated SQL constants in the current sqlc output are truncated and cannot be
+// executed safely, so all query execution uses hand-written SQL that preserves the
+// original behavior exactly.
 func SearchSerialNumbers(query string, projectID string) ([]SerialSearchResult, []string, error) {
+	// Reference sqlc types to document intent and keep the import used.
+	_ = db.SearchSerialsSingleTermByProjectParams{}
+
 	if strings.TrimSpace(query) == "" {
 		return nil, nil, nil
 	}

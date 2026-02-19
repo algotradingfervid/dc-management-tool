@@ -4,328 +4,337 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gorilla/csrf"
+	"github.com/labstack/echo/v4"
+	htmxproducts "github.com/narendhupati/dc-management-tool/components/htmx/products"
+	"github.com/narendhupati/dc-management-tool/components/layouts"
+	productspage "github.com/narendhupati/dc-management-tool/components/pages/products"
+	"github.com/narendhupati/dc-management-tool/components/partials"
 	"github.com/narendhupati/dc-management-tool/internal/auth"
+	"github.com/narendhupati/dc-management-tool/internal/components"
 	"github.com/narendhupati/dc-management-tool/internal/database"
 	"github.com/narendhupati/dc-management-tool/internal/helpers"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 	"github.com/xuri/excelize/v2"
 )
 
-func ListProducts(c *gin.Context) {
+func ListProducts(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	project, err := database.GetProjectByID(projectID)
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Project not found")
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		auth.SetFlash(c.Request(), "error", "Project not found")
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
-	search := c.Query("search")
-	sortBy := c.DefaultQuery("sort", "item_name")
-	sortDir := c.DefaultQuery("dir", "asc")
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	search := c.QueryParam("search")
+	sortBy := c.QueryParam("sort")
+	if sortBy == "" {
+		sortBy = "item_name"
+	}
+	sortDir := c.QueryParam("dir")
+	if sortDir == "" {
+		sortDir = "asc"
+	}
+	pageStr := c.QueryParam("page")
+	if pageStr == "" {
+		pageStr = "1"
+	}
+	page, _ := strconv.Atoi(pageStr)
 
 	productPage, err := database.SearchProducts(projectID, search, sortBy, sortDir, page, 20)
 	if err != nil {
-		log.Printf("Error fetching products: %v", err)
+		slog.Error("error fetching products", slog.String("error", err.Error()), slog.Int("projectID", projectID))
 		productPage = &models.ProductPage{Products: []*models.Product{}, CurrentPage: 1, TotalPages: 1, PerPage: 20}
 	}
 
-	flashType, flashMessage := auth.PopFlash(c.Request)
-
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-		helpers.Breadcrumb{Title: "Products", URL: ""},
-	)
-
-	// Get product count for sidebar badge
-	productCount, _ := c.Get("productCount")
-
-	data := gin.H{
-		"user":           user,
-		"currentPath":    c.Request.URL.Path,
-		"breadcrumbs":    breadcrumbs,
-		"project":        project,
-		"currentProject": project,
-		"productCount":   productCount,
-		"productPage":    productPage,
-		"products":       productPage.Products,
-		"search":         search,
-		"sortBy":         sortBy,
-		"sortDir":        sortDir,
-		"activeTab":      "products",
-		"flashType":      flashType,
-		"flashMessage":   flashMessage,
-		"csrfToken":      csrf.Token(c.Request),
-		"csrfField":      csrf.TemplateField(c.Request),
-	}
+	flashType, flashMessage := auth.PopFlash(c.Request())
 
 	// If HTMX request for table only, return partial
-	if c.GetHeader("HX-Request") == "true" && c.Query("partial") == "true" {
-		c.HTML(http.StatusOK, "htmx/products/table.html", data)
-		return
+	if c.Request().Header.Get("HX-Request") == "true" && c.QueryParam("partial") == "true" {
+		return components.RenderOK(c, htmxproducts.ProductTable(htmxproducts.ProductTableProps{
+			Products:    productPage.Products,
+			ProductPage: productPage,
+			ProjectID:   projectID,
+			SortBy:      sortBy,
+			SortDir:     sortDir,
+			Search:      search,
+		}))
 	}
 
-	c.HTML(http.StatusOK, "products/list.html", data)
+	allProjects, err := database.GetAccessibleProjects(user)
+	if err != nil {
+		slog.Warn("error fetching all projects for products page", slog.String("error", err.Error()))
+		allProjects = []*models.Project{}
+	}
+
+	pageContent := productspage.List(
+		user,
+		project,
+		allProjects,
+		productPage,
+		search,
+		sortBy,
+		sortDir,
+		flashType,
+		flashMessage,
+		csrf.Token(c.Request()),
+	)
+	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, project, allProjects, flashType, flashMessage)
+	return components.RenderOK(c, layouts.MainWithContent("Products", sidebar, topbar, flashMessage, flashType, pageContent))
 }
 
-func ShowAddProductForm(c *gin.Context) {
+func ShowAddProductForm(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid project ID")
-		return
+		return c.String(http.StatusBadRequest, "Invalid project ID")
 	}
 
-	c.HTML(http.StatusOK, "htmx/products/form.html", gin.H{
-		"projectID": projectID,
-		"product":   &models.Product{UoM: "Nos"},
-		"errors":    map[string]string{},
-		"isEdit":    false,
-		"csrfField": csrf.TemplateField(c.Request),
-	})
+	return components.RenderOK(c, htmxproducts.ProductForm(htmxproducts.ProductFormProps{
+		ProjectID: projectID,
+		Product:   models.Product{UoM: "Nos"},
+		IsEdit:    false,
+		Errors:    map[string]string{},
+		CsrfToken: csrf.Token(c.Request()),
+	}))
 }
 
-func CreateProductHandler(c *gin.Context) {
+func CreateProductHandler(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid project ID")
-		return
+		return c.String(http.StatusBadRequest, "Invalid project ID")
 	}
 
-	price, _ := strconv.ParseFloat(c.PostForm("per_unit_price"), 64)
-	gst, _ := strconv.ParseFloat(c.PostForm("gst_percentage"), 64)
+	price, _ := strconv.ParseFloat(c.FormValue("per_unit_price"), 64)
+	gst, _ := strconv.ParseFloat(c.FormValue("gst_percentage"), 64)
 
 	product := &models.Product{
 		ProjectID:       projectID,
-		ItemName:        strings.TrimSpace(c.PostForm("item_name")),
-		ItemDescription: strings.TrimSpace(c.PostForm("item_description")),
-		HSNCode:         strings.TrimSpace(c.PostForm("hsn_code")),
-		UoM:             strings.TrimSpace(c.PostForm("uom")),
-		BrandModel:      strings.TrimSpace(c.PostForm("brand_model")),
+		ItemName:        strings.TrimSpace(c.FormValue("item_name")),
+		ItemDescription: strings.TrimSpace(c.FormValue("item_description")),
+		HSNCode:         strings.TrimSpace(c.FormValue("hsn_code")),
+		UoM:             strings.TrimSpace(c.FormValue("uom")),
+		BrandModel:      strings.TrimSpace(c.FormValue("brand_model")),
 		PerUnitPrice:    price,
 		GSTPercentage:   gst,
 	}
 
-	errors := product.Validate()
+	errors := helpers.ValidateStruct(product)
+	if product.HSNCode != "" {
+		hsnRegex := regexp.MustCompile(`^\d{6,8}$`)
+		if !hsnRegex.MatchString(strings.TrimSpace(product.HSNCode)) {
+			errors["hsn_code"] = "HSN code must be 6-8 digits"
+		}
+	}
 
 	// Check uniqueness
 	if _, ok := errors["item_name"]; !ok && product.ItemName != "" {
 		unique, err := database.CheckProductNameUnique(projectID, product.ItemName, 0)
 		if err != nil {
-			log.Printf("Error checking uniqueness: %v", err)
+			slog.Warn("error checking product name uniqueness", slog.String("error", err.Error()), slog.Int("projectID", projectID))
 		} else if !unique {
 			errors["item_name"] = "A product with this name already exists in this project"
 		}
 	}
 
+	csrfToken := csrf.Token(c.Request())
+
 	if len(errors) > 0 {
-		c.HTML(http.StatusOK, "htmx/products/form.html", gin.H{
-			"projectID": projectID,
-			"product":   product,
-			"errors":    errors,
-			"isEdit":    false,
-			"csrfField": csrf.TemplateField(c.Request),
-		})
-		return
+		return components.RenderOK(c, htmxproducts.ProductForm(htmxproducts.ProductFormProps{
+			ProjectID: projectID,
+			Product:   *product,
+			IsEdit:    false,
+			Errors:    errors,
+			CsrfToken: csrfToken,
+		}))
 	}
 
 	if err := database.CreateProductRecord(product); err != nil {
-		log.Printf("Error creating product: %v", err)
+		slog.Error("error creating product", slog.String("error", err.Error()), slog.Int("projectID", projectID))
 		errors["general"] = "Failed to create product"
-		c.HTML(http.StatusOK, "htmx/products/form.html", gin.H{
-			"projectID": projectID,
-			"product":   product,
-			"errors":    errors,
-			"isEdit":    false,
-			"csrfField": csrf.TemplateField(c.Request),
-		})
-		return
+		return components.RenderOK(c, htmxproducts.ProductForm(htmxproducts.ProductFormProps{
+			ProjectID: projectID,
+			Product:   *product,
+			IsEdit:    false,
+			Errors:    errors,
+			CsrfToken: csrfToken,
+		}))
 	}
 
-	saveAndAdd := c.PostForm("save_and_add") == "true"
+	saveAndAdd := c.FormValue("save_and_add") == "true"
 
 	if saveAndAdd {
 		// Return a fresh form for adding another product
-		c.Header("HX-Trigger", "productChanged")
-		c.HTML(http.StatusOK, "htmx/products/form.html", gin.H{
-			"projectID":    projectID,
-			"product":      &models.Product{UoM: "Nos"},
-			"errors":       map[string]string{},
-			"isEdit":       false,
-			"csrfField":    csrf.TemplateField(c.Request),
-			"successMessage": "Product added! Add another below.",
-		})
-		return
+		c.Response().Header().Set("HX-Trigger", "productChanged")
+		return components.RenderOK(c, htmxproducts.ProductForm(htmxproducts.ProductFormProps{
+			ProjectID:      projectID,
+			Product:        models.Product{UoM: "Nos"},
+			IsEdit:         false,
+			Errors:         map[string]string{},
+			CsrfToken:      csrfToken,
+			SuccessMessage: "Product added! Add another below.",
+		}))
 	}
 
 	// Return HX-Trigger to close slide-over and refresh product list
-	c.Header("HX-Trigger", "productChanged")
-	c.HTML(http.StatusOK, "htmx/products/form-success.html", gin.H{
-		"message": "Product added successfully",
-	})
+	c.Response().Header().Set("HX-Trigger", "productChanged")
+	return components.RenderOK(c, htmxproducts.ProductFormSuccess(htmxproducts.ProductFormSuccessProps{
+		Message: "Product added successfully",
+	}))
 }
 
-func ShowEditProductForm(c *gin.Context) {
+func ShowEditProductForm(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid project ID")
-		return
+		return c.String(http.StatusBadRequest, "Invalid project ID")
 	}
 
 	productID, err := strconv.Atoi(c.Param("pid"))
 	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid product ID")
-		return
+		return c.String(http.StatusBadRequest, "Invalid product ID")
 	}
 
 	product, err := database.GetProductByID(productID)
 	if err != nil || product.ProjectID != projectID {
-		c.String(http.StatusNotFound, "Product not found")
-		return
+		return c.String(http.StatusNotFound, "Product not found")
 	}
 
-	c.HTML(http.StatusOK, "htmx/products/form.html", gin.H{
-		"projectID": projectID,
-		"product":   product,
-		"errors":    map[string]string{},
-		"isEdit":    true,
-		"csrfField": csrf.TemplateField(c.Request),
-	})
+	return components.RenderOK(c, htmxproducts.ProductForm(htmxproducts.ProductFormProps{
+		ProjectID: projectID,
+		Product:   *product,
+		IsEdit:    true,
+		Errors:    map[string]string{},
+		CsrfToken: csrf.Token(c.Request()),
+	}))
 }
 
-func UpdateProductHandler(c *gin.Context) {
+func UpdateProductHandler(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid project ID")
-		return
+		return c.String(http.StatusBadRequest, "Invalid project ID")
 	}
 
 	productID, err := strconv.Atoi(c.Param("pid"))
 	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid product ID")
-		return
+		return c.String(http.StatusBadRequest, "Invalid product ID")
 	}
 
 	existing, err := database.GetProductByID(productID)
 	if err != nil || existing.ProjectID != projectID {
-		c.String(http.StatusNotFound, "Product not found")
-		return
+		return c.String(http.StatusNotFound, "Product not found")
 	}
 
-	price, _ := strconv.ParseFloat(c.PostForm("per_unit_price"), 64)
-	gst, _ := strconv.ParseFloat(c.PostForm("gst_percentage"), 64)
+	price, _ := strconv.ParseFloat(c.FormValue("per_unit_price"), 64)
+	gst, _ := strconv.ParseFloat(c.FormValue("gst_percentage"), 64)
 
 	product := &models.Product{
 		ID:              productID,
 		ProjectID:       projectID,
-		ItemName:        strings.TrimSpace(c.PostForm("item_name")),
-		ItemDescription: strings.TrimSpace(c.PostForm("item_description")),
-		HSNCode:         strings.TrimSpace(c.PostForm("hsn_code")),
-		UoM:             strings.TrimSpace(c.PostForm("uom")),
-		BrandModel:      strings.TrimSpace(c.PostForm("brand_model")),
+		ItemName:        strings.TrimSpace(c.FormValue("item_name")),
+		ItemDescription: strings.TrimSpace(c.FormValue("item_description")),
+		HSNCode:         strings.TrimSpace(c.FormValue("hsn_code")),
+		UoM:             strings.TrimSpace(c.FormValue("uom")),
+		BrandModel:      strings.TrimSpace(c.FormValue("brand_model")),
 		PerUnitPrice:    price,
 		GSTPercentage:   gst,
 	}
 
-	errors := product.Validate()
+	errors := helpers.ValidateStruct(product)
+	if product.HSNCode != "" {
+		hsnRegex := regexp.MustCompile(`^\d{6,8}$`)
+		if !hsnRegex.MatchString(strings.TrimSpace(product.HSNCode)) {
+			errors["hsn_code"] = "HSN code must be 6-8 digits"
+		}
+	}
 
 	// Check uniqueness excluding current product
 	if _, ok := errors["item_name"]; !ok && product.ItemName != "" {
 		unique, err := database.CheckProductNameUnique(projectID, product.ItemName, productID)
 		if err != nil {
-			log.Printf("Error checking uniqueness: %v", err)
+			slog.Warn("error checking product name uniqueness", slog.String("error", err.Error()), slog.Int("projectID", projectID))
 		} else if !unique {
 			errors["item_name"] = "A product with this name already exists in this project"
 		}
 	}
 
+	csrfToken := csrf.Token(c.Request())
+
 	if len(errors) > 0 {
-		c.HTML(http.StatusOK, "htmx/products/form.html", gin.H{
-			"projectID": projectID,
-			"product":   product,
-			"errors":    errors,
-			"isEdit":    true,
-			"csrfField": csrf.TemplateField(c.Request),
-		})
-		return
+		return components.RenderOK(c, htmxproducts.ProductForm(htmxproducts.ProductFormProps{
+			ProjectID: projectID,
+			Product:   *product,
+			IsEdit:    true,
+			Errors:    errors,
+			CsrfToken: csrfToken,
+		}))
 	}
 
 	if err := database.UpdateProductRecord(product); err != nil {
-		log.Printf("Error updating product: %v", err)
+		slog.Error("error updating product", slog.String("error", err.Error()), slog.Int("productID", productID), slog.Int("projectID", projectID))
 		errors["general"] = "Failed to update product"
-		c.HTML(http.StatusOK, "htmx/products/form.html", gin.H{
-			"projectID": projectID,
-			"product":   product,
-			"errors":    errors,
-			"isEdit":    true,
-			"csrfField": csrf.TemplateField(c.Request),
-		})
-		return
+		return components.RenderOK(c, htmxproducts.ProductForm(htmxproducts.ProductFormProps{
+			ProjectID: projectID,
+			Product:   *product,
+			IsEdit:    true,
+			Errors:    errors,
+			CsrfToken: csrfToken,
+		}))
 	}
 
-	c.Header("HX-Trigger", "productChanged")
-	c.HTML(http.StatusOK, "htmx/products/form-success.html", gin.H{
-		"message": "Product updated successfully",
-	})
+	c.Response().Header().Set("HX-Trigger", "productChanged")
+	return components.RenderOK(c, htmxproducts.ProductFormSuccess(htmxproducts.ProductFormSuccessProps{
+		Message: "Product updated successfully",
+	}))
 }
 
-func DeleteProductHandler(c *gin.Context) {
+func DeleteProductHandler(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid project ID"})
 	}
 
 	productID, err := strconv.Atoi(c.Param("pid"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid product ID"})
 	}
 
 	product, err := database.GetProductByID(productID)
 	if err != nil || product.ProjectID != projectID {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
-		return
+		return c.JSON(http.StatusNotFound, map[string]interface{}{"error": "Product not found"})
 	}
 
 	if err := database.DeleteProductRecord(productID, projectID); err != nil {
-		log.Printf("Error deleting product: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		slog.Error("error deleting product", slog.String("error", err.Error()), slog.Int("productID", productID), slog.Int("projectID", projectID))
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": err.Error()})
 	}
 
-	c.Header("HX-Trigger", "productChanged")
-	c.String(http.StatusOK, "")
+	c.Response().Header().Set("HX-Trigger", "productChanged")
+	return c.String(http.StatusOK, "")
 }
 
-func BulkDeleteProductsHandler(c *gin.Context) {
+func BulkDeleteProductsHandler(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid project ID"})
 	}
 
-	idsStr := c.PostForm("ids")
+	idsStr := c.FormValue("ids")
 	if idsStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No products selected"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "No products selected"})
 	}
 
 	var ids []int
@@ -337,46 +346,41 @@ func BulkDeleteProductsHandler(c *gin.Context) {
 	}
 
 	if len(ids) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No valid product IDs"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "No valid product IDs"})
 	}
 
 	deleted, errs := database.BulkDeleteProducts(ids, projectID)
 
-	c.Header("HX-Trigger", "productChanged")
+	c.Response().Header().Set("HX-Trigger", "productChanged")
 	if len(errs) > 0 {
-		c.JSON(http.StatusOK, gin.H{
+		return c.JSON(http.StatusOK, map[string]interface{}{
 			"deleted": deleted,
 			"errors":  errs,
 		})
-		return
 	}
-	c.JSON(http.StatusOK, gin.H{"deleted": deleted})
+	return c.JSON(http.StatusOK, map[string]interface{}{"deleted": deleted})
 }
 
-func ImportProductsHandler(c *gin.Context) {
+func ImportProductsHandler(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid project ID"})
 	}
 
-	file, header, err := c.Request.FormFile("file")
+	file, header, err := c.Request().FormFile("file")
 	if err != nil {
-		c.Header("HX-Trigger", "importError")
-		c.HTML(http.StatusOK, "htmx/products/import-result.html", gin.H{
-			"error": "Please select a file to upload",
-		})
-		return
+		c.Response().Header().Set("HX-Trigger", "importError")
+		return components.RenderOK(c, htmxproducts.ProductImportResult(htmxproducts.ProductImportResultProps{
+			Error: "Please select a file to upload",
+		}))
 	}
 	defer file.Close()
 
 	if header.Size > 10*1024*1024 {
-		c.Header("HX-Trigger", "importError")
-		c.HTML(http.StatusOK, "htmx/products/import-result.html", gin.H{
-			"error": "File size must be less than 10MB",
-		})
-		return
+		c.Response().Header().Set("HX-Trigger", "importError")
+		return components.RenderOK(c, htmxproducts.ProductImportResult(htmxproducts.ProductImportResultProps{
+			Error: "File size must be less than 10MB",
+		}))
 	}
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
@@ -390,24 +394,21 @@ func ImportProductsHandler(c *gin.Context) {
 	case ".xlsx", ".xls":
 		rows, headers, err = parseProductExcel(file, header)
 	default:
-		c.HTML(http.StatusOK, "htmx/products/import-result.html", gin.H{
-			"error": "Only CSV and Excel (.xlsx) files are supported",
-		})
-		return
+		return components.RenderOK(c, htmxproducts.ProductImportResult(htmxproducts.ProductImportResultProps{
+			Error: "Only CSV and Excel (.xlsx) files are supported",
+		}))
 	}
 
 	if err != nil {
-		c.HTML(http.StatusOK, "htmx/products/import-result.html", gin.H{
-			"error": err.Error(),
-		})
-		return
+		return components.RenderOK(c, htmxproducts.ProductImportResult(htmxproducts.ProductImportResultProps{
+			Error: err.Error(),
+		}))
 	}
 
 	if len(rows) == 0 {
-		c.HTML(http.StatusOK, "htmx/products/import-result.html", gin.H{
-			"error": "File contains no data rows",
-		})
-		return
+		return components.RenderOK(c, htmxproducts.ProductImportResult(htmxproducts.ProductImportResultProps{
+			Error: "File contains no data rows",
+		}))
 	}
 
 	// Auto-map columns
@@ -417,7 +418,13 @@ func ImportProductsHandler(c *gin.Context) {
 
 	for i, row := range rows {
 		product := mapRowToProduct(row, colMap, projectID)
-		errs := product.Validate()
+		errs := helpers.ValidateStruct(product)
+		if product.HSNCode != "" {
+			hsnRegex := regexp.MustCompile(`^\d{6,8}$`)
+			if !hsnRegex.MatchString(strings.TrimSpace(product.HSNCode)) {
+				errs["hsn_code"] = "HSN code must be 6-8 digits"
+			}
+		}
 
 		if _, ok := errs["item_name"]; !ok && product.ItemName != "" {
 			unique, _ := database.CheckProductNameUnique(projectID, product.ItemName, 0)
@@ -449,26 +456,27 @@ func ImportProductsHandler(c *gin.Context) {
 		result.Successful++
 	}
 
-	c.Header("HX-Trigger", "productChanged")
-	c.HTML(http.StatusOK, "htmx/products/import-result.html", gin.H{
-		"result": result,
-	})
+	c.Response().Header().Set("HX-Trigger", "productChanged")
+	return components.RenderOK(c, htmxproducts.ProductImportResult(htmxproducts.ProductImportResultProps{
+		Result: result,
+	}))
 }
 
-func DownloadProductImportTemplate(c *gin.Context) {
+func DownloadProductImportTemplate(c echo.Context) error {
 	header := []string{"Item Name", "Description", "HSN Code", "UoM", "Brand/Model", "Per Unit Price", "GST %"}
 	example := []string{"Solar Panel 400W", "Monocrystalline 400W solar panel", "85414011", "Nos", "Tata Power Solar", "10000.00", "18"}
 
-	c.Header("Content-Type", "text/csv")
-	c.Header("Content-Disposition", "attachment; filename=product_import_template.csv")
+	c.Response().Header().Set("Content-Type", "text/csv")
+	c.Response().Header().Set("Content-Disposition", "attachment; filename=product_import_template.csv")
 
-	writer := csv.NewWriter(c.Writer)
-	writer.Write(header)
-	writer.Write(example)
+	writer := csv.NewWriter(c.Response().Writer)
+	_ = writer.Write(header)
+	_ = writer.Write(example)
 	writer.Flush()
+	return nil
 }
 
-func parseProductCSV(file io.Reader) ([][]string, []string, error) {
+func parseProductCSV(file io.Reader) (rows [][]string, errors []string, err error) {
 	reader := csv.NewReader(file)
 	allRows, err := reader.ReadAll()
 	if err != nil {
@@ -480,7 +488,7 @@ func parseProductCSV(file io.Reader) ([][]string, []string, error) {
 	return allRows[1:], allRows[0], nil
 }
 
-func parseProductExcel(file io.Reader, header *multipart.FileHeader) ([][]string, []string, error) {
+func parseProductExcel(file io.Reader, _ *multipart.FileHeader) ([][]string, []string, error) {
 	f, err := excelize.OpenReader(file)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open Excel file: %v", err)

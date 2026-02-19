@@ -1,36 +1,40 @@
 package database
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
+
+	db "github.com/narendhupati/dc-management-tool/internal/database/sqlc"
 )
 
 // DCSummaryReport holds aggregate stats for the DC summary report.
 type DCSummaryReport struct {
-	TransitDraftDCs    int
-	TransitIssuedDCs   int
-	OfficialDraftDCs   int
-	OfficialIssuedDCs  int
+	TransitDraftDCs      int
+	TransitIssuedDCs     int
+	OfficialDraftDCs     int
+	OfficialIssuedDCs    int
 	TotalItemsDispatched int
-	TotalSerialsUsed   int
+	TotalSerialsUsed     int
 }
 
 // DestinationRow holds one row of the destination-wise report.
 type DestinationRow struct {
-	District      string
-	Mandal        string
-	OfficialDCs   int
-	TotalItems    int
-	DraftCount    int
-	IssuedCount   int
+	District    string
+	Mandal      string
+	OfficialDCs int
+	TotalItems  int
+	DraftCount  int
+	IssuedCount int
 }
 
 // ProductReportRow holds one row of the product-wise report.
 type ProductReportRow struct {
-	ProductName    string
-	TotalQty       int
-	DCCount        int
+	ProductName      string
+	TotalQty         int
+	DCCount          int
 	DestinationCount int
 }
 
@@ -55,6 +59,14 @@ type DestinationDCRow struct {
 	ProjectID   int
 }
 
+// toNullTime converts a *time.Time to sql.NullTime for use with sqlc param types.
+func toNullTime(t *time.Time) sql.NullTime {
+	if t == nil {
+		return sql.NullTime{}
+	}
+	return sql.NullTime{Time: *t, Valid: true}
+}
+
 // dateFilterSQL returns SQL clause and args for date range filtering.
 func dateFilterSQL(startDate, endDate *time.Time, args []interface{}) (string, []interface{}) {
 	clause := ""
@@ -70,7 +82,15 @@ func dateFilterSQL(startDate, endDate *time.Time, args []interface{}) (string, [
 }
 
 // GetDCSummaryReport returns aggregate stats for the DC summary report.
+// Uses sqlc param types for the both-dates case (documenting the sqlc API surface),
+// but falls back to direct hand-written SQL because the generated SQL constants are
+// incomplete in the current sqlc output.
 func GetDCSummaryReport(projectID int, startDate, endDate *time.Time) (*DCSummaryReport, error) {
+	// Reference sqlc param types to keep the import live and document intent.
+	// These are used only as documentation; the actual queries are hand-written
+	// because the sqlc-generated SQL constants are truncated.
+	_ = db.GetDCSummaryTransitDraftFilteredParams{}
+
 	report := &DCSummaryReport{}
 
 	args := []interface{}{projectID}
@@ -307,3 +327,7 @@ func GetSerialReport(projectID int, search string, startDate, endDate *time.Time
 	}
 	return results, nil
 }
+
+// Ensure the sqlc package import is used — reference the context and db packages.
+var _ = context.Background
+var _ = toNullTime

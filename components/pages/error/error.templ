@@ -1,0 +1,78 @@
+package error
+
+import "strconv"
+
+// errorTitle returns the short title for a well-known HTTP status code.
+func errorTitle(statusCode int) string {
+	switch statusCode {
+	case 400:
+		return "Bad Request"
+	case 401:
+		return "Unauthorized"
+	case 403:
+		return "Access Denied"
+	case 404:
+		return "Page Not Found"
+	case 405:
+		return "Method Not Allowed"
+	case 408:
+		return "Request Timeout"
+	case 409:
+		return "Conflict"
+	case 422:
+		return "Unprocessable Entity"
+	case 429:
+		return "Too Many Requests"
+	case 500:
+		return "Internal Server Error"
+	case 502:
+		return "Bad Gateway"
+	case 503:
+		return "Service Unavailable"
+	default:
+		return "Error"
+	}
+}
+
+// ErrorPage renders a standalone error page that does not depend on the auth layout.
+templ ErrorPage(statusCode int, message string, details string) {
+	<!DOCTYPE html>
+	<html lang="en" class="h-full">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ strconv.Itoa(statusCode) } { errorTitle(statusCode) } — DC Manager</title>
+			<link rel="stylesheet" href="/static/css/design-system.css"/>
+			<link rel="stylesheet" href="/static/css/tailwind-output.css"/>
+		</head>
+		<body class="h-full font-sans antialiased bg-neutral-100 text-neutral-900">
+			<div class="min-h-screen flex items-center justify-center bg-neutral-100">
+				<div class="max-w-md w-full mx-auto px-6">
+					<div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-8 text-center">
+						<!-- Status Code -->
+						<div class="mb-6">
+							<span class="text-6xl font-bold text-neutral-300">{ strconv.Itoa(statusCode) }</span>
+						</div>
+						<!-- Title -->
+						<h1 class="text-xl font-semibold text-neutral-900 mb-2">
+							{ errorTitle(statusCode) }
+						</h1>
+						<!-- Message -->
+						if message != "" {
+							<p class="text-neutral-600 mb-4">{ message }</p>
+						}
+						<!-- Details (optional, shown in a subtle code block) -->
+						if details != "" {
+							<p class="text-xs text-neutral-400 font-mono bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 mb-4 text-left break-all">{ details }</p>
+						}
+						<!-- Actions -->
+						<div class="flex gap-3 justify-center mt-6">
+							<a href="/projects/select" class="btn-primary">Go to Projects</a>
+							<a href="javascript:history.back()" class="btn-secondary">Go Back</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</body>
+	</html>
+}

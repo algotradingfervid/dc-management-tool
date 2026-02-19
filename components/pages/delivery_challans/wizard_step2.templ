@@ -1,0 +1,248 @@
+package deliverychallan
+
+import (
+	"fmt"
+
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+func step2ProjectIDStr(p *models.Project) string {
+	if p == nil {
+		return ""
+	}
+	return fmt.Sprintf("%d", p.ID)
+}
+
+func step2AddressIDStr(a *models.Address) string {
+	return fmt.Sprintf("%d", a.ID)
+}
+
+func step2AddressCompanyName(a *models.Address) string {
+	if v, ok := a.Data["Company Name"]; ok && v != "" {
+		return v
+	}
+	return a.DisplayName()
+}
+
+func step2AddressLabel(a *models.Address) string {
+	if a.DistrictName != "" && a.MandalName != "" {
+		return a.DistrictName + " - " + a.MandalName
+	}
+	if a.DistrictName != "" {
+		return a.DistrictName
+	}
+	if a.MandalName != "" {
+		return a.MandalName
+	}
+	return a.DisplayName()
+}
+
+func step2NumSetsStr(group *models.ShipmentGroup) string {
+	return fmt.Sprintf("%d", group.NumSets)
+}
+
+func step2TemplateIDStr(group *models.ShipmentGroup) string {
+	if group.TemplateID == nil {
+		return ""
+	}
+	return fmt.Sprintf("%d", *group.TemplateID)
+}
+
+// WizardStep2 renders the address-selection step of the shipment wizard.
+// group carries the carry-forward step-1 data (NumSets, TemplateID, TaxType, ReverseCharge).
+// products is provided for reference only.
+// errors holds field-level validation errors.
+// Flat carry-forward string values are passed via the formData convenience fields
+// embedded in the ShipmentGroup or via separate scalar parameters below:
+//
+//	basePath        = "/projects/{id}"
+//	challanDate     = formData ChallanDate string
+//	transporterName = formData string
+//	vehicleNumber   = formData string
+//	docketNumber    = formData string
+//	ewayBillNumber  = formData string
+templ WizardStep2(
+	user *models.User,
+	currentProject *models.Project,
+	allProjects []*models.Project,
+	group *models.ShipmentGroup,
+	products []models.Product,
+	errors map[string]string,
+	csrfToken string,
+	// Carry-forward scalar fields from step 1
+	challanDate string,
+	transporterName string,
+	vehicleNumber string,
+	docketNumber string,
+	ewayBillNumber string,
+	// Address lists
+	billFromAddresses []*models.Address,
+	dispatchFromAddresses []*models.Address,
+	billToAddresses []*models.Address,
+	shipToAddresses []*models.Address,
+) {
+	<div class="max-w-4xl mx-auto">
+		@wizardSteps(2)
+		<form method="POST" action={ templ.SafeURL("/projects/" + step2ProjectIDStr(currentProject) + "/shipments/wizard/step3") } id="wizard-step2-form">
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			<!-- Hidden fields carrying step 1 data -->
+			<input type="hidden" name="template_id" value={ step2TemplateIDStr(group) }/>
+			<input type="hidden" name="num_sets" value={ step2NumSetsStr(group) }/>
+			<input type="hidden" name="challan_date" value={ challanDate }/>
+			<input type="hidden" name="transporter_name" value={ transporterName }/>
+			<input type="hidden" name="vehicle_number" value={ vehicleNumber }/>
+			<input type="hidden" name="docket_number" value={ docketNumber }/>
+			<input type="hidden" name="eway_bill_number" value={ ewayBillNumber }/>
+			<input type="hidden" name="tax_type" value={ group.TaxType }/>
+			<input type="hidden" name="reverse_charge" value={ group.ReverseCharge }/>
+			<div class="card mb-6">
+				<div class="space-y-6">
+					<!-- Bill From Address -->
+					<div>
+						<label for="bill_from_address_id" class="block text-sm font-medium text-gray-700 mb-1">Bill From Address</label>
+						if errors["bill_from_address_id"] != "" {
+							<p class="text-xs text-red-600 mb-1">{ errors["bill_from_address_id"] }</p>
+						}
+						<select
+							name="bill_from_address_id"
+							id="bill_from_address_id"
+							class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm"
+							hx-get={ "/projects/" + step2ProjectIDStr(currentProject) + "/shipments/wizard/address-preview" }
+							hx-target="#bill-from-preview"
+							hx-include="[name='bill_from_address_id']"
+							hx-trigger="change"
+						>
+							<option value="">Select address...</option>
+							for _, a := range billFromAddresses {
+								<option value={ step2AddressIDStr(a) }>{ step2AddressCompanyName(a) }</option>
+							}
+						</select>
+						<div id="bill-from-preview" class="mt-2"></div>
+					</div>
+					<!-- Dispatch From Address -->
+					<div>
+						<label for="dispatch_from_address_id" class="block text-sm font-medium text-gray-700 mb-1">Dispatch From Address</label>
+						if errors["dispatch_from_address_id"] != "" {
+							<p class="text-xs text-red-600 mb-1">{ errors["dispatch_from_address_id"] }</p>
+						}
+						<select
+							name="dispatch_from_address_id"
+							id="dispatch_from_address_id"
+							class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm"
+							hx-get={ "/projects/" + step2ProjectIDStr(currentProject) + "/shipments/wizard/address-preview" }
+							hx-target="#dispatch-from-preview"
+							hx-include="[name='dispatch_from_address_id']"
+							hx-trigger="change"
+						>
+							<option value="">Select address...</option>
+							for _, a := range dispatchFromAddresses {
+								<option value={ step2AddressIDStr(a) }>{ step2AddressCompanyName(a) }</option>
+							}
+						</select>
+						<div id="dispatch-from-preview" class="mt-2"></div>
+					</div>
+					<!-- Bill To Address -->
+					<div>
+						<label for="bill_to_address_id" class="block text-sm font-medium text-gray-700 mb-1">
+							Bill To Address
+							<span class="text-red-500">*</span>
+						</label>
+						if errors["bill_to_address_id"] != "" {
+							<p class="text-xs text-red-600 mb-1">{ errors["bill_to_address_id"] }</p>
+						}
+						<select
+							name="bill_to_address_id"
+							id="bill_to_address_id"
+							required
+							class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm"
+							hx-get={ "/projects/" + step2ProjectIDStr(currentProject) + "/shipments/wizard/address-preview" }
+							hx-target="#bill-to-preview"
+							hx-include="[name='bill_to_address_id']"
+							hx-trigger="change"
+						>
+							<option value="">Select address...</option>
+							for _, a := range billToAddresses {
+								<option value={ step2AddressIDStr(a) }>{ step2AddressCompanyName(a) }</option>
+							}
+						</select>
+						<div id="bill-to-preview" class="mt-2"></div>
+					</div>
+					<!-- Ship To Addresses (one per set) -->
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-2">
+							Ship To Addresses
+							<span class="text-red-500">*</span>
+						</label>
+						if errors["ship_to"] != "" {
+							<p class="text-xs text-red-600 mb-1">{ errors["ship_to"] }</p>
+						}
+						<div id="ship-to-container">
+							for i := 1; i <= group.NumSets; i++ {
+								<div class="mb-4">
+									<label class="block text-sm font-medium text-gray-700 mb-1">
+										Ship To - Set { fmt.Sprintf("%d", i) }
+									</label>
+									<select
+										name={ fmt.Sprintf("ship_to_address_%d", i) }
+										required
+										class="ship-to-select w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm"
+									>
+										<option value="">Select address...</option>
+										for _, a := range shipToAddresses {
+											<option value={ step2AddressIDStr(a) }>{ step2AddressLabel(a) }</option>
+										}
+									</select>
+								</div>
+							}
+						</div>
+					</div>
+					<!-- Transit DC Ship To -->
+					<div>
+						<label for="transit-ship-to" class="block text-sm font-medium text-gray-700 mb-1">
+							Transit DC Ship To
+							<span class="text-red-500">*</span>
+						</label>
+						if errors["transit_ship_to"] != "" {
+							<p class="text-xs text-red-600 mb-1">{ errors["transit_ship_to"] }</p>
+						}
+						<select
+							name="transit_ship_to_address_id"
+							id="transit-ship-to"
+							required
+							class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm"
+						>
+							<option value="">Select from ship-to addresses above...</option>
+						</select>
+					</div>
+				</div>
+			</div>
+			<!-- Actions -->
+			<div class="flex items-center justify-between">
+				<a href={ templ.SafeURL("/projects/" + step2ProjectIDStr(currentProject) + "/shipments/wizard/step1?back=true") } class="btn btn-secondary">&#x2190; Back</a>
+				<button type="submit" class="btn btn-primary">Next: Serials &#x2192;</button>
+			</div>
+		</form>
+	</div>
+	<script>
+		document.querySelectorAll('.ship-to-select').forEach(function(sel) {
+			sel.addEventListener('change', updateTransitShipTo);
+		});
+
+		function updateTransitShipTo() {
+			var transitSelect = document.getElementById('transit-ship-to');
+			var selected = new Map();
+			document.querySelectorAll('.ship-to-select').forEach(function(sel) {
+				if (sel.value) {
+					selected.set(sel.value, sel.options[sel.selectedIndex].text);
+				}
+			});
+			transitSelect.innerHTML = '<option value="">Select from ship-to addresses above...</option>';
+			selected.forEach(function(text, val) {
+				var opt = document.createElement('option');
+				opt.value = val;
+				opt.textContent = text;
+				transitSelect.appendChild(opt);
+			});
+		}
+	</script>
+}

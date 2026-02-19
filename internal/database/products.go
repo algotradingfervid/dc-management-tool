@@ -1,94 +1,69 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
+	db "github.com/narendhupati/dc-management-tool/internal/database/sqlc"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
-func GetProductsByProjectID(projectID int) ([]*models.Product, error) {
-	query := `
-		SELECT id, project_id, item_name, item_description, hsn_code, uom,
-		       brand_model, per_unit_price, gst_percentage, created_at, updated_at
-		FROM products
-		WHERE project_id = ?
-		ORDER BY item_name ASC
-	`
+// productFromRow converts a sqlc db.Product row into a models.Product.
+func productFromRow(p db.Product) *models.Product {
+	return &models.Product{
+		ID:              int(p.ID),
+		ProjectID:       int(p.ProjectID),
+		ItemName:        p.ItemName,
+		ItemDescription: p.ItemDescription,
+		HSNCode:         p.HsnCode.String,
+		UoM:             p.Uom.String,
+		BrandModel:      p.BrandModel,
+		PerUnitPrice:    p.PerUnitPrice.Float64,
+		GSTPercentage:   p.GstPercentage.Float64,
+		CreatedAt:       p.CreatedAt.Time,
+		UpdatedAt:       p.UpdatedAt.Time,
+	}
+}
 
-	rows, err := DB.Query(query, projectID)
+func GetProductsByProjectID(projectID int) ([]*models.Product, error) {
+	q := db.New(DB)
+	rows, err := q.GetProductsByProjectID(context.Background(), int64(projectID))
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var products []*models.Product
-	for rows.Next() {
-		p := &models.Product{}
-		var hsnCode, brandModel sql.NullString
-		err := rows.Scan(
-			&p.ID, &p.ProjectID, &p.ItemName, &p.ItemDescription,
-			&hsnCode, &p.UoM, &brandModel,
-			&p.PerUnitPrice, &p.GSTPercentage, &p.CreatedAt, &p.UpdatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		if hsnCode.Valid {
-			p.HSNCode = hsnCode.String
-		}
-		if brandModel.Valid {
-			p.BrandModel = brandModel.String
-		}
-		products = append(products, p)
+	products := make([]*models.Product, 0, len(rows))
+	for _, row := range rows {
+		products = append(products, productFromRow(row))
 	}
-
 	return products, nil
 }
 
 func GetProductByID(id int) (*models.Product, error) {
-	query := `
-		SELECT id, project_id, item_name, item_description, hsn_code, uom,
-		       brand_model, per_unit_price, gst_percentage, created_at, updated_at
-		FROM products
-		WHERE id = ?
-	`
-
-	p := &models.Product{}
-	var hsnCode, brandModel sql.NullString
-	err := DB.QueryRow(query, id).Scan(
-		&p.ID, &p.ProjectID, &p.ItemName, &p.ItemDescription,
-		&hsnCode, &p.UoM, &brandModel,
-		&p.PerUnitPrice, &p.GSTPercentage, &p.CreatedAt, &p.UpdatedAt,
-	)
+	q := db.New(DB)
+	row, err := q.GetProductByID(context.Background(), int64(id))
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("product not found")
 	}
 	if err != nil {
 		return nil, err
 	}
-	if hsnCode.Valid {
-		p.HSNCode = hsnCode.String
-	}
-	if brandModel.Valid {
-		p.BrandModel = brandModel.String
-	}
-
-	return p, nil
+	return productFromRow(row), nil
 }
 
 func CreateProductRecord(p *models.Product) error {
-	query := `
-		INSERT INTO products (
-			project_id, item_name, item_description, hsn_code, uom,
-			brand_model, per_unit_price, gst_percentage
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`
-
-	result, err := DB.Exec(query,
-		p.ProjectID, p.ItemName, p.ItemDescription, p.HSNCode, p.UoM,
-		p.BrandModel, p.PerUnitPrice, p.GSTPercentage,
-	)
+	q := db.New(DB)
+	result, err := q.CreateProduct(context.Background(), db.CreateProductParams{
+		ProjectID:       int64(p.ProjectID),
+		ItemName:        p.ItemName,
+		ItemDescription: p.ItemDescription,
+		HsnCode:         sql.NullString{String: p.HSNCode, Valid: p.HSNCode != ""},
+		Uom:             sql.NullString{String: p.UoM, Valid: p.UoM != ""},
+		BrandModel:      p.BrandModel,
+		PerUnitPrice:    sql.NullFloat64{Float64: p.PerUnitPrice, Valid: true},
+		GstPercentage:   sql.NullFloat64{Float64: p.GSTPercentage, Valid: true},
+	})
 	if err != nil {
 		return err
 	}
@@ -102,20 +77,18 @@ func CreateProductRecord(p *models.Product) error {
 }
 
 func UpdateProductRecord(p *models.Product) error {
-	query := `
-		UPDATE products SET
-			item_name = ?, item_description = ?, hsn_code = ?, uom = ?,
-			brand_model = ?, per_unit_price = ?, gst_percentage = ?,
-			updated_at = CURRENT_TIMESTAMP
-		WHERE id = ? AND project_id = ?
-	`
-
-	_, err := DB.Exec(query,
-		p.ItemName, p.ItemDescription, p.HSNCode, p.UoM,
-		p.BrandModel, p.PerUnitPrice, p.GSTPercentage,
-		p.ID, p.ProjectID,
-	)
-	return err
+	q := db.New(DB)
+	return q.UpdateProduct(context.Background(), db.UpdateProductParams{
+		ItemName:        p.ItemName,
+		ItemDescription: p.ItemDescription,
+		HsnCode:         sql.NullString{String: p.HSNCode, Valid: p.HSNCode != ""},
+		Uom:             sql.NullString{String: p.UoM, Valid: p.UoM != ""},
+		BrandModel:      p.BrandModel,
+		PerUnitPrice:    sql.NullFloat64{Float64: p.PerUnitPrice, Valid: true},
+		GstPercentage:   sql.NullFloat64{Float64: p.GSTPercentage, Valid: true},
+		ID:              int64(p.ID),
+		ProjectID:       int64(p.ProjectID),
+	})
 }
 
 func DeleteProductRecord(id, projectID int) error {
@@ -127,8 +100,11 @@ func DeleteProductRecord(id, projectID int) error {
 		return fmt.Errorf("cannot delete product: it is used in DC templates")
 	}
 
-	_, err = DB.Exec("DELETE FROM products WHERE id = ? AND project_id = ?", id, projectID)
-	return err
+	q := db.New(DB)
+	return q.DeleteProduct(context.Background(), db.DeleteProductParams{
+		ID:        int64(id),
+		ProjectID: int64(projectID),
+	})
 }
 
 func CheckProductUsageInTemplates(productID int) (bool, error) {
@@ -144,24 +120,32 @@ func CheckProductUsageInTemplates(productID int) (bool, error) {
 		return false, nil
 	}
 
-	err = DB.QueryRow("SELECT COUNT(*) FROM dc_template_products WHERE product_id = ?", productID).Scan(&count)
+	q := db.New(DB)
+	n, err := q.CheckProductUsageInTemplates(context.Background(), int64(productID))
 	if err != nil {
 		return false, err
 	}
-	return count > 0, nil
+	return n > 0, nil
 }
 
 func CheckProductNameUnique(projectID int, itemName string, excludeID int) (bool, error) {
-	query := "SELECT COUNT(*) FROM products WHERE project_id = ? AND item_name = ?"
-	args := []interface{}{projectID, itemName}
-
+	q := db.New(DB)
 	if excludeID > 0 {
-		query += " AND id != ?"
-		args = append(args, excludeID)
+		count, err := q.CheckProductNameUniqueExcludeID(context.Background(), db.CheckProductNameUniqueExcludeIDParams{
+			ProjectID: int64(projectID),
+			ItemName:  itemName,
+			ID:        int64(excludeID),
+		})
+		if err != nil {
+			return false, err
+		}
+		return count == 0, nil
 	}
 
-	var count int
-	err := DB.QueryRow(query, args...).Scan(&count)
+	count, err := q.CheckProductNameUnique(context.Background(), db.CheckProductNameUniqueParams{
+		ProjectID: int64(projectID),
+		ItemName:  itemName,
+	})
 	if err != nil {
 		return false, err
 	}
@@ -170,9 +154,9 @@ func CheckProductNameUnique(projectID int, itemName string, excludeID int) (bool
 
 // GetProductCount returns the total number of products for a project.
 func GetProductCount(projectID int) (int, error) {
-	var count int
-	err := DB.QueryRow("SELECT COUNT(*) FROM products WHERE project_id = ?", projectID).Scan(&count)
-	return count, err
+	q := db.New(DB)
+	count, err := q.GetProductCount(context.Background(), int64(projectID))
+	return int(count), err
 }
 
 // SearchProducts returns paginated, searchable, sortable product results.
@@ -195,23 +179,37 @@ func SearchProducts(projectID int, search string, sortBy string, sortDir string,
 		perPage = 20
 	}
 
-	// Build WHERE clause
-	where := "WHERE project_id = ?"
-	args := []interface{}{projectID}
+	q := db.New(DB)
+	ctx := context.Background()
+
+	var total int64
+	var rows []db.Product
+	var err error
+
 	if search != "" {
-		where += " AND (item_name LIKE ? OR hsn_code LIKE ? OR brand_model LIKE ? OR item_description LIKE ?)"
 		like := "%" + search + "%"
-		args = append(args, like, like, like, like)
+		likeNull := sql.NullString{String: like, Valid: true}
+
+		// Get total count with filter
+		total, err = q.SearchProductsCount(ctx, db.SearchProductsCountParams{
+			ProjectID:       int64(projectID),
+			ItemName:        like,
+			HsnCode:         likeNull,
+			BrandModel:      like,
+			ItemDescription: like,
+		})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// Get total count without filter
+		total, err = q.SearchProductsCountNoFilter(ctx, int64(projectID))
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// Get total count
-	var total int
-	countQuery := "SELECT COUNT(*) FROM products " + where
-	if err := DB.QueryRow(countQuery, args...).Scan(&total); err != nil {
-		return nil, err
-	}
-
-	totalPages := (total + perPage - 1) / perPage
+	totalPages := int((total + int64(perPage) - 1) / int64(perPage))
 	if totalPages < 1 {
 		totalPages = 1
 	}
@@ -220,48 +218,103 @@ func SearchProducts(projectID int, search string, sortBy string, sortDir string,
 	}
 	offset := (page - 1) * perPage
 
-	// Query products
-	query := fmt.Sprintf(`
-		SELECT id, project_id, item_name, item_description, hsn_code, uom,
-		       brand_model, per_unit_price, gst_percentage, created_at, updated_at
-		FROM products %s
-		ORDER BY %s %s
-		LIMIT ? OFFSET ?
-	`, where, sortBy, sortDir)
-
-	queryArgs := append(args, perPage, offset)
-	rows, err := DB.Query(query, queryArgs...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var products []*models.Product
-	for rows.Next() {
-		p := &models.Product{}
-		var hsnCode, brandModel sql.NullString
-		err := rows.Scan(
-			&p.ID, &p.ProjectID, &p.ItemName, &p.ItemDescription,
-			&hsnCode, &p.UoM, &brandModel,
-			&p.PerUnitPrice, &p.GSTPercentage, &p.CreatedAt, &p.UpdatedAt,
-		)
+	// For non-default sort orders, fall back to hand-written SQL since sqlc
+	// uses fixed ORDER BY item_name ASC. Only use sqlc for the default sort.
+	if sortBy == "item_name" && sortDir == "asc" {
+		if search != "" {
+			like := "%" + search + "%"
+			likeNull := sql.NullString{String: like, Valid: true}
+			rows, err = q.SearchProducts(ctx, db.SearchProductsParams{
+				ProjectID:       int64(projectID),
+				ItemName:        like,
+				HsnCode:         likeNull,
+				BrandModel:      like,
+				ItemDescription: like,
+				Limit:           int64(perPage),
+				Offset:          int64(offset),
+			})
+		} else {
+			rows, err = q.SearchProductsNoFilter(ctx, db.SearchProductsNoFilterParams{
+				ProjectID: int64(projectID),
+				Limit:     int64(perPage),
+				Offset:    int64(offset),
+			})
+		}
 		if err != nil {
 			return nil, err
 		}
-		if hsnCode.Valid {
+	} else {
+		// Dynamic ORDER BY — keep hand-written SQL
+		var queryArgs []interface{}
+		where := "WHERE project_id = ?"
+		queryArgs = append(queryArgs, projectID)
+
+		if search != "" {
+			where += " AND (item_name LIKE ? OR hsn_code LIKE ? OR brand_model LIKE ? OR item_description LIKE ?)"
+			like := "%" + search + "%"
+			queryArgs = append(queryArgs, like, like, like, like)
+		}
+
+		query := fmt.Sprintf(`
+			SELECT id, project_id, item_name, item_description, hsn_code, uom,
+			       brand_model, per_unit_price, gst_percentage, created_at, updated_at
+			FROM products %s
+			ORDER BY %s %s
+			LIMIT ? OFFSET ?
+		`, where, sortBy, sortDir)
+
+		queryArgs = append(queryArgs, perPage, offset)
+		dbRows, qErr := DB.Query(query, queryArgs...)
+		if qErr != nil {
+			return nil, qErr
+		}
+		defer dbRows.Close()
+
+		var products []*models.Product
+		for dbRows.Next() {
+			p := &models.Product{}
+			var hsnCode, uom sql.NullString
+			var perUnitPrice, gstPct sql.NullFloat64
+			var createdAt, updatedAt sql.NullTime
+			scanErr := dbRows.Scan(
+				&p.ID, &p.ProjectID, &p.ItemName, &p.ItemDescription,
+				&hsnCode, &uom, &p.BrandModel,
+				&perUnitPrice, &gstPct, &createdAt, &updatedAt,
+			)
+			if scanErr != nil {
+				return nil, scanErr
+			}
 			p.HSNCode = hsnCode.String
+			p.UoM = uom.String
+			p.PerUnitPrice = perUnitPrice.Float64
+			p.GSTPercentage = gstPct.Float64
+			p.CreatedAt = createdAt.Time
+			p.UpdatedAt = updatedAt.Time
+			products = append(products, p)
 		}
-		if brandModel.Valid {
-			p.BrandModel = brandModel.String
-		}
-		products = append(products, p)
+
+		return &models.ProductPage{
+			Products:    products,
+			CurrentPage: page,
+			PerPage:     perPage,
+			TotalCount:  int(total),
+			TotalPages:  totalPages,
+			Search:      search,
+			SortBy:      sortBy,
+			SortDir:     sortDir,
+		}, nil
+	}
+
+	products := make([]*models.Product, 0, len(rows))
+	for _, row := range rows {
+		products = append(products, productFromRow(row))
 	}
 
 	return &models.ProductPage{
 		Products:    products,
 		CurrentPage: page,
 		PerPage:     perPage,
-		TotalCount:  total,
+		TotalCount:  int(total),
 		TotalPages:  totalPages,
 		Search:      search,
 		SortBy:      sortBy,
@@ -273,6 +326,9 @@ func SearchProducts(projectID int, search string, sortBy string, sortDir string,
 func BulkDeleteProducts(ids []int, projectID int) (int, []string) {
 	var deleted int
 	var errors []string
+	q := db.New(DB)
+	ctx := context.Background()
+
 	for _, id := range ids {
 		used, err := CheckProductUsageInTemplates(id)
 		if err != nil {
@@ -283,7 +339,10 @@ func BulkDeleteProducts(ids []int, projectID int) (int, []string) {
 			errors = append(errors, fmt.Sprintf("Product %d: used in DC templates", id))
 			continue
 		}
-		_, err = DB.Exec("DELETE FROM products WHERE id = ? AND project_id = ?", id, projectID)
+		err = q.DeleteProduct(ctx, db.DeleteProductParams{
+			ID:        int64(id),
+			ProjectID: int64(projectID),
+		})
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("Product %d: delete failed", id))
 			continue

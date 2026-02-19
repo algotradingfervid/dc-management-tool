@@ -1,15 +1,14 @@
 package models
 
 import (
-	"strings"
 	"time"
 )
 
 type DCTemplate struct {
 	ID        int       `json:"id"`
 	ProjectID int       `json:"project_id"`
-	Name      string    `json:"name"`
-	Purpose   string    `json:"purpose"`
+	Name      string    `json:"name" validate:"required,max=100"`
+	Purpose   string    `json:"purpose" validate:"max=500"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
@@ -30,20 +29,4 @@ type DCTemplateProduct struct {
 type TemplateProductRow struct {
 	Product
 	DefaultQuantity int `json:"default_quantity"`
-}
-
-func (t *DCTemplate) Validate() map[string]string {
-	errors := make(map[string]string)
-
-	if strings.TrimSpace(t.Name) == "" {
-		errors["name"] = "Template name is required"
-	} else if len(t.Name) > 100 {
-		errors["name"] = "Template name must be 100 characters or less"
-	}
-
-	if len(t.Purpose) > 500 {
-		errors["purpose"] = "Purpose must be 500 characters or less"
-	}
-
-	return errors
 }

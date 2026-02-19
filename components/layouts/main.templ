@@ -1,0 +1,39 @@
+package layouts
+
+templ Main(title string, sidebar templ.Component, topbar templ.Component, flashMessage string, flashType string) {
+	@Base(title) {
+		<div class="h-full flex">
+			<!-- Sidebar -->
+			@sidebar
+			<!-- Main Content Area -->
+			<div class="flex-1 flex flex-col" :class="{ 'sidebar-collapsed': $store.sidebar.collapsed }" id="main-content-wrapper">
+				<!-- Top Bar -->
+				@topbar
+				<!-- Page Content -->
+				<main class="content-area">
+					<div class="py-6">
+						<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+							{ children... }
+						</div>
+					</div>
+				</main>
+			</div>
+		</div>
+		<!-- Mobile Sidebar Overlay -->
+		<div id="sidebar-overlay" class="sidebar-overlay lg:hidden"
+			:class="{ 'active': $store.sidebar.open }"
+			@click="$store.sidebar.close()"
+			x-show="$store.sidebar.open"
+			x-cloak></div>
+if flashMessage != "" {
+			<div
+				id="flash-data"
+				class="hidden"
+				data-message={ flashMessage }
+				data-type={ flashType }
+				x-data
+				x-init="showToast($el.dataset.message, $el.dataset.type)"
+			></div>
+		}
+	}
+}

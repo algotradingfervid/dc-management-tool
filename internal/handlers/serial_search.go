@@ -2,82 +2,98 @@ package handlers
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
+	"github.com/narendhupati/dc-management-tool/components/htmx"
+	"github.com/narendhupati/dc-management-tool/components/layouts"
+	errorpage "github.com/narendhupati/dc-management-tool/components/pages/error"
+	serialsearchpage "github.com/narendhupati/dc-management-tool/components/pages/serial_search"
+	"github.com/narendhupati/dc-management-tool/components/partials"
 	"github.com/narendhupati/dc-management-tool/internal/auth"
+	"github.com/narendhupati/dc-management-tool/internal/components"
 	"github.com/narendhupati/dc-management-tool/internal/database"
 	"github.com/narendhupati/dc-management-tool/internal/helpers"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
 // ShowSerialSearch handles GET /projects/:id/serial-search
-func ShowSerialSearch(c *gin.Context) {
+func ShowSerialSearch(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
-	project := c.MustGet("currentProject").(*models.Project)
-	query := strings.TrimSpace(c.Query("q"))
-	projectIDStr := strconv.Itoa(project.ID)
+	project := c.Get("currentProject").(*models.Project)
+	query := strings.TrimSpace(c.QueryParam("q"))
+	currentPath := c.Request().URL.Path
 
-	basePath := fmt.Sprintf("/projects/%d/serial-search", project.ID)
+	allProjects, _ := database.GetAccessibleProjects(user)
+	flashType, flashMessage := auth.PopFlash(c.Request())
 
-	breadcrumbs := helpers.BuildBreadcrumbs(
+	rawBreadcrumbs := helpers.BuildBreadcrumbs(
 		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d/dashboard", project.ID)},
 		helpers.Breadcrumb{Title: "Serial Search"},
 	)
+	breadcrumbs := toBreadcrumbItems(rawBreadcrumbs)
+	_ = breadcrumbs // available for future use
 
-	// No query yet — show initial state
+	isHTMX := c.Request().Header.Get("HX-Request") == "true"
+
+	// No query yet — show initial state.
 	if query == "" {
-		if c.GetHeader("HX-Request") == "true" {
-			c.HTML(http.StatusOK, "htmx/serial_search_results.html", gin.H{
-				"Initial": true,
-			})
-			return
+		if isHTMX {
+			return components.RenderOK(c, htmx.SerialSearchResults(htmx.SerialSearchResultsProps{
+				Initial:     true,
+				Results:     nil,
+				NotFound:    nil,
+				ResultCount: 0,
+			}))
 		}
-		c.HTML(http.StatusOK, "serial_search.html", gin.H{
-			"user":           user,
-			"currentProject": project,
-			"currentPath":    c.Request.URL.Path,
-			"breadcrumbs":    breadcrumbs,
-			"basePath":       basePath,
-			"query":          query,
-			"Initial":        true,
-		})
-		return
+
+		sidebar := partials.Sidebar(user, project, allProjects, currentPath)
+		topbar := partials.Topbar(user, project, allProjects, flashType, flashMessage)
+		pageContent := serialsearchpage.SerialSearch(
+			user, project, allProjects,
+			query, true, nil, nil,
+			flashType, flashMessage,
+		)
+		return components.RenderOK(c,
+			layouts.MainWithContent("Serial Search", sidebar, topbar, flashMessage, flashType, pageContent))
 	}
 
+	projectIDStr := fmt.Sprintf("%d", project.ID)
 	results, notFound, err := database.SearchSerialNumbers(query, projectIDStr)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "serial_search.html", gin.H{
-			"user":           user,
-			"currentProject": project,
-			"currentPath":    c.Request.URL.Path,
-			"breadcrumbs":    breadcrumbs,
-			"basePath":       basePath,
-			"query":          query,
-			"error":          "Search failed: " + err.Error(),
-		})
-		return
+		slog.Error("Serial search failed", slog.Int("project_id", project.ID), slog.String("query", query), slog.String("error", err.Error()))
+		if isHTMX {
+			// Return an HTMX-friendly error fragment.
+			return components.Render(c, http.StatusInternalServerError,
+				htmx.SerialSearchResults(htmx.SerialSearchResultsProps{
+					Initial:     false,
+					Results:     nil,
+					NotFound:    nil,
+					ResultCount: 0,
+				}))
+		}
+		return components.Render(c, http.StatusInternalServerError,
+			errorpage.ErrorPage(http.StatusInternalServerError, "Search failed", err.Error()))
 	}
 
-	data := gin.H{
-		"user":           user,
-		"currentProject": project,
-		"currentPath":    c.Request.URL.Path,
-		"breadcrumbs":    breadcrumbs,
-		"basePath":       basePath,
-		"query":          query,
-		"results":        results,
-		"notFound":       notFound,
-		"resultCount":    len(results),
-		"Initial":        false,
+	if isHTMX {
+		return components.RenderOK(c, htmx.SerialSearchResults(htmx.SerialSearchResultsProps{
+			Initial:     false,
+			Results:     results,
+			NotFound:    notFound,
+			ResultCount: len(results),
+		}))
 	}
 
-	if c.GetHeader("HX-Request") == "true" {
-		c.HTML(http.StatusOK, "htmx/serial_search_results.html", data)
-		return
-	}
-
-	c.HTML(http.StatusOK, "serial_search.html", data)
+	sidebar := partials.Sidebar(user, project, allProjects, currentPath)
+	topbar := partials.Topbar(user, project, allProjects, flashType, flashMessage)
+	pageContent := serialsearchpage.SerialSearch(
+		user, project, allProjects,
+		query, false, results, notFound,
+		flashType, flashMessage,
+	)
+	return components.RenderOK(c,
+		layouts.MainWithContent("Serial Search", sidebar, topbar, flashMessage, flashType, pageContent))
 }

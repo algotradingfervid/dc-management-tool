@@ -1,0 +1,58 @@
+package htmx
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/narendhupati/dc-management-tool/internal/database"
+)
+
+// DestinationDrilldownPartialProps holds props for the destination drill-down fragment.
+type DestinationDrilldownPartialProps struct {
+	DCs []database.DestinationDCRow
+}
+
+func destDrilldownItoa(i int) string {
+	return strconv.Itoa(i)
+}
+
+templ DestinationDrilldownPartial(props DestinationDrilldownPartialProps) {
+	if len(props.DCs) > 0 {
+		<div class="card overflow-hidden p-0">
+			<div class="overflow-x-auto">
+				<table class="min-w-full divide-y divide-gray-200">
+					<thead class="bg-gray-50">
+						<tr>
+							<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DC Number</th>
+							<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+							<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+							<th class="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Items</th>
+						</tr>
+					</thead>
+					<tbody class="bg-white divide-y divide-gray-200">
+						for _, dc := range props.DCs {
+							<tr class="hover:bg-gray-50">
+								<td class="px-5 py-3">
+									<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/dcs/%d", dc.ProjectID, dc.DCID)) } class="text-brand-600 hover:text-brand-800 font-medium text-sm">{ dc.DCNumber }</a>
+								</td>
+								<td class="px-5 py-3 text-sm text-gray-500">{ dc.ChallanDate }</td>
+								<td class="px-5 py-3">
+									if dc.Status == "issued" {
+										<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Issued</span>
+									} else {
+										<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Draft</span>
+									}
+								</td>
+								<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ destDrilldownItoa(dc.TotalItems) }</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	} else {
+		<div class="card text-center py-12">
+			<p class="text-gray-500">No Official DCs found for this destination.</p>
+		</div>
+	}
+}

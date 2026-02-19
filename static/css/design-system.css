@@ -3,6 +3,9 @@
    Flat design, no gradients. Purposeful color coding & animations.
    ========================================================================== */
 
+/* Alpine.js — prevent flash of unstyled content */
+[x-cloak] { display: none !important; }
+
 /* ---------- 1. CSS Custom Properties ---------- */
 :root {
   /* --- Brand / Primary --- */
@@ -702,6 +705,18 @@ select:focus {
   border-left: none;
 }
 
+/* Main content margin — applied via CSS so it works before Alpine.js loads.
+   Alpine.js only toggles the 'sidebar-collapsed' class for the collapsed state. */
+@media (min-width: 1024px) {
+  #main-content-wrapper {
+    margin-left: var(--sidebar-width);
+    transition: margin-left var(--duration-slow) ease;
+  }
+  #main-content-wrapper.sidebar-collapsed {
+    margin-left: var(--sidebar-collapsed);
+  }
+}
+
 /* ---------- 15. Topbar ---------- */
 .topbar {
   position: sticky;
@@ -795,7 +810,7 @@ select:focus {
   transition: opacity var(--duration-slow) ease;
 }
 
-.sidebar-overlay.visible {
+.sidebar-overlay.active {
   opacity: 1;
   pointer-events: auto;
 }

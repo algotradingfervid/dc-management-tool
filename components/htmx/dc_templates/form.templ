@@ -1,0 +1,342 @@
+package htmx
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+type DCTemplateFormProps struct {
+	ProjectID int
+	Template  models.DCTemplate
+	IsEdit    bool
+	Errors    map[string]string
+	Products  []*models.Product
+	// SelectedProducts maps product ID to its default quantity (0 means not selected).
+	SelectedProducts map[int]int
+	CsrfToken        string
+}
+
+func dcTemplateFormItoa(i int) string {
+	return strconv.Itoa(i)
+}
+
+templ DCTemplateForm(p DCTemplateFormProps) {
+	<div class="p-6">
+		<div class="flex items-center justify-between mb-6">
+			<h2 class="text-lg font-semibold text-gray-900">
+				if p.IsEdit {
+					Edit Template
+				} else {
+					Create Template
+				}
+			</h2>
+			<button onclick="closeTemplateSlideOver()" class="text-gray-400 hover:text-gray-500">
+				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+				</svg>
+			</button>
+		</div>
+		if p.Errors["general"] != "" {
+			<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+				<p class="text-sm text-red-600">{ p.Errors["general"] }</p>
+			</div>
+		}
+		<form
+			if p.IsEdit {
+				hx-post={ fmt.Sprintf("/projects/%d/templates/%d", p.ProjectID, p.Template.ID) }
+			} else {
+				hx-post={ fmt.Sprintf("/projects/%d/templates", p.ProjectID) }
+			}
+			hx-target="#template-form-container"
+			hx-swap="innerHTML"
+			class="space-y-5"
+		>
+			<input type="hidden" name="gorilla.csrf.Token" value={ p.CsrfToken }/>
+			<!-- Template Name -->
+			<div>
+				<label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+					Template Name <span class="text-red-500">*</span>
+				</label>
+				<input
+					type="text"
+					id="name"
+					name="name"
+					value={ p.Template.Name }
+					class={
+						"form-input w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm",
+						templ.KV("border-red-300", p.Errors["name"] != ""),
+					}
+					placeholder="e.g., Standard Secretariat Kit"
+					maxlength="100"
+				/>
+				if p.Errors["name"] != "" {
+					<p class="mt-1 text-xs text-red-500">{ p.Errors["name"] }</p>
+				}
+			</div>
+			<!-- Purpose -->
+			<div>
+				<label for="purpose" class="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+				<textarea
+					id="purpose"
+					name="purpose"
+					rows="2"
+					class={
+						"form-input w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm",
+						templ.KV("border-red-300", p.Errors["purpose"] != ""),
+					}
+					placeholder="Describe the purpose of this template"
+					maxlength="500"
+				>{ p.Template.Purpose }</textarea>
+				if p.Errors["purpose"] != "" {
+					<p class="mt-1 text-xs text-red-500">{ p.Errors["purpose"] }</p>
+				}
+			</div>
+			<!-- Product Selection -->
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-1">
+					Select Products <span class="text-red-500">*</span>
+					<span id="selected-count" class="ml-2 text-xs text-gray-500">(0 selected)</span>
+				</label>
+				if p.Errors["products"] != "" {
+					<p class="mb-2 text-xs text-red-500">{ p.Errors["products"] }</p>
+				}
+				<!-- Search and controls -->
+				<div class="flex items-center gap-2 mb-2">
+					<input
+						type="text"
+						id="product-search"
+						placeholder="Search products..."
+						class="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm"
+						oninput="filterProducts(this.value)"
+					/>
+					<button type="button" onclick="selectAllProducts()" class="text-xs text-brand-600 hover:text-brand-800 font-medium whitespace-nowrap">Select All</button>
+					<button type="button" onclick="deselectAllProducts()" class="text-xs text-gray-600 hover:text-gray-800 font-medium whitespace-nowrap">Clear</button>
+				</div>
+				<!-- Product list -->
+				<div class="border border-gray-200 rounded-lg max-h-64 overflow-y-auto" id="product-list">
+					if len(p.Products) > 0 {
+						for _, prod := range p.Products {
+							<label
+								class="product-item flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
+								data-name={ prod.ItemName }
+								data-product-id={ dcTemplateFormItoa(prod.ID) }
+								draggable="false"
+							>
+								<input
+									type="checkbox"
+									name="product_ids"
+									value={ dcTemplateFormItoa(prod.ID) }
+									class="product-checkbox mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+									onchange={ templ.ComponentScript{Call: fmt.Sprintf("onProductToggle(this, %d)", prod.ID)} }
+									if p.SelectedProducts[prod.ID] > 0 {
+										checked
+									}
+								/>
+								<div class="flex-1 min-w-0">
+									<div class="text-sm font-medium text-gray-900">{ prod.ItemName }</div>
+									<div class="text-xs text-gray-500">
+										if prod.HSNCode != "" {
+											HSN: { prod.HSNCode } |{ " " }
+										}
+										{ prod.UoM } | { fmt.Sprintf("%.2f", prod.PerUnitPrice) }
+									</div>
+								</div>
+								<div
+									class={
+										"flex items-center gap-1 qty-input",
+										templ.KV("hidden", p.SelectedProducts[prod.ID] == 0),
+									}
+									id={ "qty-wrap-" + dcTemplateFormItoa(prod.ID) }
+								>
+									<label class="text-xs text-gray-500">Qty:</label>
+									<input
+										type="number"
+										name={ "quantity_" + dcTemplateFormItoa(prod.ID) }
+										min="1"
+										if p.SelectedProducts[prod.ID] > 0 {
+											value={ dcTemplateFormItoa(p.SelectedProducts[prod.ID]) }
+										} else {
+											value="1"
+										}
+										class="w-16 rounded border-gray-300 text-sm text-right py-0.5 px-1"
+										onclick="event.stopPropagation()"
+									/>
+								</div>
+								<div class="drag-handle hidden cursor-grab text-gray-400 hover:text-gray-600 mt-0.5" title="Drag to reorder">
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path>
+									</svg>
+								</div>
+							</label>
+						}
+					} else {
+						<p class="text-sm text-gray-500 text-center py-4">No products in this project. Add products first.</p>
+					}
+				</div>
+				<!-- Selected products reorder area -->
+				<div id="reorder-section" class="hidden mt-3">
+					<p class="text-xs text-gray-500 mb-1">Drag to reorder selected products:</p>
+					<div id="reorder-list" class="border border-gray-200 rounded-lg divide-y divide-gray-100"></div>
+				</div>
+			</div>
+			<!-- Submit -->
+			<div class="flex justify-end gap-3 pt-4 border-t">
+				<button type="button" onclick="closeTemplateSlideOver()" class="btn btn-secondary">Cancel</button>
+				<button type="submit" class="btn btn-primary">
+					if p.IsEdit {
+						Update Template
+					} else {
+						Create Template
+					}
+				</button>
+			</div>
+		</form>
+	</div>
+	<script>
+function updateSelectedCount() {
+    var checked = document.querySelectorAll('.product-checkbox:checked').length;
+    var el = document.getElementById('selected-count');
+    if (el) el.textContent = '(' + checked + ' selected)';
+    updateReorderSection();
+}
+
+function onProductToggle(checkbox, productId) {
+    var wrap = document.getElementById('qty-wrap-' + productId);
+    if (wrap) {
+        if (checkbox.checked) {
+            wrap.classList.remove('hidden');
+        } else {
+            wrap.classList.add('hidden');
+        }
+    }
+    updateSelectedCount();
+}
+
+function filterProducts(query) {
+    var items = document.querySelectorAll('.product-item');
+    query = query.toLowerCase();
+    items.forEach(function(item) {
+        var name = item.getAttribute('data-name').toLowerCase();
+        item.style.display = name.indexOf(query) >= 0 ? '' : 'none';
+    });
+}
+
+function selectAllProducts() {
+    document.querySelectorAll('.product-checkbox').forEach(function(cb) {
+        cb.checked = true;
+        var productId = cb.value;
+        var wrap = document.getElementById('qty-wrap-' + productId);
+        if (wrap) wrap.classList.remove('hidden');
+    });
+    updateSelectedCount();
+}
+
+function deselectAllProducts() {
+    document.querySelectorAll('.product-checkbox').forEach(function(cb) {
+        cb.checked = false;
+        var productId = cb.value;
+        var wrap = document.getElementById('qty-wrap-' + productId);
+        if (wrap) wrap.classList.add('hidden');
+    });
+    updateSelectedCount();
+}
+
+function updateReorderSection() {
+    var section = document.getElementById('reorder-section');
+    var list = document.getElementById('reorder-list');
+    var checked = document.querySelectorAll('.product-checkbox:checked');
+
+    if (checked.length < 2) {
+        section.classList.add('hidden');
+        return;
+    }
+
+    section.classList.remove('hidden');
+    list.innerHTML = '';
+
+    checked.forEach(function(cb) {
+        var item = cb.closest('.product-item');
+        var name = item.getAttribute('data-name');
+        var pid = cb.value;
+
+        var row = document.createElement('div');
+        row.className = 'reorder-item flex items-center gap-2 px-3 py-2 bg-white hover:bg-gray-50 cursor-grab';
+        row.setAttribute('draggable', 'true');
+        row.setAttribute('data-product-id', pid);
+        row.innerHTML = '<svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/></svg>' +
+            '<span class="text-sm text-gray-700 flex-1">' + name + '</span>' +
+            '<input type="hidden" name="product_ids" value="' + pid + '" class="reorder-hidden-input" disabled>';
+
+        row.addEventListener('dragstart', handleDragStart);
+        row.addEventListener('dragover', handleDragOver);
+        row.addEventListener('drop', handleDrop);
+        row.addEventListener('dragend', handleDragEnd);
+
+        list.appendChild(row);
+    });
+
+    syncFormOrder();
+}
+
+var dragSrcEl = null;
+
+function handleDragStart(e) {
+    dragSrcEl = this;
+    this.style.opacity = '0.4';
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.innerHTML);
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    this.classList.add('bg-brand-50', 'border-brand-200');
+}
+
+function handleDrop(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    this.classList.remove('bg-brand-50', 'border-brand-200');
+
+    if (dragSrcEl !== this) {
+        var list = this.parentNode;
+        var allItems = Array.from(list.children);
+        var srcIdx = allItems.indexOf(dragSrcEl);
+        var dstIdx = allItems.indexOf(this);
+
+        if (srcIdx < dstIdx) {
+            list.insertBefore(dragSrcEl, this.nextSibling);
+        } else {
+            list.insertBefore(dragSrcEl, this);
+        }
+        syncFormOrder();
+    }
+}
+
+function handleDragEnd() {
+    this.style.opacity = '1';
+    document.querySelectorAll('.reorder-item').forEach(function(item) {
+        item.classList.remove('bg-brand-50', 'border-brand-200');
+    });
+}
+
+function syncFormOrder() {
+    var reorderItems = document.querySelectorAll('.reorder-item');
+    if (reorderItems.length === 0) return;
+
+    var productList = document.getElementById('product-list');
+    reorderItems.forEach(function(item) {
+        var pid = item.getAttribute('data-product-id');
+        var label = productList.querySelector('[data-product-id="' + pid + '"]');
+        if (label) {
+            productList.appendChild(label);
+        }
+    });
+}
+
+// Initialize count on load
+updateSelectedCount();
+	</script>
+}

@@ -1,8 +1,23 @@
 package models
 
 import (
+	"regexp"
+	"strings"
 	"testing"
+
+	"github.com/narendhupati/dc-management-tool/internal/helpers"
 )
+
+func validateProduct(p *Product) map[string]string {
+	errors := helpers.ValidateStruct(p)
+	if p.HSNCode != "" {
+		hsnRegex := regexp.MustCompile(`^\d{6,8}$`)
+		if !hsnRegex.MatchString(strings.TrimSpace(p.HSNCode)) {
+			errors["hsn_code"] = "HSN code must be 6-8 digits"
+		}
+	}
+	return errors
+}
 
 func TestProductValidate_ValidProduct(t *testing.T) {
 	p := &Product{
@@ -14,7 +29,7 @@ func TestProductValidate_ValidProduct(t *testing.T) {
 		PerUnitPrice:    100.0,
 		GSTPercentage:   18,
 	}
-	errors := p.Validate()
+	errors := validateProduct(p)
 	if len(errors) != 0 {
 		t.Errorf("Expected no errors, got %v", errors)
 	}
@@ -22,7 +37,7 @@ func TestProductValidate_ValidProduct(t *testing.T) {
 
 func TestProductValidate_RequiredFields(t *testing.T) {
 	p := &Product{}
-	errors := p.Validate()
+	errors := validateProduct(p)
 
 	required := []string{"item_name", "item_description", "uom", "brand_model", "per_unit_price"}
 	for _, field := range required {
@@ -52,7 +67,7 @@ func TestProductValidate_HSNCode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := validProduct()
 			p.HSNCode = tt.hsn
-			errors := p.Validate()
+			errors := validateProduct(p)
 			_, hasErr := errors["hsn_code"]
 			if hasErr != tt.wantErr {
 				t.Errorf("HSN %q: got error=%v, want error=%v", tt.hsn, hasErr, tt.wantErr)
@@ -77,7 +92,7 @@ func TestProductValidate_Price(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := validProduct()
 			p.PerUnitPrice = tt.price
-			errors := p.Validate()
+			errors := validateProduct(p)
 			_, hasErr := errors["per_unit_price"]
 			if hasErr != tt.wantErr {
 				t.Errorf("Price %.2f: got error=%v, want error=%v", tt.price, hasErr, tt.wantErr)
@@ -103,7 +118,7 @@ func TestProductValidate_GST(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := validProduct()
 			p.GSTPercentage = tt.gst
-			errors := p.Validate()
+			errors := validateProduct(p)
 			_, hasErr := errors["gst_percentage"]
 			if hasErr != tt.wantErr {
 				t.Errorf("GST %.0f: got error=%v, want error=%v", tt.gst, hasErr, tt.wantErr)

@@ -55,7 +55,9 @@ type RecentDC struct {
 	CreatedAt     string
 }
 
-// GetDashboardStats returns aggregate dashboard statistics for a project with optional date filtering
+// GetDashboardStats returns aggregate dashboard statistics for a project with optional date filtering.
+// Hand-written SQL: GetDashboardStats supports single-bound date ranges (start-only or end-only)
+// which cannot be expressed as static sqlc queries; sqlc provides only no-filter and both-bounds variants.
 func GetDashboardStats(projectID int, startDate, endDate *time.Time) (*DashboardStats, error) {
 	stats := &DashboardStats{}
 
@@ -71,25 +73,18 @@ func GetDashboardStats(projectID int, startDate, endDate *time.Time) (*Dashboard
 		dateArgs = append(dateArgs, endDate.Format("2006-01-02"))
 	}
 
-	// --- Entity counts ---
+	// --- Entity counts (never date-filtered) ---
 
-	// Total Products
-	DB.QueryRow("SELECT COUNT(*) FROM products WHERE project_id = ?", projectID).Scan(&stats.TotalProducts)
-
-	// Total Templates
-	DB.QueryRow("SELECT COUNT(*) FROM dc_templates WHERE project_id = ?", projectID).Scan(&stats.TotalTemplates)
-
-	// Total Bill-to Addresses
-	DB.QueryRow(`SELECT COUNT(*) FROM addresses a
+	_ = DB.QueryRow("SELECT COUNT(*) FROM products WHERE project_id = ?", projectID).Scan(&stats.TotalProducts)
+	_ = DB.QueryRow("SELECT COUNT(*) FROM dc_templates WHERE project_id = ?", projectID).Scan(&stats.TotalTemplates)
+	_ = DB.QueryRow(`SELECT COUNT(*) FROM addresses a
 		JOIN address_list_configs c ON a.config_id = c.id
 		WHERE c.project_id = ? AND c.address_type = 'bill_to'`, projectID).Scan(&stats.TotalBillToAddresses)
-
-	// Total Ship-to Addresses
-	DB.QueryRow(`SELECT COUNT(*) FROM addresses a
+	_ = DB.QueryRow(`SELECT COUNT(*) FROM addresses a
 		JOIN address_list_configs c ON a.config_id = c.id
 		WHERE c.project_id = ? AND c.address_type = 'ship_to'`, projectID).Scan(&stats.TotalShipToAddresses)
 
-	// --- DC counts ---
+	// --- DC counts (with optional date filter) ---
 	buildArgs := func(extra ...interface{}) []interface{} {
 		args := []interface{}{projectID}
 		args = append(args, extra...)
@@ -97,34 +92,37 @@ func GetDashboardStats(projectID int, startDate, endDate *time.Time) (*Dashboard
 		return args
 	}
 
-	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ?"+dateFilter, buildArgs()...).Scan(&stats.TotalDCs)
-	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='transit'"+dateFilter, buildArgs()...).Scan(&stats.TransitDCs)
-	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='official'"+dateFilter, buildArgs()...).Scan(&stats.OfficialDCs)
-	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND status='issued'"+dateFilter, buildArgs()...).Scan(&stats.IssuedDCs)
-	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND status='draft'", projectID).Scan(&stats.DraftDCs)
+	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ?"+dateFilter, buildArgs()...).Scan(&stats.TotalDCs)
+	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='transit'"+dateFilter, buildArgs()...).Scan(&stats.TransitDCs)
+	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='official'"+dateFilter, buildArgs()...).Scan(&stats.OfficialDCs)
+	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND status='issued'"+dateFilter, buildArgs()...).Scan(&stats.IssuedDCs)
+	// DraftDCs is intentionally not date-filtered (matches original behavior).
+	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND status='draft'", projectID).Scan(&stats.DraftDCs)
 
 	// Breakdown by type+status
-	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='transit' AND status='draft'"+dateFilter, buildArgs()...).Scan(&stats.TransitDCsDraft)
-	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='transit' AND status='issued'"+dateFilter, buildArgs()...).Scan(&stats.TransitDCsIssued)
-	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='official' AND status='draft'"+dateFilter, buildArgs()...).Scan(&stats.OfficialDCsDraft)
-	DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='official' AND status='issued'"+dateFilter, buildArgs()...).Scan(&stats.OfficialDCsIssued)
+	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='transit' AND status='draft'"+dateFilter, buildArgs()...).Scan(&stats.TransitDCsDraft)
+	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='transit' AND status='issued'"+dateFilter, buildArgs()...).Scan(&stats.TransitDCsIssued)
+	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='official' AND status='draft'"+dateFilter, buildArgs()...).Scan(&stats.OfficialDCsDraft)
+	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='official' AND status='issued'"+dateFilter, buildArgs()...).Scan(&stats.OfficialDCsIssued)
 
-	// DCs this month
+	// DCs this month (bounds computed in Go)
 	now := time.Now()
 	firstDay := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 	lastDay := firstDay.AddDate(0, 1, -1)
-	DB.QueryRow(
+	_ = DB.QueryRow(
 		"SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND challan_date >= ? AND challan_date <= ?",
 		projectID, firstDay.Format("2006-01-02"), lastDay.Format("2006-01-02"),
 	).Scan(&stats.DCsThisMonth)
 
-	// Total serial numbers
-	DB.QueryRow("SELECT COUNT(*) FROM serial_numbers WHERE project_id = ?", projectID).Scan(&stats.TotalSerialNumbers)
+	// Total serial numbers (no date filter)
+	_ = DB.QueryRow("SELECT COUNT(*) FROM serial_numbers WHERE project_id = ?", projectID).Scan(&stats.TotalSerialNumbers)
 
 	return stats, nil
 }
 
-// GetRecentDCs returns the most recent delivery challans for a project
+// GetRecentDCs returns the most recent delivery challans for a project.
+// Hand-written SQL: sqlc GetRecentDCsRow has ChallanDate/CreatedAt as time.Time, but these
+// columns are stored as TEXT and may be empty strings; scanning into string is safer.
 func GetRecentDCs(projectID int, limit int) ([]RecentDC, error) {
 	rows, err := DB.Query(`
 		SELECT
@@ -158,7 +156,9 @@ func GetRecentDCs(projectID int, limit int) ([]RecentDC, error) {
 	return results, nil
 }
 
-// GetRecentActivity returns the most recent activity items for a project dashboard
+// GetRecentActivity returns the most recent activity items for a project dashboard.
+// Hand-written SQL: sqlc GetRecentActivityRow.Description is interface{} (computed column);
+// scanning created_at as string is safer given the TEXT-stored date format.
 func GetRecentActivity(projectID int, limit int) ([]RecentActivity, error) {
 	rows, err := DB.Query(`
 		SELECT id, 'dc' as entity_type, id as entity_id,
@@ -185,9 +185,10 @@ func GetRecentActivity(projectID int, limit int) ([]RecentActivity, error) {
 		if err != nil {
 			return nil, err
 		}
-		a.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdStr)
-		if a.CreatedAt.IsZero() {
-			a.CreatedAt, _ = time.Parse(time.RFC3339, createdStr)
+		if t, err := time.Parse("2006-01-02 15:04:05", createdStr); err == nil {
+			a.CreatedAt = t
+		} else if t, err := time.Parse(time.RFC3339, createdStr); err == nil {
+			a.CreatedAt = t
 		}
 		activities = append(activities, a)
 	}

@@ -2,80 +2,73 @@ package handlers
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gorilla/csrf"
+	"github.com/labstack/echo/v4"
+	"github.com/narendhupati/dc-management-tool/components/layouts"
+	pageprojects "github.com/narendhupati/dc-management-tool/components/pages/projects"
+	"github.com/narendhupati/dc-management-tool/components/partials"
 	"github.com/narendhupati/dc-management-tool/internal/auth"
+	"github.com/narendhupati/dc-management-tool/internal/components"
 	"github.com/narendhupati/dc-management-tool/internal/database"
-	"github.com/narendhupati/dc-management-tool/internal/helpers"
 	"github.com/narendhupati/dc-management-tool/internal/services"
 )
 
-func ShowProjectSettings(c *gin.Context) {
+func ShowProjectSettings(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	project, err := database.GetProjectByID(id)
 	if err != nil {
-		log.Printf("Error fetching project: %v", err)
-		auth.SetFlash(c.Request, "error", "Project not found")
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		slog.Error("Error fetching project", slog.Int("project_id", id), slog.String("error", err.Error()))
+		auth.SetFlash(c.Request(), "error", "Project not found")
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
-	activeTab := c.DefaultQuery("tab", "general")
-	flashType, flashMessage := auth.PopFlash(c.Request)
+	flashType, flashMessage := auth.PopFlash(c.Request())
 
-	// Generate DC number preview
-	dcPreview := services.PreviewDCNumber(project.DCNumberFormat, project.DCPrefix, project.DCPrefix, project.SeqPadding)
+	allProjects, _ := database.GetAccessibleProjects(user)
 
-	breadcrumbs := helpers.BuildBreadcrumbs(
-		helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-		helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-		helpers.Breadcrumb{Title: "Settings", URL: ""},
+	// Generate DC number preview (kept for reference; Settings templ handles its own preview)
+	_ = services.PreviewDCNumber(project.DCNumberFormat, project.DCPrefix, project.DCPrefix, project.SeqPadding)
+
+	pageContent := pageprojects.Settings(
+		user,
+		project,
+		allProjects,
+		map[string]string{},
+		csrf.Token(c.Request()),
+		flashType,
+		flashMessage,
 	)
-
-	c.HTML(http.StatusOK, "projects/settings.html", gin.H{
-		"user":         user,
-		"currentPath":  c.Request.URL.Path,
-		"breadcrumbs":  breadcrumbs,
-		"project":      project,
-		"currentProject":  project,
-		"activeTab":    activeTab,
-		"dcPreview":    dcPreview,
-		"flashType":    flashType,
-		"flashMessage": flashMessage,
-		"errors":       map[string]string{},
-		"csrfField":    csrf.TemplateField(c.Request),
-	})
+	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, project, allProjects, flashType, flashMessage)
+	return components.RenderOK(c, layouts.MainWithContent("Project Settings", sidebar, topbar, flashMessage, flashType, pageContent))
 }
 
-func UpdateProjectSettings(c *gin.Context) {
+func UpdateProjectSettings(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
 	existing, err := database.GetProjectByID(id)
 	if err != nil {
-		auth.SetFlash(c.Request, "error", "Project not found")
-		c.Redirect(http.StatusFound, "/projects")
-		return
+		auth.SetFlash(c.Request(), "error", "Project not found")
+		return c.Redirect(http.StatusFound, "/projects")
 	}
 
-	tab := c.PostForm("tab")
+	tab := c.FormValue("tab")
 	if tab == "" {
 		tab = "general"
 	}
@@ -87,9 +80,9 @@ func UpdateProjectSettings(c *gin.Context) {
 
 	switch tab {
 	case "general":
-		project.Name = c.PostForm("name")
-		project.Description = c.PostForm("description")
-		project.DCPrefix = strings.ToUpper(strings.TrimSpace(c.PostForm("dc_prefix")))
+		project.Name = c.FormValue("name")
+		project.Description = c.FormValue("description")
+		project.DCPrefix = strings.ToUpper(strings.TrimSpace(c.FormValue("dc_prefix")))
 		if strings.TrimSpace(project.Name) == "" {
 			errors["name"] = "Project name is required"
 		}
@@ -98,11 +91,11 @@ func UpdateProjectSettings(c *gin.Context) {
 		}
 
 	case "company":
-		project.BillFromAddress = c.PostForm("bill_from_address")
-		project.DispatchFromAddress = c.PostForm("dispatch_from_address")
-		project.CompanyGSTIN = strings.ToUpper(strings.TrimSpace(c.PostForm("company_gstin")))
-		project.CompanyEmail = strings.TrimSpace(c.PostForm("company_email"))
-		project.CompanyCIN = strings.TrimSpace(c.PostForm("company_cin"))
+		project.BillFromAddress = c.FormValue("bill_from_address")
+		project.DispatchFromAddress = c.FormValue("dispatch_from_address")
+		project.CompanyGSTIN = strings.ToUpper(strings.TrimSpace(c.FormValue("company_gstin")))
+		project.CompanyEmail = strings.TrimSpace(c.FormValue("company_email"))
+		project.CompanyCIN = strings.TrimSpace(c.FormValue("company_cin"))
 
 		if project.CompanyGSTIN != "" && len(project.CompanyGSTIN) != 15 {
 			errors["company_gstin"] = "GSTIN must be exactly 15 characters"
@@ -130,10 +123,10 @@ func UpdateProjectSettings(c *gin.Context) {
 		}
 
 	case "dc_config":
-		project.DCNumberFormat = c.PostForm("dc_number_format")
-		project.DCNumberSeparator = c.PostForm("dc_number_separator")
-		project.PurposeText = c.PostForm("purpose_text")
-		if padding := c.PostForm("seq_padding"); padding != "" {
+		project.DCNumberFormat = c.FormValue("dc_number_format")
+		project.DCNumberSeparator = c.FormValue("dc_number_separator")
+		project.PurposeText = c.FormValue("purpose_text")
+		if padding := c.FormValue("seq_padding"); padding != "" {
 			if p, convErr := strconv.Atoi(padding); convErr == nil {
 				project.SeqPadding = p
 			}
@@ -143,10 +136,10 @@ func UpdateProjectSettings(c *gin.Context) {
 		}
 
 	case "tender":
-		project.TenderRefNumber = c.PostForm("tender_ref_number")
-		project.TenderRefDetails = c.PostForm("tender_ref_details")
-		project.POReference = c.PostForm("po_reference")
-		poDate := c.PostForm("po_date")
+		project.TenderRefNumber = c.FormValue("tender_ref_number")
+		project.TenderRefDetails = c.FormValue("tender_ref_details")
+		project.POReference = c.FormValue("po_reference")
+		poDate := c.FormValue("po_date")
 		if poDate != "" {
 			project.PODate = &poDate
 		} else {
@@ -155,42 +148,39 @@ func UpdateProjectSettings(c *gin.Context) {
 	}
 
 	if len(errors) > 0 {
-		dcPreview := services.PreviewDCNumber(project.DCNumberFormat, project.DCPrefix, project.DCPrefix, project.SeqPadding)
-		breadcrumbs := helpers.BuildBreadcrumbs(
-			helpers.Breadcrumb{Title: "Projects", URL: "/projects"},
-			helpers.Breadcrumb{Title: project.Name, URL: fmt.Sprintf("/projects/%d", project.ID)},
-			helpers.Breadcrumb{Title: "Settings", URL: ""},
+		allProjects, _ := database.GetAccessibleProjects(user)
+		pageContent := pageprojects.Settings(
+			user,
+			project,
+			allProjects,
+			errors,
+			csrf.Token(c.Request()),
+			"",
+			"",
 		)
-		c.HTML(http.StatusOK, "projects/settings.html", gin.H{
-			"user":        user,
-			"currentPath": c.Request.URL.Path,
-			"breadcrumbs": breadcrumbs,
-			"project":     project,
-		"currentProject":  project,
-			"activeTab":   tab,
-			"dcPreview":   dcPreview,
-			"errors":      errors,
-			"csrfField":   csrf.TemplateField(c.Request),
-		})
-		return
+		sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+		topbar := partials.Topbar(user, project, allProjects, "", "")
+		return components.RenderOK(c, layouts.MainWithContent("Project Settings", sidebar, topbar, "", "", pageContent))
 	}
 
 	if err := database.UpdateProjectSettings(project, tab); err != nil {
-		log.Printf("Error updating project settings: %v", err)
-		auth.SetFlash(c.Request, "error", "Failed to save settings")
-		c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/settings?tab=%s", id, tab))
-		return
+		slog.Error("Error updating project settings", slog.Int("project_id", id), slog.String("tab", tab), slog.String("error", err.Error()))
+		auth.SetFlash(c.Request(), "error", "Failed to save settings")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/settings?tab=%s", id, tab))
 	}
 
-	auth.SetFlash(c.Request, "success", "Settings saved successfully")
-	c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/settings?tab=%s", id, tab))
+	auth.SetFlash(c.Request(), "success", "Settings saved successfully")
+	return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/settings?tab=%s", id, tab))
 }
 
 // PreviewDCNumberAPI returns a JSON preview of the DC number format.
-func PreviewDCNumberAPI(c *gin.Context) {
-	format := c.Query("format")
-	prefix := c.Query("prefix")
-	paddingStr := c.DefaultQuery("padding", "3")
+func PreviewDCNumberAPI(c echo.Context) error {
+	format := c.QueryParam("format")
+	prefix := c.QueryParam("prefix")
+	paddingStr := c.QueryParam("padding")
+	if paddingStr == "" {
+		paddingStr = "3"
+	}
 
 	padding, err := strconv.Atoi(paddingStr)
 	if err != nil {
@@ -202,5 +192,5 @@ func PreviewDCNumberAPI(c *gin.Context) {
 	}
 
 	preview := services.PreviewDCNumber(format, prefix, prefix, padding)
-	c.JSON(http.StatusOK, gin.H{"preview": preview})
+	return c.JSON(http.StatusOK, map[string]interface{}{"preview": preview})
 }

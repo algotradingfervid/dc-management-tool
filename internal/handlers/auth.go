@@ -2,116 +2,106 @@ package handlers
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gorilla/csrf"
+	"github.com/labstack/echo/v4"
+	"github.com/narendhupati/dc-management-tool/components/standalone"
 	"github.com/narendhupati/dc-management-tool/internal/auth"
+	"github.com/narendhupati/dc-management-tool/internal/components"
 	"github.com/narendhupati/dc-management-tool/internal/database"
 )
 
-func ShowLogin(c *gin.Context) {
-	if userID := auth.GetUserID(c.Request); userID != 0 {
-		redirectAfterLogin(c, userID)
-		return
+func ShowLogin(c echo.Context) error {
+	if userID := auth.GetUserID(c.Request()); userID != 0 {
+		return redirectAfterLogin(c, userID)
 	}
 
-	flashType, flashMsg := auth.PopFlash(c.Request)
+	flashType, flashMsg := auth.PopFlash(c.Request())
 
-	c.HTML(http.StatusOK, "login.html", gin.H{
-		"csrfField": csrf.TemplateField(c.Request),
-		"flashType": flashType,
-		"flashMsg":  flashMsg,
-	})
+	csrfToken := csrf.Token(c.Request())
+	errors := map[string]string{}
+	if flashType == "error" && flashMsg != "" {
+		errors["credentials"] = flashMsg
+	}
+	return components.RenderOK(c, standalone.Login(csrfToken, errors, ""))
 }
 
-func ProcessLogin(c *gin.Context) {
-	username := c.PostForm("username")
-	password := c.PostForm("password")
+func ProcessLogin(c echo.Context) error {
+	username := c.FormValue("username")
+	password := c.FormValue("password")
 
 	if username == "" || password == "" {
-		auth.SetFlash(c.Request, "error", "Username and password are required")
-		c.Redirect(http.StatusFound, "/login")
-		return
+		auth.SetFlash(c.Request(), "error", "Username and password are required")
+		return c.Redirect(http.StatusFound, "/login")
 	}
 
 	user, err := database.GetUserByUsername(username)
 	if err != nil {
-		log.Printf("Login failed for username %s: %v", username, err)
-		auth.SetFlash(c.Request, "error", "Invalid username or password")
-		c.Redirect(http.StatusFound, "/login")
-		return
+		slog.Warn("Login failed: user not found", slog.String("username", username), slog.String("error", err.Error()))
+		auth.SetFlash(c.Request(), "error", "Invalid username or password")
+		return c.Redirect(http.StatusFound, "/login")
 	}
 
 	if !auth.VerifyPassword(user.PasswordHash, password) {
-		log.Printf("Invalid password for username %s", username)
-		auth.SetFlash(c.Request, "error", "Invalid username or password")
-		c.Redirect(http.StatusFound, "/login")
-		return
+		slog.Warn("Login failed: invalid password", slog.String("username", username))
+		auth.SetFlash(c.Request(), "error", "Invalid username or password")
+		return c.Redirect(http.StatusFound, "/login")
 	}
 
 	if !user.IsActive {
-		log.Printf("Deactivated user %s attempted login", username)
-		auth.SetFlash(c.Request, "error", "Your account has been deactivated")
-		c.Redirect(http.StatusFound, "/login")
-		return
+		slog.Warn("Login failed: account deactivated", slog.String("username", username))
+		auth.SetFlash(c.Request(), "error", "Your account has been deactivated")
+		return c.Redirect(http.StatusFound, "/login")
 	}
 
-	if err := auth.RenewToken(c.Request); err != nil {
-		log.Printf("Failed to renew session token: %v", err)
+	if err := auth.RenewToken(c.Request()); err != nil {
+		slog.Error("Failed to renew session token", slog.String("error", err.Error()), slog.String("username", username))
 	}
 
-	auth.SetUserID(c.Request, user.ID)
-	auth.SetFlash(c.Request, "success", "Login successful")
+	auth.SetUserID(c.Request(), user.ID)
+	auth.SetFlash(c.Request(), "success", "Login successful")
 
-	log.Printf("User %s logged in successfully", username)
-	redirectAfterLogin(c, user.ID)
+	slog.Info("User logged in successfully", slog.String("username", username))
+	return redirectAfterLogin(c, user.ID)
 }
 
-func RedirectToProject(c *gin.Context, userID int) {
-	redirectAfterLogin(c, userID)
+func RedirectToProject(c echo.Context, userID int) error {
+	return redirectAfterLogin(c, userID)
 }
 
-func redirectAfterLogin(c *gin.Context, userID int) {
+func redirectAfterLogin(c echo.Context, userID int) error {
 	user, err := database.GetUserByID(userID)
 	if err != nil {
-		c.Redirect(http.StatusFound, "/projects/new")
-		return
+		return c.Redirect(http.StatusFound, "/projects/new")
 	}
 
-	// If user has a last_project_id, go to that project's dashboard
 	if user.LastProjectID != nil {
-		// Verify the project still exists
-		_, err := database.GetProjectByID(*user.LastProjectID)
-		if err == nil {
-			c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/dashboard", *user.LastProjectID))
-			return
+		_, lookupErr := database.GetProjectByID(*user.LastProjectID)
+		if lookupErr == nil {
+			return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/dashboard", *user.LastProjectID))
 		}
 	}
 
-	// Check if user has any accessible projects
 	projects, err := database.GetAccessibleProjects(user)
 	if err != nil || len(projects) == 0 {
 		if user.IsAdmin() {
-			c.Redirect(http.StatusFound, "/projects/new")
-		} else {
-			c.Redirect(http.StatusFound, "/projects/select")
+			return c.Redirect(http.StatusFound, "/projects/new")
 		}
-		return
+		return c.Redirect(http.StatusFound, "/projects/select")
 	}
 
-	// Has accessible projects but no last_project_id — go to first one
-	c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/dashboard", projects[0].ID))
+	return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/dashboard", projects[0].ID))
 }
 
-func Logout(c *gin.Context) {
-	userID := auth.GetUserID(c.Request)
+func Logout(c echo.Context) error {
+	userID := auth.GetUserID(c.Request())
 
-	if err := auth.DestroySession(c.Request); err != nil {
-		log.Printf("Failed to destroy session: %v", err)
+	if err := auth.DestroySession(c.Request()); err != nil {
+		slog.Error("Failed to destroy session", slog.String("error", err.Error()), slog.Int("userID", userID))
 	}
 
-	log.Printf("User ID %d logged out", userID)
-	c.Redirect(http.StatusFound, "/login")
+	slog.Info("User logged out", slog.Int("userID", userID))
+	return c.Redirect(http.StatusFound, "/login")
 }

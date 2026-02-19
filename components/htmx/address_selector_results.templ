@@ -1,0 +1,81 @@
+package htmx
+
+import (
+	"encoding/json"
+	"strconv"
+
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+// AddressSelectorResultsProps holds props for the HTMX address-selector dropdown fragment.
+type AddressSelectorResultsProps struct {
+	Addresses   []*models.Address
+	AddressType string
+	// Columns holds the column definitions for non-ship_to address types, used to build the display name.
+	Columns []models.ColumnDefinition
+}
+
+func addrItoa(i int) string {
+	return strconv.Itoa(i)
+}
+
+// addrFirstNonEmpty returns the first non-empty value from addr.Data for the given columns.
+func addrFirstNonEmpty(addr *models.Address, columns []models.ColumnDefinition) string {
+	for _, col := range columns {
+		if v, ok := addr.Data[col.Name]; ok && v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// addrDataSummary builds a pipe-separated "k: v" summary of all non-empty pairs in data.
+func addrDataSummary(data map[string]string) string {
+	result := ""
+	for k, v := range data {
+		if v != "" {
+			if result != "" {
+				result += " | "
+			}
+			result += k + ": " + v
+		}
+	}
+	return result
+}
+
+// addrDataJSON serialises data as a compact JSON string for use in data attributes.
+func addrDataJSON(data map[string]string) string {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return "{}"
+	}
+	return string(b)
+}
+
+templ AddressSelectorResults(props AddressSelectorResultsProps) {
+	if len(props.Addresses) > 0 {
+		<ul class="divide-y divide-gray-100">
+			for _, addr := range props.Addresses {
+				<li
+					class="px-3 py-2 hover:bg-brand-50 cursor-pointer address-option"
+					data-address-id={ addrItoa(addr.ID) }
+					data-district={ addr.DistrictName }
+					data-mandal={ addr.MandalName }
+					data-mandal-code={ addr.MandalCode }
+					data-address-json={ addrDataJSON(addr.Data) }
+					onclick="selectAddress(this)"
+				>
+					if props.AddressType == "ship_to" {
+						<div class="text-sm font-medium text-gray-900">{ addr.DistrictName } - { addr.MandalName }</div>
+						<div class="text-xs text-gray-500">Code: { addr.MandalCode }{ addrDataSummary(addr.Data) }</div>
+					} else {
+						<div class="text-sm font-medium text-gray-900">{ addrFirstNonEmpty(addr, props.Columns) }</div>
+						<div class="text-xs text-gray-500">{ addrDataSummary(addr.Data) }</div>
+					}
+				</li>
+			}
+		</ul>
+	} else {
+		<div class="px-3 py-4 text-sm text-gray-500 text-center">No addresses found</div>
+	}
+}

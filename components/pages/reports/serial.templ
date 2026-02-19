@@ -1,0 +1,162 @@
+package reports
+
+import (
+	"fmt"
+	"strconv"
+	"github.com/narendhupati/dc-management-tool/internal/database"
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+// serialDateFilter renders the date-range filter form for the serial number report.
+templ serialDateFilter(dateRange string, fromDate string, toDate string) {
+	<div class="card">
+		<form id="date-filter-form" class="flex flex-wrap items-end gap-4">
+			<div>
+				<label class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+				<select
+					name="range"
+					class="rounded-lg border-gray-300 shadow-sm text-sm focus:border-brand-500 focus:ring-brand-500"
+					onchange="if(this.value!=='custom'){this.form.submit()}else{document.getElementById('custom-dates').classList.remove('hidden')}"
+				>
+					<option value="this_fy" selected?={ dateRange == "this_fy" }>This Financial Year</option>
+					<option value="last_fy" selected?={ dateRange == "last_fy" }>Last Financial Year</option>
+					<option value="this_month" selected?={ dateRange == "this_month" }>This Month</option>
+					<option value="all_time" selected?={ dateRange == "all_time" }>All Time</option>
+					<option value="custom" selected?={ dateRange == "custom" }>Custom Range</option>
+				</select>
+			</div>
+			<div
+				id="custom-dates"
+				if dateRange != "custom" {
+					class="flex items-end gap-3 hidden"
+				} else {
+					class="flex items-end gap-3"
+				}
+			>
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-1">From</label>
+					<input type="date" name="from" value={ fromDate } class="rounded-lg border-gray-300 shadow-sm text-sm focus:border-brand-500 focus:ring-brand-500"/>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-1">To</label>
+					<input type="date" name="to" value={ toDate } class="rounded-lg border-gray-300 shadow-sm text-sm focus:border-brand-500 focus:ring-brand-500"/>
+				</div>
+				<button type="submit" class="btn-primary text-sm">Apply</button>
+			</div>
+		</form>
+	</div>
+}
+
+// Serial is the full Serial Number report page.
+templ Serial(
+	user *models.User,
+	currentProject *models.Project,
+	allProjects []*models.Project,
+	rows []*database.SerialReportRow,
+	search string,
+	dateRange string,
+	fromDate string,
+	toDate string,
+	flashType string,
+	flashMessage string,
+) {
+	<div class="space-y-6">
+		<div class="flex items-center justify-between">
+			<div>
+				<h1 class="text-2xl font-bold text-gray-900">Serial Number Report</h1>
+				<p class="text-sm text-gray-500 mt-1">Search and export serial numbers with DC and vehicle details.</p>
+			</div>
+			<a
+				href={ templ.SafeURL(fmt.Sprintf("/projects/%d/reports/serial/export?range=%s&from=%s&to=%s&q=%s", currentProject.ID, dateRange, fromDate, toDate, search)) }
+				class="btn-secondary text-sm"
+			>
+				<svg class="w-4 h-4 mr-1.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+				</svg>
+				Export Excel
+			</a>
+		</div>
+		@serialDateFilter(dateRange, fromDate, toDate)
+		<!-- Search -->
+		<div class="card">
+			<form id="serial-search-form" class="flex items-end gap-4">
+				<input type="hidden" name="range" value={ dateRange }/>
+				<input type="hidden" name="from" value={ fromDate }/>
+				<input type="hidden" name="to" value={ toDate }/>
+				<div class="flex-1">
+					<label class="block text-sm font-medium text-gray-700 mb-1">Search Serial Numbers</label>
+					<input
+						type="text"
+						name="q"
+						value={ search }
+						placeholder="Enter serial number or product name..."
+						class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-brand-500 focus:ring-brand-500"
+						autofocus
+					/>
+				</div>
+				<button type="submit" class="btn-primary text-sm">Search</button>
+			</form>
+		</div>
+		<div id="report-content">
+			if len(rows) > 0 {
+				<div class="card overflow-hidden p-0">
+					<div class="px-5 py-3 bg-gray-50 border-b border-gray-200">
+						<p class="text-sm font-medium text-gray-700">
+							Found <span class="font-semibold text-gray-900">{ strconv.Itoa(len(rows)) }</span>
+							if len(rows) == 1 {
+								serial number
+							} else {
+								serial numbers
+							}
+						</p>
+					</div>
+					<div class="overflow-x-auto">
+						<table class="min-w-full divide-y divide-gray-200">
+							<thead class="bg-gray-50">
+								<tr>
+									<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial Number</th>
+									<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+									<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DC Number</th>
+									<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+									<th class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle</th>
+								</tr>
+							</thead>
+							<tbody class="bg-white divide-y divide-gray-200">
+								for _, row := range rows {
+									<tr class="hover:bg-gray-50">
+										<td class="px-5 py-3 whitespace-nowrap">
+											<span class="font-mono text-sm font-medium text-gray-900">{ row.SerialNumber }</span>
+										</td>
+										<td class="px-5 py-3 text-sm text-gray-700">{ row.ProductName }</td>
+										<td class="px-5 py-3 whitespace-nowrap">
+											<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/dcs/%d", row.ProjectID, row.TransitDCID)) } class="text-brand-600 hover:text-brand-800 font-medium text-sm">{ row.TransitDCNumber }</a>
+										</td>
+										<td class="px-5 py-3 text-sm text-gray-500">{ row.ChallanDate }</td>
+										<td class="px-5 py-3 text-sm text-gray-500">{ row.VehicleNumber }</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+					if len(rows) >= 500 {
+						<div class="px-5 py-3 bg-yellow-50 border-t border-yellow-200">
+							<p class="text-xs text-yellow-700">Showing first 500 results. Refine your search for more specific results.</p>
+						</div>
+					}
+				</div>
+			} else {
+				<div class="card text-center py-12">
+					<svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path>
+					</svg>
+					<h3 class="text-lg font-semibold text-gray-900 mb-1">No serial numbers found</h3>
+					if search != "" {
+						<p class="text-sm text-gray-500">Try a different search term.</p>
+					} else {
+						<p class="text-sm text-gray-500">No serial numbers recorded for the selected date range.</p>
+					}
+				</div>
+			}
+		</div>
+	</div>
+}

@@ -144,10 +144,10 @@ func GenerateDCNumberForDate(db *sql.DB, projectID int, dcType string, date time
 	if err != nil {
 		return "", fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
-	if _, err := tx.Exec("SELECT 1 FROM dc_number_sequences LIMIT 0"); err != nil {
-		return "", fmt.Errorf("failed to acquire lock: %w", err)
+	if _, lockErr := tx.Exec("SELECT 1 FROM dc_number_sequences LIMIT 0"); lockErr != nil {
+		return "", fmt.Errorf("failed to acquire lock: %w", lockErr)
 	}
 
 	var dcPrefix, dcNumberFormat string
