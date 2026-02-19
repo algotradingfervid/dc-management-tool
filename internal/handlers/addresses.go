@@ -95,6 +95,8 @@ func ShowAddressesPage(c echo.Context) error {
 		flashType,
 		flashMessage,
 		csrf.Token(c.Request()),
+		tab,
+		config,
 	)
 	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
 	topbar := partials.Topbar(user, project, allProjects, flashType, flashMessage)

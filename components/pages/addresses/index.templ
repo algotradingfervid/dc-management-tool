@@ -61,11 +61,27 @@ func colBadgeClass(required bool) string {
 	return "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700"
 }
 
+// tabClass returns the CSS classes for a nav tab link based on whether it is active.
+func tabClass(currentTab, thisTab string) string {
+	if currentTab == thisTab {
+		return "whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-brand-500 text-brand-600"
+	}
+	return "whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+}
+
+// boolStr returns "true" or "false" for a bool value.
+func boolStr(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
+}
+
 // Index renders the unified addresses page with four address-type tabs
 // (Bill From, Dispatch From, Bill To, Ship To). Tab state and column
 // configuration are managed server-side; this component mirrors the layout
 // of the original templates/pages/addresses/index.html.
-templ Index(user *models.User, currentProject *models.Project, allProjects []*models.Project, addressPage *models.AddressPage, search string, flashType string, flashMessage string, csrfToken string) {
+templ Index(user *models.User, currentProject *models.Project, allProjects []*models.Project, addressPage *models.AddressPage, search string, flashType string, flashMessage string, csrfToken string, tab string, config *models.AddressListConfig) {
 	<div class="space-y-6">
 		<!-- Flash Messages -->
 		if flashType != "" {
@@ -79,7 +95,7 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 			</script>
 			<div id="index-flash-data" class="hidden" data-message={ flashMessage } data-type={ flashType }></div>
 		}
-		<div id="addresses-index-page" class="hidden" data-project-id={ intStr(currentProject.ID) } data-csrf-token={ csrfToken }></div>
+		<div id="addresses-index-page" class="hidden" data-project-id={ intStr(currentProject.ID) } data-csrf-token={ csrfToken } data-tab={ tab }></div>
 		<!-- Header -->
 		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 			<div>
@@ -93,7 +109,7 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 					</svg>
 					Back to Project
 				</a>
-				<button onclick="document.getElementById('add-address-modal').classList.remove('hidden')" class="btn btn-primary text-sm">
+				<button onclick="openAddressModal()" class="btn btn-primary text-sm">
 					<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
 					</svg>
@@ -106,7 +122,7 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 			<nav class="-mb-px flex space-x-8">
 				<a
 					href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses?tab=bill_from") }
-					class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+					class={ tabClass(tab, "bill_from") }
 				>
 					<svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path>
@@ -115,7 +131,7 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 				</a>
 				<a
 					href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses?tab=dispatch_from") }
-					class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+					class={ tabClass(tab, "dispatch_from") }
 				>
 					<svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
@@ -124,7 +140,7 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 				</a>
 				<a
 					href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses?tab=bill_to") }
-					class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+					class={ tabClass(tab, "bill_to") }
 				>
 					<svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path>
@@ -133,7 +149,7 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 				</a>
 				<a
 					href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses?tab=ship_to") }
-					class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+					class={ tabClass(tab, "ship_to") }
 				>
 					<svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
@@ -148,7 +164,11 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 			<div class="flex items-center justify-between mb-4">
 				<div>
 					<h2 class="text-lg font-semibold text-gray-900">Column Configuration</h2>
-					<p class="text-xs text-gray-500 mt-1">District Name, Mandal/ULB Name, and Mandal Code are fixed columns. Additional dynamic columns shown below.</p>
+					if tab == "ship_to" {
+						<p class="text-xs text-gray-500 mt-1">District Name, Mandal/ULB Name, and Mandal Code are fixed columns. Additional dynamic columns shown below.</p>
+					} else {
+						<p class="text-xs text-gray-500 mt-1">Configure the columns for this address type.</p>
+					}
 				</div>
 				<button onclick="openConfigSlideOver()" class="btn btn-secondary text-sm">
 					<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,26 +178,40 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 					Configure Columns
 				</button>
 			</div>
-			<!-- Fixed columns for ship-to -->
 			<div class="flex flex-wrap gap-2">
-				<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-					District Name <span class="ml-1 text-blue-600">*</span>
-					<span class="ml-1 text-xs text-blue-500">(fixed)</span>
-				</span>
-				<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-					Mandal/ULB Name <span class="ml-1 text-blue-600">*</span>
-					<span class="ml-1 text-xs text-blue-500">(fixed)</span>
-				</span>
-				<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-					Mandal Code <span class="ml-1 text-blue-600">*</span>
-					<span class="ml-1 text-xs text-blue-500">(fixed)</span>
-				</span>
+				if tab == "ship_to" {
+					<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+						District Name <span class="ml-1 text-blue-600">*</span>
+						<span class="ml-1 text-xs text-blue-500">(fixed)</span>
+					</span>
+					<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+						Mandal/ULB Name <span class="ml-1 text-blue-600">*</span>
+						<span class="ml-1 text-xs text-blue-500">(fixed)</span>
+					</span>
+					<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+						Mandal Code <span class="ml-1 text-blue-600">*</span>
+						<span class="ml-1 text-xs text-blue-500">(fixed)</span>
+					</span>
+				}
+				if config != nil {
+					for _, col := range config.ColumnDefinitions {
+						<span class={ colBadgeClass(col.Required) }>
+							{ col.Name }
+							if col.Required {
+								<span class="ml-1">*</span>
+							}
+						</span>
+					}
+				}
+				if tab != "ship_to" && (config == nil || len(config.ColumnDefinitions) == 0) {
+					<span class="text-sm text-gray-400 italic">No columns configured. Click Configure Columns to add.</span>
+				}
 			</div>
 		</div>
 		<!-- Upload Section -->
 		<div class="card">
 			<h2 class="text-lg font-semibold text-gray-900 mb-4">Upload Addresses</h2>
-			<form method="POST" action={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses/upload?tab=ship_to") } enctype="multipart/form-data" class="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+			<form method="POST" action={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses/upload?tab=" + tab) } enctype="multipart/form-data" class="flex flex-col sm:flex-row items-start sm:items-end gap-4">
 				<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
 				<div class="flex-1">
 					<label class="block text-sm font-medium text-gray-700 mb-1">CSV or Excel File</label>
@@ -204,7 +238,7 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 				</button>
 			</form>
 			<div class="flex items-center gap-4 mt-2">
-				<a href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses/import-template?tab=ship_to") } class="inline-flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-800 font-medium">
+				<a href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses/import-template?tab=" + tab) } class="inline-flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-800 font-medium">
 					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
 					</svg>
@@ -216,11 +250,11 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 		<!-- Search & Count & Delete All -->
 		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 			<form method="GET" action={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses") } class="flex items-center gap-2">
-				<input type="hidden" name="tab" value="ship_to"/>
+				<input type="hidden" name="tab" value={ tab }/>
 				<input type="text" name="search" value={ search } placeholder="Search addresses..." class="input text-sm" style="max-width: 300px;"/>
 				<button type="submit" class="btn btn-secondary text-sm">Search</button>
 				if search != "" {
-					<a href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses?tab=ship_to") } class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
+					<a href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses?tab=" + tab) } class="text-sm text-gray-500 hover:text-gray-700">Clear</a>
 				}
 			</form>
 			<div class="flex items-center gap-4">
@@ -243,9 +277,11 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 					<thead class="bg-gray-50">
 						<tr>
 							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">District Name</th>
-							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mandal/ULB Name</th>
-							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mandal Code</th>
+							if tab == "ship_to" {
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">District Name</th>
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mandal/ULB Name</th>
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mandal Code</th>
+							}
 							for key := range addressPage.Addresses[0].Data {
 								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{ key }</th>
 							}
@@ -256,9 +292,11 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 						for idx, addr := range addressPage.Addresses {
 							<tr class="hover:bg-gray-50" id={ "address-row-" + intStr(addr.ID) }>
 								<td class="px-4 py-3 text-sm text-gray-500">{ addrRowNum(addressPage, idx) }</td>
-								<td class="px-4 py-3 text-sm text-gray-900 font-medium">{ addr.DistrictName }</td>
-								<td class="px-4 py-3 text-sm text-gray-900">{ addr.MandalName }</td>
-								<td class="px-4 py-3 text-sm text-gray-900">{ addr.MandalCode }</td>
+								if tab == "ship_to" {
+									<td class="px-4 py-3 text-sm text-gray-900 font-medium">{ addr.DistrictName }</td>
+									<td class="px-4 py-3 text-sm text-gray-900">{ addr.MandalName }</td>
+									<td class="px-4 py-3 text-sm text-gray-900">{ addr.MandalCode }</td>
+								}
 								for _, val := range addr.Data {
 									<td class="px-4 py-3 text-sm text-gray-900">{ val }</td>
 								}
@@ -295,13 +333,13 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 						<div class="flex gap-1">
 							if addressPage.CurrentPage > 1 {
 								<a
-									href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses?tab=ship_to&page=" + intStr(addressPage.CurrentPage-1) + "&search=" + search) }
+									href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses?tab=" + tab + "&page=" + intStr(addressPage.CurrentPage-1) + "&search=" + search) }
 									class="btn btn-secondary text-sm"
 								>&laquo; Prev</a>
 							}
 							if addressPage.CurrentPage < addressPage.TotalPages {
 								<a
-									href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses?tab=ship_to&page=" + intStr(addressPage.CurrentPage+1) + "&search=" + search) }
+									href={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses?tab=" + tab + "&page=" + intStr(addressPage.CurrentPage+1) + "&search=" + search) }
 									class="btn btn-secondary text-sm"
 								>Next &raquo;</a>
 							}
@@ -333,18 +371,46 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 						</svg>
 					</button>
 				</div>
-				<div class="mb-6 p-3 bg-blue-50 rounded-lg">
-					<h4 class="text-sm font-semibold text-blue-800 mb-2">Fixed Columns (cannot be removed)</h4>
-					<ul class="text-sm text-blue-700 space-y-1">
-						<li>District Name (required)</li>
-						<li>Mandal/ULB Name (required)</li>
-						<li>Mandal Code (required)</li>
-					</ul>
-				</div>
-				<form method="POST" action={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses/config?tab=ship_to") } id="config-form">
+				if tab == "ship_to" {
+					<div class="mb-6 p-3 bg-blue-50 rounded-lg">
+						<h4 class="text-sm font-semibold text-blue-800 mb-2">Fixed Columns (cannot be removed)</h4>
+						<ul class="text-sm text-blue-700 space-y-1">
+							<li>District Name (required)</li>
+							<li>Mandal/ULB Name (required)</li>
+							<li>Mandal Code (required)</li>
+						</ul>
+					</div>
+				}
+				<form method="POST" action={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses/config?tab=" + tab) } id="config-form">
 					<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
-					<h4 class="text-sm font-semibold text-gray-700 mb-3">Additional Dynamic Columns</h4>
-					<div id="columns-container" class="space-y-3"></div>
+					<h4 class="text-sm font-semibold text-gray-700 mb-3">
+						if tab == "ship_to" {
+							Additional Dynamic Columns
+						} else {
+							Columns
+						}
+					</h4>
+					<div id="columns-container" class="space-y-3">
+						if config != nil {
+							for _, col := range config.ColumnDefinitions {
+								<div class="flex items-center gap-2 column-row">
+									<input type="text" name="col_name[]" value={ col.Name } placeholder="Column name" class="input text-sm flex-1" required/>
+									<label class="flex items-center">
+										<input type="hidden" name="col_required[]" value={ boolStr(col.Required) }/>
+										if col.Required {
+											<input type="checkbox" checked onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'" class="rounded text-brand-600 focus:ring-brand-500"/>
+										} else {
+											<input type="checkbox" onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'" class="rounded text-brand-600 focus:ring-brand-500"/>
+										}
+										<span class="ml-1 text-sm text-gray-600">Req</span>
+									</label>
+									<button type="button" onclick="this.closest('.column-row').remove()" class="text-red-500 hover:text-red-700">
+										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+									</button>
+								</div>
+							}
+						}
+					</div>
 					<button type="button" onclick="addColumnRow()" class="mt-3 text-sm text-brand-600 hover:text-brand-800 font-medium">+ Add Column</button>
 					<div class="flex justify-end gap-3 mt-6 pt-4 border-t">
 						<button type="button" onclick="closeConfigSlideOver()" class="btn btn-secondary">Cancel</button>
@@ -358,27 +424,43 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 	<div id="add-address-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center">
 		<div class="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
 			<h3 class="text-lg font-semibold text-gray-900 mb-4" id="address-modal-title">Add Address</h3>
-			<form method="POST" id="address-form" action={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses/create?tab=ship_to") }>
+			<form method="POST" id="address-form" action={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses/create?tab=" + tab) }>
 				<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
 				<div class="space-y-4">
-					<!-- Fixed fields for ship-to -->
-					<div class="p-3 bg-blue-50 rounded-lg space-y-3">
-						<h4 class="text-sm font-semibold text-blue-800">Required Ship-To Fields</h4>
-						<div>
-							<label class="block text-sm font-medium text-gray-700 mb-1">District Name <span class="text-red-500">*</span></label>
-							<input type="text" name="district_name" id="addr-district-name" class="input text-sm w-full" required/>
+					if tab == "ship_to" {
+						<!-- Fixed fields for ship-to -->
+						<div class="p-3 bg-blue-50 rounded-lg space-y-3">
+							<h4 class="text-sm font-semibold text-blue-800">Required Ship-To Fields</h4>
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-1">District Name <span class="text-red-500">*</span></label>
+								<input type="text" name="district_name" id="addr-district-name" class="input text-sm w-full" required/>
+							</div>
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-1">Mandal/ULB Name <span class="text-red-500">*</span></label>
+								<input type="text" name="mandal_name" id="addr-mandal-name" class="input text-sm w-full" required/>
+							</div>
+							<div>
+								<label class="block text-sm font-medium text-gray-700 mb-1">Mandal Code <span class="text-red-500">*</span></label>
+								<input type="text" name="mandal_code" id="addr-mandal-code" class="input text-sm w-full" required/>
+							</div>
 						</div>
-						<div>
-							<label class="block text-sm font-medium text-gray-700 mb-1">Mandal/ULB Name <span class="text-red-500">*</span></label>
-							<input type="text" name="mandal_name" id="addr-mandal-name" class="input text-sm w-full" required/>
-						</div>
-						<div>
-							<label class="block text-sm font-medium text-gray-700 mb-1">Mandal Code <span class="text-red-500">*</span></label>
-							<input type="text" name="mandal_code" id="addr-mandal-code" class="input text-sm w-full" required/>
-						</div>
+					}
+					<!-- Dynamic column fields -->
+					<div id="dynamic-addr-fields">
+						if config != nil {
+							for _, col := range config.ColumnDefinitions {
+								<div>
+									<label class="block text-sm font-medium text-gray-700 mb-1">
+										{ col.Name }
+										if col.Required {
+											<span class="text-red-500">*</span>
+										}
+									</label>
+									<input type="text" name={ "field_" + sanitizeField(col.Name) } id={ "addr-field-" + sanitizeField(col.Name) } class="input text-sm w-full"/>
+								</div>
+							}
+						}
 					</div>
-					<!-- Dynamic column fields populated by JS -->
-					<div id="dynamic-addr-fields"></div>
 				</div>
 				<div class="flex justify-end gap-3 mt-6">
 					<button type="button" onclick="closeAddressModal()" class="btn btn-secondary">Cancel</button>
@@ -411,10 +493,14 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 	</div>
 	<script>
 	var _aip = document.getElementById('addresses-index-page');
-	var currentTab = 'ship_to';
+	var currentTab = _aip.dataset.tab;
 	var projectID = _aip.dataset.projectId;
 	var csrfTokenVal = _aip.dataset.csrfToken;
+	var originalDynamicFields = document.getElementById('dynamic-addr-fields').innerHTML;
 
+	function openAddressModal() {
+		document.getElementById('add-address-modal').classList.remove('hidden');
+	}
 	function openConfigSlideOver() {
 		document.getElementById('config-slideover').classList.remove('hidden');
 	}
@@ -475,6 +561,7 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 		document.getElementById('address-submit-btn').textContent = 'Add Address';
 		var form = document.getElementById('address-form');
 		form.action = '/projects/' + projectID + '/addresses/create?tab=' + currentTab;
+		document.getElementById('dynamic-addr-fields').innerHTML = originalDynamicFields;
 		form.reset();
 	}
 	function deleteAddress(id) {

@@ -84,7 +84,7 @@ templ WizardStep2(
 					<label class="block text-sm font-medium text-gray-700 mb-1">
 						Ship To Addresses (select { strconv.Itoa(numSets) })
 					</label>
-					<div id="ship-to-picker" class="relative">
+					<div id="ship-to-picker" class="relative" data-addresses={ shipToAddressesJSON(shipToAddresses) } data-num-sets={ strconv.Itoa(numSets) }>
 						<!-- Selected tags -->
 						<div
 							id="ship-to-tags"
@@ -125,8 +125,9 @@ templ WizardStep2(
 	</div>
 	<script>
 		(function() {
-			var allAddresses = { shipToAddressesJSON(shipToAddresses) };
-			var numSets = { strconv.Itoa(numSets) };
+			var picker = document.getElementById('ship-to-picker');
+			var allAddresses = JSON.parse(picker.dataset.addresses || '[]');
+			var numSets = parseInt(picker.dataset.numSets, 10) || 1;
 			var searchInput = document.getElementById('ship-to-search');
 			var dropdown = document.getElementById('ship-to-dropdown');
 			var tagsContainer = document.getElementById('ship-to-tags');
