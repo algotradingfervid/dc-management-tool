@@ -22,6 +22,24 @@ templ HTMXVehicleList(p VehicleListProps) {
 						<div>
 							<span class="text-sm font-medium text-gray-900">{ v.VehicleNumber }</span>
 							<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{ v.VehicleType }</span>
+							if v.RcImagePath != "" {
+								<a
+									href={ templ.SafeURL(v.RcImagePath) }
+									target="_blank"
+									rel="noopener noreferrer"
+									class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200"
+									title="View RC Document"
+								>RC</a>
+							}
+							if v.DriverLicensePath != "" {
+								<a
+									href={ templ.SafeURL(v.DriverLicensePath) }
+									target="_blank"
+									rel="noopener noreferrer"
+									class="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200"
+									title="View Driver License"
+								>DL</a>
+							}
 						</div>
 						if v.DriverName != "" {
 							<div class="text-sm text-gray-600">

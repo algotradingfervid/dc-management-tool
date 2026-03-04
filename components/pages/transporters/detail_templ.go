@@ -179,20 +179,20 @@ func Detail(
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" hx-target=\"#vehicle-list\" hx-swap=\"innerHTML\" hx-on--after-request=\"if(event.detail.successful) this.reset()\" class=\"space-y-3\"><input type=\"hidden\" name=\"gorilla.csrf.Token\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" hx-target=\"#vehicle-list\" hx-swap=\"innerHTML\" hx-encoding=\"multipart/form-data\" hx-headers=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var9 string
-		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(csrfToken)
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(`{"X-CSRF-Token": "` + csrfToken + `"}`)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 105, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 103, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\"><div class=\"flex gap-3 items-end\"><div class=\"flex-1\"><label class=\"block text-xs font-medium text-gray-600 mb-1\">Vehicle Number <span class=\"text-red-500\">*</span></label> <input type=\"text\" name=\"vehicle_number\" placeholder=\"e.g. MH12AB1234\" required class=\"block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm\"></div><div class=\"w-40\"><label class=\"block text-xs font-medium text-gray-600 mb-1\">Vehicle Type</label> <select name=\"vehicle_type\" class=\"block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm\"><option value=\"truck\">Truck</option> <option value=\"mini-truck\">Mini Truck</option> <option value=\"tempo\">Tempo</option> <option value=\"trailer\">Trailer</option> <option value=\"container\">Container</option> <option value=\"other\">Other</option></select></div></div><div class=\"flex gap-3 items-end\"><div class=\"flex-1\"><label class=\"block text-xs font-medium text-gray-600 mb-1\">Driver Name <span class=\"text-red-500\">*</span></label> <input type=\"text\" name=\"driver_name\" placeholder=\"e.g. Ramesh Kumar\" required class=\"block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm\"></div><div class=\"flex-1\"><label class=\"block text-xs font-medium text-gray-600 mb-1\">Driver Phone 1 <span class=\"text-red-500\">*</span></label> <input type=\"tel\" name=\"driver_phone1\" placeholder=\"e.g. 9876543210\" required class=\"block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm\"></div><div class=\"flex-1\"><label class=\"block text-xs font-medium text-gray-600 mb-1\">Driver Phone 2</label> <input type=\"tel\" name=\"driver_phone2\" placeholder=\"Optional\" class=\"block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm\"></div><button type=\"submit\" class=\"btn btn-primary text-sm whitespace-nowrap\">Add Vehicle</button></div></form></div><!-- Vehicle List --><div id=\"vehicle-list\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" hx-on--after-request=\"if(event.detail.successful) this.reset()\" class=\"space-y-3\"><div class=\"flex gap-3 items-end\"><div class=\"flex-1\"><label class=\"block text-xs font-medium text-gray-600 mb-1\">Vehicle Number <span class=\"text-red-500\">*</span></label> <input type=\"text\" name=\"vehicle_number\" placeholder=\"e.g. MH12AB1234\" required class=\"block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm\"></div><div class=\"w-40\"><label class=\"block text-xs font-medium text-gray-600 mb-1\">Vehicle Type</label> <select name=\"vehicle_type\" class=\"block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm\"><option value=\"truck\">Truck</option> <option value=\"mini-truck\">Mini Truck</option> <option value=\"tempo\">Tempo</option> <option value=\"trailer\">Trailer</option> <option value=\"container\">Container</option> <option value=\"other\">Other</option></select></div></div><div class=\"flex gap-3 items-end\"><div class=\"flex-1\"><label class=\"block text-xs font-medium text-gray-600 mb-1\">Driver Name <span class=\"text-red-500\">*</span></label> <input type=\"text\" name=\"driver_name\" placeholder=\"e.g. Ramesh Kumar\" required class=\"block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm\"></div><div class=\"flex-1\"><label class=\"block text-xs font-medium text-gray-600 mb-1\">Driver Phone 1 <span class=\"text-red-500\">*</span></label> <input type=\"tel\" name=\"driver_phone1\" placeholder=\"e.g. 9876543210\" required class=\"block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm\"></div><div class=\"flex-1\"><label class=\"block text-xs font-medium text-gray-600 mb-1\">Driver Phone 2</label> <input type=\"tel\" name=\"driver_phone2\" placeholder=\"Optional\" class=\"block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm\"></div><button type=\"submit\" class=\"btn btn-primary text-sm whitespace-nowrap\">Add Vehicle</button></div><!-- Document uploads (optional) --><div class=\"flex gap-3 items-start pt-1\"><div class=\"flex-1\"><label class=\"block text-xs font-medium text-gray-600 mb-1\">RC Document <span class=\"text-gray-400 font-normal\">(optional)</span></label> <input type=\"file\" name=\"rc_image\" accept=\".jpg,.jpeg,.png,.pdf\" class=\"block w-full text-sm text-gray-500 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100\"></div><div class=\"flex-1\"><label class=\"block text-xs font-medium text-gray-600 mb-1\">Driver License <span class=\"text-gray-400 font-normal\">(optional)</span></label> <input type=\"file\" name=\"driver_license\" accept=\".jpg,.jpeg,.png,.pdf\" class=\"block w-full text-sm text-gray-500 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100\"></div><div class=\"flex-1 flex items-end\"><p class=\"text-xs text-gray-400\">JPG, PNG or PDF &middot; max 5 MB each</p></div></div></form></div><!-- Vehicle List --><div id=\"vehicle-list\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -239,14 +239,14 @@ func VehicleList(vehicles []*models.TransporterVehicle, projectID int, transport
 				return templ_7745c5c3_Err
 			}
 			for _, v := range vehicles {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"px-6 py-3 flex items-center justify-between hover:bg-gray-50\"><div class=\"flex items-center gap-4\"><div><span class=\"text-sm font-medium text-gray-900\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"px-6 py-3 flex items-center justify-between hover:bg-gray-50\"><div class=\"flex items-center gap-6\"><div><span class=\"text-sm font-medium text-gray-900\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(v.VehicleNumber)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 188, Col: 72}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 217, Col: 72}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -259,49 +259,162 @@ func VehicleList(vehicles []*models.TransporterVehicle, projectID int, transport
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(v.VehicleType)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 189, Col: 137}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 218, Col: 137}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</span></div></div><button hx-delete=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</span> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var13 string
-				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(vehicleDeleteURL(projectID, transporterID, v.ID))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 193, Col: 66}
+				if v.RcImagePath != "" {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<a href=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var13 templ.SafeURL
+					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(v.RcImagePath))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 221, Col: 44}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200\" title=\"View RC Document\">RC</a> ")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+				if v.DriverLicensePath != "" {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<a href=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var14 templ.SafeURL
+					templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(v.DriverLicensePath))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 230, Col: 50}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200\" title=\"View Driver License\">DL</a>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" hx-target=\"#vehicle-list\" hx-swap=\"innerHTML\" hx-headers=\"")
+				if v.DriverName != "" {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"text-sm text-gray-600\"><span class=\"font-medium\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var15 string
+					templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(v.DriverName)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 240, Col: 48}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</span> ")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					if v.DriverPhone1 != "" {
+						var templ_7745c5c3_Var16 string
+						templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(" \u00b7 ")
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 242, Col: 21}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var17 string
+						templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(v.DriverPhone1)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 242, Col: 39}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, " ")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					}
+					if v.DriverPhone2 != "" {
+						var templ_7745c5c3_Var18 string
+						templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(" \u00b7 ")
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 245, Col: 21}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var19 string
+						templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(v.DriverPhone2)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 245, Col: 39}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</div>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</div><button hx-delete=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var14 string
-				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(`{"X-CSRF-Token": "` + csrfToken + `"}`)
+				var templ_7745c5c3_Var20 string
+				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(vehicleDeleteURL(projectID, transporterID, v.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 196, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 251, Col: 66}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" hx-confirm=\"Remove this vehicle?\" class=\"text-red-600 hover:text-red-900\"><svg class=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16\"></path></svg></button></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" hx-target=\"#vehicle-list\" hx-swap=\"innerHTML\" hx-headers=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var21 string
+				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(`{"X-CSRF-Token": "` + csrfToken + `"}`)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/transporters/detail.templ`, Line: 254, Col: 58}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" hx-confirm=\"Remove this vehicle?\" class=\"text-red-600 hover:text-red-900\"><svg class=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16\"></path></svg></button></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"text-center py-8\"><p class=\"text-sm text-gray-500\">No vehicles added yet. Use the form above to add vehicles.</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<div class=\"text-center py-8\"><p class=\"text-sm text-gray-500\">No vehicles added yet. Use the form above to add vehicles.</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

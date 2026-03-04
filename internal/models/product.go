@@ -7,6 +7,7 @@ import (
 type Product struct {
 	ID              int       `json:"id"`
 	ProjectID       int       `json:"project_id"`
+	ProductCode     string    `json:"product_code"`
 	ItemName        string    `json:"item_name" validate:"required,max=255"`
 	ItemDescription string    `json:"item_description" validate:"required,max=1000"`
 	HSNCode         string    `json:"hsn_code"`

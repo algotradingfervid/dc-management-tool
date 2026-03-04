@@ -10,6 +10,33 @@ import (
 	"database/sql"
 )
 
+const CheckProductCodeUnique = `-- name: CheckProductCodeUnique :one
+SELECT COUNT(*) FROM products WHERE product_code = ?
+`
+
+func (q *Queries) CheckProductCodeUnique(ctx context.Context, productCode sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, CheckProductCodeUnique, productCode)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const CheckProductCodeUniqueExcludeID = `-- name: CheckProductCodeUniqueExcludeID :one
+SELECT COUNT(*) FROM products WHERE product_code = ? AND id != ?
+`
+
+type CheckProductCodeUniqueExcludeIDParams struct {
+	ProductCode sql.NullString
+	ID          int64
+}
+
+func (q *Queries) CheckProductCodeUniqueExcludeID(ctx context.Context, arg CheckProductCodeUniqueExcludeIDParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, CheckProductCodeUniqueExcludeID, arg.ProductCode, arg.ID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const CheckProductNameUnique = `-- name: CheckProductNameUnique :one
 SELECT COUNT(*) FROM products WHERE project_id = ? AND item_name = ?
 `
@@ -57,8 +84,8 @@ func (q *Queries) CheckProductUsageInTemplates(ctx context.Context, productID in
 const CreateProduct = `-- name: CreateProduct :execresult
 INSERT INTO products (
     project_id, item_name, item_description, hsn_code, uom,
-    brand_model, per_unit_price, gst_percentage
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    brand_model, per_unit_price, gst_percentage, product_code
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateProductParams struct {
@@ -70,6 +97,7 @@ type CreateProductParams struct {
 	BrandModel      string
 	PerUnitPrice    sql.NullFloat64
 	GstPercentage   sql.NullFloat64
+	ProductCode     sql.NullString
 }
 
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (sql.Result, error) {
@@ -82,6 +110,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (s
 		arg.BrandModel,
 		arg.PerUnitPrice,
 		arg.GstPercentage,
+		arg.ProductCode,
 	)
 }
 
@@ -101,14 +130,29 @@ func (q *Queries) DeleteProduct(ctx context.Context, arg DeleteProductParams) er
 
 const GetProductByID = `-- name: GetProductByID :one
 SELECT id, project_id, item_name, item_description, hsn_code, uom,
-       brand_model, per_unit_price, gst_percentage, created_at, updated_at
+       brand_model, per_unit_price, gst_percentage, product_code, created_at, updated_at
 FROM products
 WHERE id = ?
 `
 
-func (q *Queries) GetProductByID(ctx context.Context, id int64) (Product, error) {
+type GetProductByIDRow struct {
+	ID              int64
+	ProjectID       int64
+	ItemName        string
+	ItemDescription string
+	HsnCode         sql.NullString
+	Uom             sql.NullString
+	BrandModel      string
+	PerUnitPrice    sql.NullFloat64
+	GstPercentage   sql.NullFloat64
+	ProductCode     sql.NullString
+	CreatedAt       sql.NullTime
+	UpdatedAt       sql.NullTime
+}
+
+func (q *Queries) GetProductByID(ctx context.Context, id int64) (GetProductByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, GetProductByID, id)
-	var i Product
+	var i GetProductByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
@@ -119,6 +163,7 @@ func (q *Queries) GetProductByID(ctx context.Context, id int64) (Product, error)
 		&i.BrandModel,
 		&i.PerUnitPrice,
 		&i.GstPercentage,
+		&i.ProductCode,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -138,21 +183,36 @@ func (q *Queries) GetProductCount(ctx context.Context, projectID int64) (int64, 
 
 const GetProductsByProjectID = `-- name: GetProductsByProjectID :many
 SELECT id, project_id, item_name, item_description, hsn_code, uom,
-       brand_model, per_unit_price, gst_percentage, created_at, updated_at
+       brand_model, per_unit_price, gst_percentage, product_code, created_at, updated_at
 FROM products
 WHERE project_id = ?
 ORDER BY item_name ASC
 `
 
-func (q *Queries) GetProductsByProjectID(ctx context.Context, projectID int64) ([]Product, error) {
+type GetProductsByProjectIDRow struct {
+	ID              int64
+	ProjectID       int64
+	ItemName        string
+	ItemDescription string
+	HsnCode         sql.NullString
+	Uom             sql.NullString
+	BrandModel      string
+	PerUnitPrice    sql.NullFloat64
+	GstPercentage   sql.NullFloat64
+	ProductCode     sql.NullString
+	CreatedAt       sql.NullTime
+	UpdatedAt       sql.NullTime
+}
+
+func (q *Queries) GetProductsByProjectID(ctx context.Context, projectID int64) ([]GetProductsByProjectIDRow, error) {
 	rows, err := q.db.QueryContext(ctx, GetProductsByProjectID, projectID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Product{}
+	items := []GetProductsByProjectIDRow{}
 	for rows.Next() {
-		var i Product
+		var i GetProductsByProjectIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProjectID,
@@ -163,6 +223,7 @@ func (q *Queries) GetProductsByProjectID(ctx context.Context, projectID int64) (
 			&i.BrandModel,
 			&i.PerUnitPrice,
 			&i.GstPercentage,
+			&i.ProductCode,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -181,10 +242,10 @@ func (q *Queries) GetProductsByProjectID(ctx context.Context, projectID int64) (
 
 const SearchProducts = `-- name: SearchProducts :many
 SELECT id, project_id, item_name, item_description, hsn_code, uom,
-       brand_model, per_unit_price, gst_percentage, created_at, updated_at
+       brand_model, per_unit_price, gst_percentage, product_code, created_at, updated_at
 FROM products
 WHERE project_id = ?
-  AND (item_name LIKE ? OR hsn_code LIKE ? OR brand_model LIKE ? OR item_description LIKE ?)
+  AND (item_name LIKE ? OR hsn_code LIKE ? OR brand_model LIKE ? OR item_description LIKE ? OR product_code LIKE ?)
 ORDER BY item_name ASC
 LIMIT ? OFFSET ?
 `
@@ -195,17 +256,34 @@ type SearchProductsParams struct {
 	HsnCode         sql.NullString
 	BrandModel      string
 	ItemDescription string
+	ProductCode     sql.NullString
 	Limit           int64
 	Offset          int64
 }
 
-func (q *Queries) SearchProducts(ctx context.Context, arg SearchProductsParams) ([]Product, error) {
+type SearchProductsRow struct {
+	ID              int64
+	ProjectID       int64
+	ItemName        string
+	ItemDescription string
+	HsnCode         sql.NullString
+	Uom             sql.NullString
+	BrandModel      string
+	PerUnitPrice    sql.NullFloat64
+	GstPercentage   sql.NullFloat64
+	ProductCode     sql.NullString
+	CreatedAt       sql.NullTime
+	UpdatedAt       sql.NullTime
+}
+
+func (q *Queries) SearchProducts(ctx context.Context, arg SearchProductsParams) ([]SearchProductsRow, error) {
 	rows, err := q.db.QueryContext(ctx, SearchProducts,
 		arg.ProjectID,
 		arg.ItemName,
 		arg.HsnCode,
 		arg.BrandModel,
 		arg.ItemDescription,
+		arg.ProductCode,
 		arg.Limit,
 		arg.Offset,
 	)
@@ -213,9 +291,9 @@ func (q *Queries) SearchProducts(ctx context.Context, arg SearchProductsParams) 
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Product{}
+	items := []SearchProductsRow{}
 	for rows.Next() {
-		var i Product
+		var i SearchProductsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProjectID,
@@ -226,6 +304,7 @@ func (q *Queries) SearchProducts(ctx context.Context, arg SearchProductsParams) 
 			&i.BrandModel,
 			&i.PerUnitPrice,
 			&i.GstPercentage,
+			&i.ProductCode,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -245,7 +324,7 @@ func (q *Queries) SearchProducts(ctx context.Context, arg SearchProductsParams) 
 const SearchProductsCount = `-- name: SearchProductsCount :one
 SELECT COUNT(*) FROM products
 WHERE project_id = ?
-  AND (item_name LIKE ? OR hsn_code LIKE ? OR brand_model LIKE ? OR item_description LIKE ?)
+  AND (item_name LIKE ? OR hsn_code LIKE ? OR brand_model LIKE ? OR item_description LIKE ? OR product_code LIKE ?)
 `
 
 type SearchProductsCountParams struct {
@@ -254,6 +333,7 @@ type SearchProductsCountParams struct {
 	HsnCode         sql.NullString
 	BrandModel      string
 	ItemDescription string
+	ProductCode     sql.NullString
 }
 
 func (q *Queries) SearchProductsCount(ctx context.Context, arg SearchProductsCountParams) (int64, error) {
@@ -263,6 +343,7 @@ func (q *Queries) SearchProductsCount(ctx context.Context, arg SearchProductsCou
 		arg.HsnCode,
 		arg.BrandModel,
 		arg.ItemDescription,
+		arg.ProductCode,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -282,7 +363,7 @@ func (q *Queries) SearchProductsCountNoFilter(ctx context.Context, projectID int
 
 const SearchProductsNoFilter = `-- name: SearchProductsNoFilter :many
 SELECT id, project_id, item_name, item_description, hsn_code, uom,
-       brand_model, per_unit_price, gst_percentage, created_at, updated_at
+       brand_model, per_unit_price, gst_percentage, product_code, created_at, updated_at
 FROM products
 WHERE project_id = ?
 ORDER BY item_name ASC
@@ -295,15 +376,30 @@ type SearchProductsNoFilterParams struct {
 	Offset    int64
 }
 
-func (q *Queries) SearchProductsNoFilter(ctx context.Context, arg SearchProductsNoFilterParams) ([]Product, error) {
+type SearchProductsNoFilterRow struct {
+	ID              int64
+	ProjectID       int64
+	ItemName        string
+	ItemDescription string
+	HsnCode         sql.NullString
+	Uom             sql.NullString
+	BrandModel      string
+	PerUnitPrice    sql.NullFloat64
+	GstPercentage   sql.NullFloat64
+	ProductCode     sql.NullString
+	CreatedAt       sql.NullTime
+	UpdatedAt       sql.NullTime
+}
+
+func (q *Queries) SearchProductsNoFilter(ctx context.Context, arg SearchProductsNoFilterParams) ([]SearchProductsNoFilterRow, error) {
 	rows, err := q.db.QueryContext(ctx, SearchProductsNoFilter, arg.ProjectID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Product{}
+	items := []SearchProductsNoFilterRow{}
 	for rows.Next() {
-		var i Product
+		var i SearchProductsNoFilterRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProjectID,
@@ -314,6 +410,7 @@ func (q *Queries) SearchProductsNoFilter(ctx context.Context, arg SearchProducts
 			&i.BrandModel,
 			&i.PerUnitPrice,
 			&i.GstPercentage,
+			&i.ProductCode,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -333,7 +430,7 @@ func (q *Queries) SearchProductsNoFilter(ctx context.Context, arg SearchProducts
 const UpdateProduct = `-- name: UpdateProduct :exec
 UPDATE products SET
     item_name = ?, item_description = ?, hsn_code = ?, uom = ?,
-    brand_model = ?, per_unit_price = ?, gst_percentage = ?,
+    brand_model = ?, per_unit_price = ?, gst_percentage = ?, product_code = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ? AND project_id = ?
 `
@@ -346,6 +443,7 @@ type UpdateProductParams struct {
 	BrandModel      string
 	PerUnitPrice    sql.NullFloat64
 	GstPercentage   sql.NullFloat64
+	ProductCode     sql.NullString
 	ID              int64
 	ProjectID       int64
 }
@@ -359,6 +457,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) er
 		arg.BrandModel,
 		arg.PerUnitPrice,
 		arg.GstPercentage,
+		arg.ProductCode,
 		arg.ID,
 		arg.ProjectID,
 	)

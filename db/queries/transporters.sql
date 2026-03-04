@@ -66,14 +66,16 @@ LIMIT ? OFFSET ?;
 
 -- name: GetVehiclesByTransporterID :many
 SELECT id, transporter_id, vehicle_number, vehicle_type,
-       driver_name, driver_phone1, driver_phone2, created_at
+       driver_name, driver_phone1, driver_phone2, created_at,
+       rc_image_path, driver_license_path
 FROM transporter_vehicles
 WHERE transporter_id = ?
 ORDER BY vehicle_number ASC;
 
 -- name: GetVehicleByID :one
 SELECT id, transporter_id, vehicle_number, vehicle_type,
-       driver_name, driver_phone1, driver_phone2, created_at
+       driver_name, driver_phone1, driver_phone2, created_at,
+       rc_image_path, driver_license_path
 FROM transporter_vehicles
 WHERE id = ?;
 

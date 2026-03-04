@@ -124,6 +124,7 @@ func CreateProductHandler(c echo.Context) error {
 
 	product := &models.Product{
 		ProjectID:       projectID,
+		ProductCode:     strings.TrimSpace(c.FormValue("product_code")),
 		ItemName:        strings.TrimSpace(c.FormValue("item_name")),
 		ItemDescription: strings.TrimSpace(c.FormValue("item_description")),
 		HSNCode:         strings.TrimSpace(c.FormValue("hsn_code")),
@@ -141,13 +142,23 @@ func CreateProductHandler(c echo.Context) error {
 		}
 	}
 
-	// Check uniqueness
+	// Check name uniqueness
 	if _, ok := errors["item_name"]; !ok && product.ItemName != "" {
 		unique, err := database.CheckProductNameUnique(projectID, product.ItemName, 0)
 		if err != nil {
 			slog.Warn("error checking product name uniqueness", slog.String("error", err.Error()), slog.Int("projectID", projectID))
 		} else if !unique {
 			errors["item_name"] = "A product with this name already exists in this project"
+		}
+	}
+
+	// Check product_code uniqueness
+	if product.ProductCode != "" {
+		unique, err := database.CheckProductCodeUnique(product.ProductCode, 0)
+		if err != nil {
+			slog.Warn("error checking product code uniqueness", slog.String("error", err.Error()))
+		} else if !unique {
+			errors["product_code"] = "This product code is already in use"
 		}
 	}
 
@@ -244,6 +255,7 @@ func UpdateProductHandler(c echo.Context) error {
 	product := &models.Product{
 		ID:              productID,
 		ProjectID:       projectID,
+		ProductCode:     strings.TrimSpace(c.FormValue("product_code")),
 		ItemName:        strings.TrimSpace(c.FormValue("item_name")),
 		ItemDescription: strings.TrimSpace(c.FormValue("item_description")),
 		HSNCode:         strings.TrimSpace(c.FormValue("hsn_code")),
@@ -261,13 +273,23 @@ func UpdateProductHandler(c echo.Context) error {
 		}
 	}
 
-	// Check uniqueness excluding current product
+	// Check name uniqueness excluding current product
 	if _, ok := errors["item_name"]; !ok && product.ItemName != "" {
 		unique, err := database.CheckProductNameUnique(projectID, product.ItemName, productID)
 		if err != nil {
 			slog.Warn("error checking product name uniqueness", slog.String("error", err.Error()), slog.Int("projectID", projectID))
 		} else if !unique {
 			errors["item_name"] = "A product with this name already exists in this project"
+		}
+	}
+
+	// Check product_code uniqueness excluding current product
+	if product.ProductCode != "" {
+		unique, err := database.CheckProductCodeUnique(product.ProductCode, productID)
+		if err != nil {
+			slog.Warn("error checking product code uniqueness", slog.String("error", err.Error()))
+		} else if !unique {
+			errors["product_code"] = "This product code is already in use"
 		}
 	}
 

@@ -320,13 +320,15 @@ func mapTransporter(row db.Transporter) *models.Transporter {
 
 func mapVehicleRow(row db.GetVehiclesByTransporterIDRow) *models.TransporterVehicle {
 	v := &models.TransporterVehicle{
-		ID:            int(row.ID),
-		TransporterID: int(row.TransporterID),
-		VehicleNumber: row.VehicleNumber,
-		VehicleType:   row.VehicleType.String,
-		DriverName:    row.DriverName.String,
-		DriverPhone1:  row.DriverPhone1.String,
-		DriverPhone2:  row.DriverPhone2.String,
+		ID:                int(row.ID),
+		TransporterID:     int(row.TransporterID),
+		VehicleNumber:     row.VehicleNumber,
+		VehicleType:       row.VehicleType.String,
+		DriverName:        row.DriverName.String,
+		DriverPhone1:      row.DriverPhone1.String,
+		DriverPhone2:      row.DriverPhone2.String,
+		RcImagePath:       row.RcImagePath,
+		DriverLicensePath: row.DriverLicensePath,
 	}
 	if row.CreatedAt.Valid {
 		v.CreatedAt = row.CreatedAt.Time
@@ -336,18 +338,29 @@ func mapVehicleRow(row db.GetVehiclesByTransporterIDRow) *models.TransporterVehi
 
 func mapGetVehicleByIDRow(row db.GetVehicleByIDRow) *models.TransporterVehicle {
 	v := &models.TransporterVehicle{
-		ID:            int(row.ID),
-		TransporterID: int(row.TransporterID),
-		VehicleNumber: row.VehicleNumber,
-		VehicleType:   row.VehicleType.String,
-		DriverName:    row.DriverName.String,
-		DriverPhone1:  row.DriverPhone1.String,
-		DriverPhone2:  row.DriverPhone2.String,
+		ID:                int(row.ID),
+		TransporterID:     int(row.TransporterID),
+		VehicleNumber:     row.VehicleNumber,
+		VehicleType:       row.VehicleType.String,
+		DriverName:        row.DriverName.String,
+		DriverPhone1:      row.DriverPhone1.String,
+		DriverPhone2:      row.DriverPhone2.String,
+		RcImagePath:       row.RcImagePath,
+		DriverLicensePath: row.DriverLicensePath,
 	}
 	if row.CreatedAt.Valid {
 		v.CreatedAt = row.CreatedAt.Time
 	}
 	return v
+}
+
+// UpdateVehicleImagePaths sets rc_image_path and driver_license_path for a vehicle.
+func UpdateVehicleImagePaths(vehicleID int, rcImagePath, driverLicensePath string) error {
+	_, err := DB.ExecContext(context.Background(),
+		`UPDATE transporter_vehicles SET rc_image_path = ?, driver_license_path = ? WHERE id = ?`,
+		rcImagePath, driverLicensePath, vehicleID,
+	)
+	return err
 }
 
 // ensure time import is used (time.Time fields on models)

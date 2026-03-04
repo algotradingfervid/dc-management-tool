@@ -52,7 +52,10 @@ templ OfficialPrint(
 	lineItems []*models.DCLineItem,
 	shipToAddress *models.Address,
 	billToAddress *models.Address,
+	billFromAddress *models.Address,
 	company *models.CompanySettings,
+	shipToConfig *models.AddressListConfig,
+	billToConfig *models.AddressListConfig,
 ) {
 	<!DOCTYPE html>
 	<html lang="en">
@@ -132,7 +135,25 @@ templ OfficialPrint(
 				<div class="dc-document rounded-lg overflow-hidden print-area">
 					<div class="p-6 sm:p-8 lg:p-10">
 						<!-- Company Header -->
-						if company != nil {
+						if billFromAddress != nil {
+							<div class="text-center mb-6">
+								<h1 class="text-base sm:text-lg font-bold text-gray-900 uppercase tracking-wide">{ addressDataValue(billFromAddress, "Company Name") }</h1>
+								<p class="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">{ billFromAddress.DisplayName() }</p>
+								if addressDataValue(billFromAddress, "Email") != "" {
+									<p class="text-xs text-gray-500 mt-1.5">
+										Email: <span class="font-medium text-gray-700">{ addressDataValue(billFromAddress, "Email") }</span>
+									</p>
+								}
+								<div class="flex items-center justify-center gap-4 mt-1.5 text-xs text-gray-500 flex-wrap">
+									if addressDataValue(billFromAddress, "GSTIN") != "" {
+										<span>GSTIN: <span class="font-mono font-medium text-gray-700">{ addressDataValue(billFromAddress, "GSTIN") }</span></span>
+									}
+									if addressDataValue(billFromAddress, "CIN No.") != "" {
+										<span>CIN: <span class="font-mono font-medium text-gray-700">{ addressDataValue(billFromAddress, "CIN No.") }</span></span>
+									}
+								</div>
+							</div>
+						} else if company != nil {
 							<div class="text-center mb-6">
 								<h1 class="text-base sm:text-lg font-bold text-gray-900 uppercase tracking-wide">{ company.Name }</h1>
 								<p class="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">
@@ -254,10 +275,8 @@ templ OfficialPrint(
 							if billToAddress != nil {
 								<div class="border border-gray-200 rounded p-3">
 									<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Bill To</p>
-									for _, v := range billToAddress.Data {
-										if v != "" {
-											<p class="text-xs text-gray-600">{ v }</p>
-										}
+									for _, v := range filteredAddressLines(billToAddress, billToConfig) {
+										<p class="text-xs text-gray-600">{ v }</p>
 									}
 								</div>
 							}
@@ -265,10 +284,8 @@ templ OfficialPrint(
 							if shipToAddress != nil {
 								<div class="border border-gray-200 rounded p-3">
 									<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Ship To</p>
-									for _, v := range shipToAddress.Data {
-										if v != "" {
-											<p class="text-xs text-gray-600">{ v }</p>
-										}
+									for _, v := range filteredAddressLines(shipToAddress, shipToConfig) {
+										<p class="text-xs text-gray-600">{ v }</p>
 									}
 								</div>
 							}

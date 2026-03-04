@@ -57,6 +57,8 @@ func ShowCreateShipmentWizard(c echo.Context) error {
 		flashType,
 		flashMessage,
 		csrf.Token(c.Request()),
+		0,
+		nil,
 	)
 	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
 	topbar := partials.Topbar(user, project, allProjects, flashType, flashMessage)
@@ -78,15 +80,7 @@ func ShipmentWizardStep2(c echo.Context) error {
 	}
 
 	// Parse step 1 data
-	templateID, _ := strconv.Atoi(c.FormValue("template_id"))
-	numSets, _ := strconv.Atoi(c.FormValue("num_sets"))
-	challanDate := c.FormValue("challan_date")
-	transporterName := c.FormValue("transporter_name")
-	vehicleNumber := c.FormValue("vehicle_number")
-	ewayBillNumber := c.FormValue("eway_bill_number")
-	docketNumber := c.FormValue("docket_number")
-	taxType := c.FormValue("tax_type")
-	reverseCharge := c.FormValue("reverse_charge")
+	templateID, numSets, challanDate, transporterName, vehicleNumber, ewayBillNumber, docketNumber, taxType, reverseCharge := parseStep2Form(c)
 
 	// Validate
 	errors := make(map[string]string)
@@ -173,6 +167,8 @@ func ShipmentWizardStep2(c echo.Context) error {
 		billToAddresses,
 		shipToAddresses,
 		csrf.Token(c.Request()),
+		0,
+		nil,
 	)
 	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
 	topbar := partials.Topbar(user, project, allProjects, "", "")
@@ -193,36 +189,9 @@ func ShipmentWizardStep3(c echo.Context) error {
 		return c.Redirect(http.StatusFound, "/projects")
 	}
 
-	// Parse step 1 carry-forward data
-	templateID, _ := strconv.Atoi(c.FormValue("template_id"))
-	numSets, _ := strconv.Atoi(c.FormValue("num_sets"))
-	challanDate := c.FormValue("challan_date")
-	transporterName := c.FormValue("transporter_name")
-	vehicleNumber := c.FormValue("vehicle_number")
-	ewayBillNumber := c.FormValue("eway_bill_number")
-	docketNumber := c.FormValue("docket_number")
-	taxType := c.FormValue("tax_type")
-	reverseCharge := c.FormValue("reverse_charge")
-
-	// Parse step 2 data (addresses)
-	billFromAddressID, _ := strconv.Atoi(c.FormValue("bill_from_address_id"))
-	dispatchFromAddressID, _ := strconv.Atoi(c.FormValue("dispatch_from_address_id"))
-	billToAddressID, _ := strconv.Atoi(c.FormValue("bill_to_address_id"))
-	transitShipToAddrID, _ := strconv.Atoi(c.FormValue("transit_ship_to_address_id"))
-
-	// Parse multiple ship-to address selections
-	if parseErr := c.Request().ParseMultipartForm(32 << 20); parseErr != nil {
-		// Fall back to regular form parsing if multipart fails
-		_ = c.Request().ParseForm()
-	}
-	shipToIDStrs := c.Request().PostForm["ship_to_address_ids"]
-	var shipToAddressIDs []int
-	for _, s := range shipToIDStrs {
-		id, idErr := strconv.Atoi(s)
-		if idErr == nil && id > 0 {
-			shipToAddressIDs = append(shipToAddressIDs, id)
-		}
-	}
+	// Parse step 1 and step 2 data
+	templateID, numSets, challanDate, transporterName, vehicleNumber, ewayBillNumber, docketNumber, taxType, reverseCharge := parseStep2Form(c)
+	billFromAddressID, dispatchFromAddressID, billToAddressID, transitShipToAddrID, shipToAddressIDs := parseStep3Form(c)
 
 	// Validate
 	validationErrors := make(map[string]string)
@@ -305,6 +274,8 @@ func ShipmentWizardStep3(c echo.Context) error {
 			billToAddresses,
 			shipToAddresses,
 			csrf.Token(c.Request()),
+			0,
+			nil,
 		)
 		sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
 		topbar := partials.Topbar(user, project, allProjects, "", "")
@@ -364,6 +335,8 @@ func ShipmentWizardStep3(c echo.Context) error {
 		shipToIDStrings,
 		shipToAddresses,
 		csrf.Token(c.Request()),
+		0,
+		nil, nil, nil,
 	)
 	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
 	topbar := partials.Topbar(user, project, allProjects, "", "")
@@ -385,31 +358,8 @@ func ShipmentWizardStep4(c echo.Context) error {
 	}
 
 	// Parse all carry-forward data
-	templateID, _ := strconv.Atoi(c.FormValue("template_id"))
-	numSets, _ := strconv.Atoi(c.FormValue("num_sets"))
-	challanDate := c.FormValue("challan_date")
-	transporterName := c.FormValue("transporter_name")
-	vehicleNumber := c.FormValue("vehicle_number")
-	ewayBillNumber := c.FormValue("eway_bill_number")
-	docketNumber := c.FormValue("docket_number")
-	taxType := c.FormValue("tax_type")
-	reverseCharge := c.FormValue("reverse_charge")
-	billFromAddressID, _ := strconv.Atoi(c.FormValue("bill_from_address_id"))
-	dispatchFromAddressID, _ := strconv.Atoi(c.FormValue("dispatch_from_address_id"))
-	billToAddressID, _ := strconv.Atoi(c.FormValue("bill_to_address_id"))
-	transitShipToAddrID, _ := strconv.Atoi(c.FormValue("transit_ship_to_address_id"))
-
-	if parseErr := c.Request().ParseMultipartForm(32 << 20); parseErr != nil {
-		_ = c.Request().ParseForm()
-	}
-	shipToIDStrs := c.Request().PostForm["ship_to_address_ids"]
-	var shipToAddressIDs []int
-	for _, s := range shipToIDStrs {
-		id, _ := strconv.Atoi(s)
-		if id > 0 {
-			shipToAddressIDs = append(shipToAddressIDs, id)
-		}
-	}
+	templateID, numSets, challanDate, transporterName, vehicleNumber, ewayBillNumber, docketNumber, taxType, reverseCharge := parseStep2Form(c)
+	billFromAddressID, dispatchFromAddressID, billToAddressID, transitShipToAddrID, shipToAddressIDs := parseStep3Form(c)
 
 	// Load template products
 	products, err := database.GetTemplateProducts(templateID)
@@ -419,54 +369,22 @@ func ShipmentWizardStep4(c echo.Context) error {
 	}
 
 	// Parse serial numbers per product
-	var serialData []pageshipments.WizardSerialData
+	serialData := parseStep4Form(c, products, shipToAddressIDs)
 
-	for _, p := range products {
-		pd := pageshipments.WizardSerialData{
-			ProductID:   p.ID,
-			Assignments: make(map[int][]string),
-		}
-
-		// All serials for this product
-		serialsRaw := c.FormValue(fmt.Sprintf("serials_%d", p.ID))
-		if serialsRaw != "" {
-			for _, sn := range strings.Split(serialsRaw, "\n") {
-				sn = strings.TrimSpace(sn)
-				if sn != "" {
-					pd.AllSerials = append(pd.AllSerials, sn)
-				}
-			}
-		}
-
-		// Serial assignments per ship-to address
-		for _, shipToID := range shipToAddressIDs {
-			assignRaw := c.FormValue(fmt.Sprintf("assign_%d_%d", p.ID, shipToID))
-			if assignRaw != "" {
-				for _, sn := range strings.Split(assignRaw, "\n") {
-					sn = strings.TrimSpace(sn)
-					if sn != "" {
-						pd.Assignments[shipToID] = append(pd.Assignments[shipToID], sn)
-					}
-				}
-			}
-		}
-
-		serialData = append(serialData, pd)
-	}
-
-	// Validate serial counts
-	validationErrors := make(map[string]string)
+	// Validate serial counts and collect per-product errors
+	serialErrors := make(map[int]string)
 	for i, pd := range serialData {
 		expectedTotal := products[i].DefaultQuantity * numSets
 		if len(pd.AllSerials) > 0 && len(pd.AllSerials) != expectedTotal {
-			validationErrors[fmt.Sprintf("serials_%d", pd.ProductID)] = fmt.Sprintf("Expected %d serials, got %d", expectedTotal, len(pd.AllSerials))
+			serialErrors[pd.ProductID] = fmt.Sprintf("Expected %d serials, got %d", expectedTotal, len(pd.AllSerials))
+			continue
 		}
 
 		// Check for duplicates within same product
 		seen := make(map[string]bool)
 		for _, sn := range pd.AllSerials {
 			if seen[sn] {
-				validationErrors[fmt.Sprintf("serials_%d", pd.ProductID)] = fmt.Sprintf("Duplicate serial: %s", sn)
+				serialErrors[pd.ProductID] = fmt.Sprintf("Duplicate serial within this product: %s", sn)
 				break
 			}
 			seen[sn] = true
@@ -475,14 +393,67 @@ func ShipmentWizardStep4(c echo.Context) error {
 		// Check assignment counts don't exceed qty_per_set
 		for shipToID, assigned := range pd.Assignments {
 			if len(assigned) > products[i].DefaultQuantity {
-				validationErrors[fmt.Sprintf("assign_%d_%d", pd.ProductID, shipToID)] = fmt.Sprintf("Too many serials assigned (max %d)", products[i].DefaultQuantity)
+				serialErrors[pd.ProductID] = fmt.Sprintf("Too many serials assigned to a destination (max %d)", products[i].DefaultQuantity)
+				_ = shipToID
+			}
+		}
+
+		// Project-wide duplicate check
+		if _, alreadyHasError := serialErrors[pd.ProductID]; !alreadyHasError && len(pd.AllSerials) > 0 {
+			conflicts, conflictsErr := database.CheckSerialsInProject(projectID, pd.AllSerials, nil)
+			if conflictsErr != nil {
+				slog.Error("Error checking serials", slog.String("error", conflictsErr.Error()), slog.Int("projectID", projectID))
+			}
+			if len(conflicts) > 0 {
+				serialErrors[pd.ProductID] = fmt.Sprintf("Serial %s already exists in DC %s", conflicts[0].SerialNumber, conflicts[0].DCNumber)
 			}
 		}
 	}
 
-	if len(validationErrors) > 0 {
-		auth.SetFlash(c.Request(), "error", "Serial number validation failed")
-		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
+	// If any errors, re-render step 3 with pre-filled data and inline errors
+	if len(serialErrors) > 0 {
+		prefillSerials := make(map[int][]string)
+		prefillAssignments := make(map[string][]string)
+		for _, pd := range serialData {
+			prefillSerials[pd.ProductID] = pd.AllSerials
+			for shipToID, assigned := range pd.Assignments {
+				key := fmt.Sprintf("%d_%d", pd.ProductID, shipToID)
+				prefillAssignments[key] = assigned
+			}
+		}
+		shipToConfig, _ := database.GetOrCreateAddressConfig(projectID, "ship_to")
+		var shipToAddresses []*models.Address
+		if shipToConfig != nil {
+			allShipTo, _ := database.GetAllAddressesByConfigID(shipToConfig.ID)
+			selectedSet := make(map[int]bool)
+			for _, id := range shipToAddressIDs {
+				selectedSet[id] = true
+			}
+			for _, a := range allShipTo {
+				if selectedSet[a.ID] {
+					shipToAddresses = append(shipToAddresses, a)
+				}
+			}
+		}
+		shipToIDStrings := make([]string, len(shipToAddressIDs))
+		for i, id := range shipToAddressIDs {
+			shipToIDStrings[i] = strconv.Itoa(id)
+		}
+		allProjects, _ := database.GetAccessibleProjects(user)
+
+		pageContent := pageshipments.WizardStep3(
+			user, project, allProjects, products, numSets, challanDate,
+			strconv.Itoa(templateID), transporterName, vehicleNumber,
+			ewayBillNumber, docketNumber, taxType, reverseCharge,
+			strconv.Itoa(billFromAddressID), strconv.Itoa(dispatchFromAddressID),
+			strconv.Itoa(billToAddressID), strconv.Itoa(transitShipToAddrID),
+			shipToIDStrings, shipToAddresses,
+			csrf.Token(c.Request()), 0,
+			prefillSerials, prefillAssignments, serialErrors,
+		)
+		sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+		topbar := partials.Topbar(user, project, allProjects, "error", "Please fix the serial number errors below")
+		return components.RenderOK(c, layouts.MainWithContent("Shipment Wizard", sidebar, topbar, "error", "Please fix the serial number errors below", pageContent))
 	}
 
 	// Load template for display
@@ -535,6 +506,7 @@ func ShipmentWizardStep4(c echo.Context) error {
 		shipToAddresses,
 		serialData,
 		csrf.Token(c.Request()),
+		0,
 	)
 	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
 	topbar := partials.Topbar(user, project, allProjects, "", "")

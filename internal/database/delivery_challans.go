@@ -8,6 +8,7 @@ import (
 
 	db "github.com/narendhupati/dc-management-tool/internal/database/sqlc"
 	"github.com/narendhupati/dc-management-tool/internal/models"
+	"github.com/narendhupati/dc-management-tool/internal/services"
 )
 
 // nullTimeFromDateStr parses an optional "YYYY-MM-DD" pointer into sql.NullTime.
@@ -102,19 +103,20 @@ func mapDCListRow(id, projectID int64, dcNumber, dcType, status string, challanD
 	return dc
 }
 
-// CreateDeliveryChallan creates a delivery challan with transit details, line items,
-// and serial numbers inside a single transaction.
-// sqlc-backed: InsertDeliveryChallan, InsertDCTransitDetails, InsertDCLineItem, InsertSerialNumber.
-func CreateDeliveryChallan(dc *models.DeliveryChallan, transitDetails *models.DCTransitDetails, lineItems []models.DCLineItem, serialNumbersByLine [][]string) error {
-	tx, err := DB.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
+// insertDCWithLineItemsAndSerials is the core INSERT logic for a delivery challan,
+// its optional transit details, line items, and serial numbers. It requires an active
+// *sql.Tx; the caller is responsible for Begin/Commit/Rollback.
+// On success it mutates dc.ID and returns the new DC's database ID.
+func insertDCWithLineItemsAndSerials(
+	tx *sql.Tx,
+	dc *models.DeliveryChallan,
+	transitDetails *models.DCTransitDetails,
+	lineItems []models.DCLineItem,
+	serialsByLine [][]string,
+) (int, error) {
 	q := db.New(tx)
 
-	// Insert delivery challan.
+	// Insert delivery challan row.
 	result, err := q.InsertDeliveryChallan(ctx(), db.InsertDeliveryChallanParams{
 		ProjectID:             int64(dc.ProjectID),
 		DcNumber:              dc.DCNumber,
@@ -130,11 +132,11 @@ func CreateDeliveryChallan(dc *models.DeliveryChallan, transitDetails *models.DC
 		DispatchFromAddressID: nullInt64FromPtr(dc.DispatchFromAddressID),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to insert delivery challan: %w", err)
+		return 0, fmt.Errorf("failed to insert delivery challan: %w", err)
 	}
 	dcID, err := result.LastInsertId()
 	if err != nil {
-		return fmt.Errorf("get insert ID for delivery challan: %w", err)
+		return 0, fmt.Errorf("get insert ID for delivery challan: %w", err)
 	}
 	dc.ID = int(dcID)
 
@@ -149,7 +151,7 @@ func CreateDeliveryChallan(dc *models.DeliveryChallan, transitDetails *models.DC
 			Notes:           nullStringFromStr(transitDetails.Notes),
 		})
 		if err != nil {
-			return fmt.Errorf("failed to insert transit details: %w", err)
+			return 0, fmt.Errorf("failed to insert transit details: %w", err)
 		}
 	}
 
@@ -170,16 +172,16 @@ func CreateDeliveryChallan(dc *models.DeliveryChallan, transitDetails *models.DC
 			LineOrder:     sql.NullInt64{Int64: int64(item.LineOrder), Valid: true},
 		})
 		if err != nil {
-			return fmt.Errorf("failed to insert line item %d: %w", i+1, err)
+			return 0, fmt.Errorf("failed to insert line item %d: %w", i+1, err)
 		}
 		liID, err := liResult.LastInsertId()
 		if err != nil {
-			return fmt.Errorf("get insert ID for line item %d: %w", i+1, err)
+			return 0, fmt.Errorf("get insert ID for line item %d: %w", i+1, err)
 		}
 		lineItems[i].ID = int(liID)
 
-		if i < len(serialNumbersByLine) {
-			for _, sn := range serialNumbersByLine[i] {
+		if i < len(serialsByLine) {
+			for _, sn := range serialsByLine[i] {
 				sn = strings.TrimSpace(sn)
 				if sn == "" {
 					continue
@@ -191,12 +193,28 @@ func CreateDeliveryChallan(dc *models.DeliveryChallan, transitDetails *models.DC
 					ProductID:    sql.NullInt64{Int64: int64(item.ProductID), Valid: true},
 				})
 				if err != nil {
-					return fmt.Errorf("failed to insert serial number '%s': %w", sn, err)
+					return 0, fmt.Errorf("failed to insert serial number '%s': %w", sn, err)
 				}
 			}
 		}
 	}
 
+	return int(dcID), nil
+}
+
+// CreateDeliveryChallan creates a delivery challan with transit details, line items,
+// and serial numbers inside a single transaction.
+// sqlc-backed: InsertDeliveryChallan, InsertDCTransitDetails, InsertDCLineItem, InsertSerialNumber.
+func CreateDeliveryChallan(dc *models.DeliveryChallan, transitDetails *models.DCTransitDetails, lineItems []models.DCLineItem, serialNumbersByLine [][]string) error {
+	tx, err := DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := insertDCWithLineItemsAndSerials(tx, dc, transitDetails, lineItems, serialNumbersByLine); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 
@@ -522,4 +540,170 @@ func GetAllAddressesByConfigID(configID int) ([]*models.Address, error) {
 		addresses = append(addresses, a)
 	}
 	return addresses, nil
+}
+
+// UpdateTransitDC updates header and transit details of a transit DC in one transaction.
+// Only call this while the DC is still in "draft" status.
+func UpdateTransitDC(dcID int, challanDate *string, transporterName, vehicleNumber, ewayBillNumber, notes string) error {
+	tx, err := DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err = tx.ExecContext(ctx(),
+		`UPDATE delivery_challans SET challan_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		nullTimeFromDateStr(challanDate), dcID,
+	); err != nil {
+		return fmt.Errorf("UpdateTransitDC challan: %w", err)
+	}
+
+	if _, err = tx.ExecContext(ctx(),
+		`UPDATE dc_transit_details
+		    SET transporter_name = ?, vehicle_number = ?, eway_bill_number = ?, notes = ?
+		  WHERE dc_id = ?`,
+		nullStringFromStr(transporterName), nullStringFromStr(vehicleNumber),
+		nullStringFromStr(ewayBillNumber), nullStringFromStr(notes), dcID,
+	); err != nil {
+		return fmt.Errorf("UpdateTransitDC transit details: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+// UpdateOfficialDC updates header fields on an existing official DC.
+func UpdateOfficialDC(dcID int, shipToAddressID int, challanDate *string) error {
+	_, err := DB.ExecContext(ctx(),
+		`UPDATE delivery_challans
+		    SET ship_to_address_id = ?, challan_date = ?, updated_at = CURRENT_TIMESTAMP
+		  WHERE id = ?`,
+		shipToAddressID, nullTimeFromDateStr(challanDate), dcID,
+	)
+	if err != nil {
+		return fmt.Errorf("UpdateOfficialDC: %w", err)
+	}
+	return nil
+}
+
+// ReplaceLineItemsAndSerials deletes all existing line items (and their serials, via cascade)
+// for dcID, then inserts fresh ones from the provided data.
+// lineItems is []models.DCLineItem; serialsByLine[i] are the serials for lineItems[i].
+func ReplaceLineItemsAndSerials(dcID int, projectID int, lineItems []models.DCLineItem, serialsByLine [][]string) error {
+	tx, err := DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	q := db.New(tx)
+
+	if err = q.DeleteSerialNumbersByDCID(ctx(), int64(dcID)); err != nil {
+		return fmt.Errorf("ReplaceLineItemsAndSerials delete serials: %w", err)
+	}
+	if err = q.DeleteLineItemsByDCID(ctx(), int64(dcID)); err != nil {
+		return fmt.Errorf("ReplaceLineItemsAndSerials delete line items: %w", err)
+	}
+
+	for i, item := range lineItems {
+		res, err := q.InsertDCLineItem(ctx(), db.InsertDCLineItemParams{
+			DcID:          int64(dcID),
+			ProductID:     int64(item.ProductID),
+			Quantity:      int64(item.Quantity),
+			Rate:          nullFloat64(item.Rate),
+			TaxPercentage: nullFloat64(item.TaxPercentage),
+			TaxableAmount: nullFloat64(item.TaxableAmount),
+			TaxAmount:     nullFloat64(item.TaxAmount),
+			TotalAmount:   nullFloat64(item.TotalAmount),
+			LineOrder:     sql.NullInt64{Int64: int64(i + 1), Valid: true},
+		})
+		if err != nil {
+			return fmt.Errorf("ReplaceLineItemsAndSerials insert line item %d: %w", i+1, err)
+		}
+		lineItemID, err := res.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("ReplaceLineItemsAndSerials get line item ID %d: %w", i+1, err)
+		}
+
+		if i < len(serialsByLine) {
+			for _, sn := range serialsByLine[i] {
+				sn = strings.TrimSpace(sn)
+				if sn == "" {
+					continue
+				}
+				if err = q.InsertSerialNumber(ctx(), db.InsertSerialNumberParams{
+					ProjectID:    int64(projectID),
+					LineItemID:   lineItemID,
+					SerialNumber: sn,
+					ProductID:    sql.NullInt64{Int64: int64(item.ProductID), Valid: true},
+				}); err != nil {
+					return fmt.Errorf("ReplaceLineItemsAndSerials insert serial %q: %w", sn, err)
+				}
+			}
+		}
+	}
+
+	return tx.Commit()
+}
+
+// DeleteOfficialDC is a thin wrapper around DeleteDC for semantic clarity in the edit flow.
+// The existing DeleteDC already handles cascade: serial_numbers → line_items → transit_details → DC.
+func DeleteOfficialDC(dcID int) error {
+	return DeleteDC(dcID)
+}
+
+// CreateOfficialDCInGroup creates a single new official DC for a newly added ship-to address
+// within an existing draft shipment group. It generates a new official DC number (consuming
+// the sequence), then inserts the DC row, line items, and serial numbers in a transaction.
+func CreateOfficialDCInGroup(
+	projectID, groupID, shipToAddressID int,
+	challanDate *string,
+	taxType, reverseCharge string,
+	lineItems []models.DCLineItem,
+	serialsByLine [][]string,
+	createdBy int,
+) (int, error) {
+	// Parse challan date for DC number generation (financial year depends on date).
+	var dcDate time.Time
+	if challanDate != nil && *challanDate != "" {
+		t, parseErr := time.Parse("2006-01-02", *challanDate)
+		if parseErr == nil {
+			dcDate = t
+		} else {
+			dcDate = time.Now()
+		}
+	} else {
+		dcDate = time.Now()
+	}
+
+	// Generate the next official DC number (consumes the sequence).
+	dcNumber, err := services.GenerateDCNumberForDate(DB, projectID, services.DCTypeOfficial, dcDate)
+	if err != nil {
+		return 0, fmt.Errorf("CreateOfficialDCInGroup: generate DC number: %w", err)
+	}
+
+	// Build DC model. taxType and reverseCharge are on the shipment_group, not the DC row.
+	groupIDCopy := groupID
+	dc := &models.DeliveryChallan{
+		ProjectID:       projectID,
+		DCType:          "official",
+		DCNumber:        dcNumber,
+		Status:          "draft",
+		ShipToAddressID: shipToAddressID,
+		ChallanDate:     challanDate,
+		ShipmentGroupID: &groupIDCopy,
+		CreatedBy:       createdBy,
+	}
+
+	// Insert DC with line items and serials in a transaction.
+	tx, err := DB.Begin()
+	if err != nil {
+		return 0, fmt.Errorf("CreateOfficialDCInGroup: begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	dcID, err := insertDCWithLineItemsAndSerials(tx, dc, nil, lineItems, serialsByLine)
+	if err != nil {
+		return 0, fmt.Errorf("CreateOfficialDCInGroup: %w", err)
+	}
+	return dcID, tx.Commit()
 }

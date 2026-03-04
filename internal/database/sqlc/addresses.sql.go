@@ -10,6 +10,33 @@ import (
 	"database/sql"
 )
 
+const CheckAddressCodeUnique = `-- name: CheckAddressCodeUnique :one
+SELECT COUNT(*) FROM addresses WHERE address_code = ?
+`
+
+func (q *Queries) CheckAddressCodeUnique(ctx context.Context, addressCode sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, CheckAddressCodeUnique, addressCode)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const CheckAddressCodeUniqueExcludeID = `-- name: CheckAddressCodeUniqueExcludeID :one
+SELECT COUNT(*) FROM addresses WHERE address_code = ? AND id != ?
+`
+
+type CheckAddressCodeUniqueExcludeIDParams struct {
+	AddressCode sql.NullString
+	ID          int64
+}
+
+func (q *Queries) CheckAddressCodeUniqueExcludeID(ctx context.Context, arg CheckAddressCodeUniqueExcludeIDParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, CheckAddressCodeUniqueExcludeID, arg.AddressCode, arg.ID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const CountAddresses = `-- name: CountAddresses :one
 SELECT COUNT(*) FROM addresses WHERE config_id = ?
 `
@@ -24,7 +51,7 @@ func (q *Queries) CountAddresses(ctx context.Context, configID int64) (int64, er
 const CountAddressesWithSearch = `-- name: CountAddressesWithSearch :one
 SELECT COUNT(*) FROM addresses
 WHERE config_id = ?
-  AND (address_data LIKE ? OR district_name LIKE ? OR mandal_name LIKE ? OR mandal_code LIKE ?)
+  AND (address_data LIKE ? OR district_name LIKE ? OR mandal_name LIKE ? OR mandal_code LIKE ? OR address_code LIKE ?)
 `
 
 type CountAddressesWithSearchParams struct {
@@ -33,6 +60,7 @@ type CountAddressesWithSearchParams struct {
 	DistrictName string
 	MandalName   string
 	MandalCode   string
+	AddressCode  sql.NullString
 }
 
 func (q *Queries) CountAddressesWithSearch(ctx context.Context, arg CountAddressesWithSearchParams) (int64, error) {
@@ -42,6 +70,7 @@ func (q *Queries) CountAddressesWithSearch(ctx context.Context, arg CountAddress
 		arg.DistrictName,
 		arg.MandalName,
 		arg.MandalCode,
+		arg.AddressCode,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -87,7 +116,7 @@ func (q *Queries) DeleteAllAddresses(ctx context.Context, configID int64) error 
 }
 
 const GetAddress = `-- name: GetAddress :one
-SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, created_at, updated_at
+SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, address_code, created_at, updated_at
 FROM addresses
 WHERE id = ?
 `
@@ -99,6 +128,7 @@ type GetAddressRow struct {
 	DistrictName string
 	MandalName   string
 	MandalCode   string
+	AddressCode  sql.NullString
 	CreatedAt    sql.NullTime
 	UpdatedAt    sql.NullTime
 }
@@ -113,6 +143,7 @@ func (q *Queries) GetAddress(ctx context.Context, id int64) (GetAddressRow, erro
 		&i.DistrictName,
 		&i.MandalName,
 		&i.MandalCode,
+		&i.AddressCode,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -145,8 +176,8 @@ func (q *Queries) GetAddressConfig(ctx context.Context, arg GetAddressConfigPara
 }
 
 const InsertAddress = `-- name: InsertAddress :execresult
-INSERT INTO addresses (config_id, address_data, district_name, mandal_name, mandal_code)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO addresses (config_id, address_data, district_name, mandal_name, mandal_code, address_code)
+VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type InsertAddressParams struct {
@@ -155,6 +186,7 @@ type InsertAddressParams struct {
 	DistrictName string
 	MandalName   string
 	MandalCode   string
+	AddressCode  sql.NullString
 }
 
 func (q *Queries) InsertAddress(ctx context.Context, arg InsertAddressParams) (sql.Result, error) {
@@ -164,11 +196,12 @@ func (q *Queries) InsertAddress(ctx context.Context, arg InsertAddressParams) (s
 		arg.DistrictName,
 		arg.MandalName,
 		arg.MandalCode,
+		arg.AddressCode,
 	)
 }
 
 const ListAddresses = `-- name: ListAddresses :many
-SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, created_at, updated_at
+SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, address_code, created_at, updated_at
 FROM addresses
 WHERE config_id = ?
 ORDER BY id DESC
@@ -188,6 +221,7 @@ type ListAddressesRow struct {
 	DistrictName string
 	MandalName   string
 	MandalCode   string
+	AddressCode  sql.NullString
 	CreatedAt    sql.NullTime
 	UpdatedAt    sql.NullTime
 }
@@ -208,6 +242,7 @@ func (q *Queries) ListAddresses(ctx context.Context, arg ListAddressesParams) ([
 			&i.DistrictName,
 			&i.MandalName,
 			&i.MandalCode,
+			&i.AddressCode,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -225,10 +260,10 @@ func (q *Queries) ListAddresses(ctx context.Context, arg ListAddressesParams) ([
 }
 
 const ListAddressesWithSearch = `-- name: ListAddressesWithSearch :many
-SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, created_at, updated_at
+SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, address_code, created_at, updated_at
 FROM addresses
 WHERE config_id = ?
-  AND (address_data LIKE ? OR district_name LIKE ? OR mandal_name LIKE ? OR mandal_code LIKE ?)
+  AND (address_data LIKE ? OR district_name LIKE ? OR mandal_name LIKE ? OR mandal_code LIKE ? OR address_code LIKE ?)
 ORDER BY id DESC
 LIMIT ? OFFSET ?
 `
@@ -239,6 +274,7 @@ type ListAddressesWithSearchParams struct {
 	DistrictName string
 	MandalName   string
 	MandalCode   string
+	AddressCode  sql.NullString
 	Limit        int64
 	Offset       int64
 }
@@ -250,6 +286,7 @@ type ListAddressesWithSearchRow struct {
 	DistrictName string
 	MandalName   string
 	MandalCode   string
+	AddressCode  sql.NullString
 	CreatedAt    sql.NullTime
 	UpdatedAt    sql.NullTime
 }
@@ -261,6 +298,7 @@ func (q *Queries) ListAddressesWithSearch(ctx context.Context, arg ListAddresses
 		arg.DistrictName,
 		arg.MandalName,
 		arg.MandalCode,
+		arg.AddressCode,
 		arg.Limit,
 		arg.Offset,
 	)
@@ -278,6 +316,7 @@ func (q *Queries) ListAddressesWithSearch(ctx context.Context, arg ListAddresses
 			&i.DistrictName,
 			&i.MandalName,
 			&i.MandalCode,
+			&i.AddressCode,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -295,10 +334,10 @@ func (q *Queries) ListAddressesWithSearch(ctx context.Context, arg ListAddresses
 }
 
 const SearchAddressesForSelector = `-- name: SearchAddressesForSelector :many
-SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, created_at, updated_at
+SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, address_code, created_at, updated_at
 FROM addresses
 WHERE config_id = ?
-  AND (address_data LIKE ? OR district_name LIKE ? OR mandal_name LIKE ? OR mandal_code LIKE ?)
+  AND (address_data LIKE ? OR district_name LIKE ? OR mandal_name LIKE ? OR mandal_code LIKE ? OR address_code LIKE ?)
 ORDER BY district_name, mandal_name
 LIMIT ?
 `
@@ -309,6 +348,7 @@ type SearchAddressesForSelectorParams struct {
 	DistrictName string
 	MandalName   string
 	MandalCode   string
+	AddressCode  sql.NullString
 	Limit        int64
 }
 
@@ -319,6 +359,7 @@ type SearchAddressesForSelectorRow struct {
 	DistrictName string
 	MandalName   string
 	MandalCode   string
+	AddressCode  sql.NullString
 	CreatedAt    sql.NullTime
 	UpdatedAt    sql.NullTime
 }
@@ -330,6 +371,7 @@ func (q *Queries) SearchAddressesForSelector(ctx context.Context, arg SearchAddr
 		arg.DistrictName,
 		arg.MandalName,
 		arg.MandalCode,
+		arg.AddressCode,
 		arg.Limit,
 	)
 	if err != nil {
@@ -346,6 +388,7 @@ func (q *Queries) SearchAddressesForSelector(ctx context.Context, arg SearchAddr
 			&i.DistrictName,
 			&i.MandalName,
 			&i.MandalCode,
+			&i.AddressCode,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -363,9 +406,9 @@ func (q *Queries) SearchAddressesForSelector(ctx context.Context, arg SearchAddr
 }
 
 const SearchAddressesForSelectorSimple = `-- name: SearchAddressesForSelectorSimple :many
-SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, created_at, updated_at
+SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, address_code, created_at, updated_at
 FROM addresses
-WHERE config_id = ? AND address_data LIKE ?
+WHERE config_id = ? AND (address_data LIKE ? OR address_code LIKE ?)
 ORDER BY id
 LIMIT ?
 `
@@ -373,6 +416,7 @@ LIMIT ?
 type SearchAddressesForSelectorSimpleParams struct {
 	ConfigID    int64
 	AddressData string
+	AddressCode sql.NullString
 	Limit       int64
 }
 
@@ -383,12 +427,18 @@ type SearchAddressesForSelectorSimpleRow struct {
 	DistrictName string
 	MandalName   string
 	MandalCode   string
+	AddressCode  sql.NullString
 	CreatedAt    sql.NullTime
 	UpdatedAt    sql.NullTime
 }
 
 func (q *Queries) SearchAddressesForSelectorSimple(ctx context.Context, arg SearchAddressesForSelectorSimpleParams) ([]SearchAddressesForSelectorSimpleRow, error) {
-	rows, err := q.db.QueryContext(ctx, SearchAddressesForSelectorSimple, arg.ConfigID, arg.AddressData, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, SearchAddressesForSelectorSimple,
+		arg.ConfigID,
+		arg.AddressData,
+		arg.AddressCode,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -403,6 +453,7 @@ func (q *Queries) SearchAddressesForSelectorSimple(ctx context.Context, arg Sear
 			&i.DistrictName,
 			&i.MandalName,
 			&i.MandalCode,
+			&i.AddressCode,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -420,7 +471,7 @@ func (q *Queries) SearchAddressesForSelectorSimple(ctx context.Context, arg Sear
 }
 
 const SearchAddressesNoFilter = `-- name: SearchAddressesNoFilter :many
-SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, created_at, updated_at
+SELECT id, config_id, address_data, district_name, mandal_name, mandal_code, address_code, created_at, updated_at
 FROM addresses
 WHERE config_id = ?
 ORDER BY id
@@ -439,6 +490,7 @@ type SearchAddressesNoFilterRow struct {
 	DistrictName string
 	MandalName   string
 	MandalCode   string
+	AddressCode  sql.NullString
 	CreatedAt    sql.NullTime
 	UpdatedAt    sql.NullTime
 }
@@ -459,6 +511,7 @@ func (q *Queries) SearchAddressesNoFilter(ctx context.Context, arg SearchAddress
 			&i.DistrictName,
 			&i.MandalName,
 			&i.MandalCode,
+			&i.AddressCode,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -476,7 +529,7 @@ func (q *Queries) SearchAddressesNoFilter(ctx context.Context, arg SearchAddress
 }
 
 const UpdateAddress = `-- name: UpdateAddress :exec
-UPDATE addresses SET address_data = ?, district_name = ?, mandal_name = ?, mandal_code = ?, updated_at = CURRENT_TIMESTAMP
+UPDATE addresses SET address_data = ?, district_name = ?, mandal_name = ?, mandal_code = ?, address_code = ?, updated_at = CURRENT_TIMESTAMP
 WHERE id = ?
 `
 
@@ -485,6 +538,7 @@ type UpdateAddressParams struct {
 	DistrictName string
 	MandalName   string
 	MandalCode   string
+	AddressCode  sql.NullString
 	ID           int64
 }
 
@@ -494,6 +548,7 @@ func (q *Queries) UpdateAddress(ctx context.Context, arg UpdateAddressParams) er
 		arg.DistrictName,
 		arg.MandalName,
 		arg.MandalCode,
+		arg.AddressCode,
 		arg.ID,
 	)
 	return err

@@ -498,17 +498,84 @@ func Detail(user *models.User, currentProject *models.Project, allProjects []*mo
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</dl></div></div></div></div>")
+			if currentProject.SignatoryName != "" || currentProject.SignatoryDesignation != "" || currentProject.SignatoryMobile != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<div><dt class=\"text-sm font-medium text-gray-600\">Authorized Signatory</dt><dd class=\"text-sm text-gray-900 mt-0.5\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if currentProject.SignatoryName != "" {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<div>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var28 string
+					templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.SignatoryName)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/detail.templ`, Line: 169, Col: 47}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</div>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				if currentProject.SignatoryDesignation != "" {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<div class=\"text-gray-500\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var29 string
+					templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.SignatoryDesignation)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/detail.templ`, Line: 172, Col: 76}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "</div>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				if currentProject.SignatoryMobile != "" {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<div class=\"text-gray-500\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var30 string
+					templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.SignatoryMobile)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/detail.templ`, Line: 175, Col: 71}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "</div>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "</dd></div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "</dl></div></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</div><!-- Delete Confirmation Modal --><div id=\"delete-modal\" class=\"hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center\"><div class=\"bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6\"><h3 class=\"text-lg font-semibold text-gray-900 mb-2\">Delete Project</h3><p class=\"text-sm text-gray-600 mb-4\">Are you sure you want to delete <strong id=\"delete-project-name\"></strong>? This action cannot be undone.</p><div class=\"flex justify-end gap-3\"><button onclick=\"closeDeleteModal()\" class=\"btn btn-secondary\">Cancel</button> <button id=\"confirm-delete-btn\" class=\"btn btn-danger\">Delete</button></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "</div><!-- Delete Confirmation Modal --><div id=\"delete-modal\" class=\"hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center\"><div class=\"bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6\"><h3 class=\"text-lg font-semibold text-gray-900 mb-2\">Delete Project</h3><p class=\"text-sm text-gray-600 mb-4\">Are you sure you want to delete <strong id=\"delete-project-name\"></strong>? This action cannot be undone.</p><div class=\"flex justify-end gap-3\"><button onclick=\"closeDeleteModal()\" class=\"btn btn-secondary\">Cancel</button> <button id=\"confirm-delete-btn\" class=\"btn btn-danger\">Delete</button></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if currentProject != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<script>\n\t\t\tfunction confirmDeleteProject(id, name) {\n\t\t\t\tdocument.getElementById('delete-project-name').textContent = name;\n\t\t\t\tdocument.getElementById('delete-modal').classList.remove('hidden');\n\t\t\t\tdocument.getElementById('confirm-delete-btn').onclick = function() {\n\t\t\t\t\tfetch('/projects/' + id, {\n\t\t\t\t\t\tmethod: 'DELETE',\n\t\t\t\t\t\theaders: {\n\t\t\t\t\t\t\t'Content-Type': 'application/json'\n\t\t\t\t\t\t}\n\t\t\t\t\t}).then(function(resp) {\n\t\t\t\t\t\treturn resp.json();\n\t\t\t\t\t}).then(function(data) {\n\t\t\t\t\t\tif (data.success) {\n\t\t\t\t\t\t\twindow.location.href = '/projects';\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tcloseDeleteModal();\n\t\t\t\t\t\t\tshowToast(data.error || 'Failed to delete project', 'error');\n\t\t\t\t\t\t}\n\t\t\t\t\t}).catch(function() {\n\t\t\t\t\t\tcloseDeleteModal();\n\t\t\t\t\t\tshowToast('Failed to delete project', 'error');\n\t\t\t\t\t});\n\t\t\t\t};\n\t\t\t}\n\n\t\t\tfunction closeDeleteModal() {\n\t\t\t\tdocument.getElementById('delete-modal').classList.add('hidden');\n\t\t\t}\n\t\t</script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "<script>\n\t\t\tfunction confirmDeleteProject(id, name) {\n\t\t\t\tdocument.getElementById('delete-project-name').textContent = name;\n\t\t\t\tdocument.getElementById('delete-modal').classList.remove('hidden');\n\t\t\t\tdocument.getElementById('confirm-delete-btn').onclick = function() {\n\t\t\t\t\tfetch('/projects/' + id, {\n\t\t\t\t\t\tmethod: 'DELETE',\n\t\t\t\t\t\theaders: {\n\t\t\t\t\t\t\t'Content-Type': 'application/json'\n\t\t\t\t\t\t}\n\t\t\t\t\t}).then(function(resp) {\n\t\t\t\t\t\treturn resp.json();\n\t\t\t\t\t}).then(function(data) {\n\t\t\t\t\t\tif (data.success) {\n\t\t\t\t\t\t\twindow.location.href = '/projects';\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tcloseDeleteModal();\n\t\t\t\t\t\t\tshowToast(data.error || 'Failed to delete project', 'error');\n\t\t\t\t\t\t}\n\t\t\t\t\t}).catch(function() {\n\t\t\t\t\t\tcloseDeleteModal();\n\t\t\t\t\t\tshowToast('Failed to delete project', 'error');\n\t\t\t\t\t});\n\t\t\t\t};\n\t\t\t}\n\n\t\t\tfunction closeDeleteModal() {\n\t\t\t\tdocument.getElementById('delete-modal').classList.add('hidden');\n\t\t\t}\n\t\t</script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

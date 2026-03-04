@@ -126,23 +126,105 @@ func UpdateAddressColumnConfig(c echo.Context) error {
 	columnsJSON := c.FormValue("columns_json")
 	if columnsJSON == "" {
 		var columns []models.ColumnDefinition
+
+		// Parse fixed columns — name/required are locked, visibility/order are editable
+		if len(models.FixedColumnsForType(tab)) > 0 {
+			fixedNames := c.Request().Form["fixed_col_name[]"]
+			fixedShowTables := c.Request().Form["fixed_show_table[]"]
+			fixedTableOrders := c.Request().Form["fixed_table_order[]"]
+			fixedShowPrints := c.Request().Form["fixed_show_print[]"]
+			fixedPrintOrders := c.Request().Form["fixed_print_order[]"]
+
+			for i, name := range fixedNames {
+				name = strings.TrimSpace(name)
+				if name == "" {
+					continue
+				}
+				col := models.ColumnDefinition{
+					Name:     name,
+					Required: true,
+					Type:     "text",
+					Fixed:    true,
+				}
+				if i < len(fixedShowTables) {
+					v := fixedShowTables[i] == "true"
+					col.ShowInTable = &v
+				}
+				if i < len(fixedTableOrders) {
+					if order, parseErr := strconv.Atoi(fixedTableOrders[i]); parseErr == nil && order >= 0 {
+						col.TableSortOrder = order
+					}
+				}
+				if i < len(fixedShowPrints) {
+					v := fixedShowPrints[i] == "true"
+					col.ShowInPrint = &v
+				}
+				if i < len(fixedPrintOrders) {
+					if order, parseErr := strconv.Atoi(fixedPrintOrders[i]); parseErr == nil && order >= 0 {
+						col.PrintSortOrder = order
+					}
+				}
+				columns = append(columns, col)
+			}
+		}
+
+		// Build set of fixed column names to skip duplicates in dynamic section
+		fixedNameSet := make(map[string]bool)
+		for _, fc := range models.FixedColumnsForType(tab) {
+			fixedNameSet[fc.Name] = true
+		}
+
+		// Parse dynamic columns
 		names := c.Request().Form["col_name[]"]
 		requireds := c.Request().Form["col_required[]"]
+		showTables := c.Request().Form["col_show_table[]"]
+		tableOrders := c.Request().Form["col_table_order[]"]
+		showPrints := c.Request().Form["col_show_print[]"]
+		printOrders := c.Request().Form["col_print_order[]"]
 
 		for i, name := range names {
 			name = strings.TrimSpace(name)
-			if name == "" {
+			if name == "" || fixedNameSet[name] {
 				continue
 			}
 			req := false
 			if i < len(requireds) && requireds[i] == "true" {
 				req = true
 			}
-			columns = append(columns, models.ColumnDefinition{
+
+			col := models.ColumnDefinition{
 				Name:     name,
 				Required: req,
 				Type:     "text",
-			})
+			}
+
+			// Parse table visibility (default: true)
+			if i < len(showTables) {
+				v := showTables[i] == "true"
+				col.ShowInTable = &v
+			}
+
+			// Parse table sort order
+			if i < len(tableOrders) {
+				if order, err := strconv.Atoi(tableOrders[i]); err == nil && order >= 0 {
+					col.TableSortOrder = order
+				}
+			}
+
+			// Parse print visibility (default: true)
+			if i < len(showPrints) {
+				v := showPrints[i] == "true"
+				col.ShowInPrint = &v
+			}
+
+			// Parse print sort order
+			if i < len(printOrders) {
+				if order, err := strconv.Atoi(printOrders[i]); err == nil && order >= 0 {
+					col.PrintSortOrder = order
+				}
+			}
+
+			columns = append(columns, col)
 		}
 		config.ColumnDefinitions = columns
 	} else {
@@ -193,12 +275,10 @@ func DownloadAddressImportTemplate(c echo.Context) error {
 	}
 
 	var headers []string
-	if tab == "ship_to" {
-		for _, col := range models.FixedShipToColumns() {
-			headers = append(headers, col.Name)
-		}
+	for _, col := range models.FixedColumnsForType(tab) {
+		headers = append(headers, col.Name)
 	}
-	for _, col := range config.ColumnDefinitions {
+	for _, col := range config.DynamicColumns() {
 		headers = append(headers, col.Name)
 	}
 
@@ -251,11 +331,8 @@ func UploadAddressesHandler(c echo.Context) error {
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 
-	// For ship-to, we need to parse fixed columns too
+	// config.ColumnDefinitions already includes fixed columns (via ensureFixedColumns)
 	allColumns := config.ColumnDefinitions
-	if tab == "ship_to" {
-		allColumns = append(models.FixedShipToColumns(), config.ColumnDefinitions...)
-	}
 
 	var rows []map[string]string
 	var parseErr error
@@ -280,8 +357,8 @@ func UploadAddressesHandler(c echo.Context) error {
 		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/addresses?tab=%s", projectID, tab))
 	}
 
-	if len(rows) > 10000 {
-		auth.SetFlash(c.Request(), "error", "Maximum 10,000 rows per upload")
+	if len(rows) > 100000 {
+		auth.SetFlash(c.Request(), "error", "Maximum 100,000 rows per upload")
 		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/addresses?tab=%s", projectID, tab))
 	}
 
@@ -377,11 +454,15 @@ func CreateAddressUnified(c echo.Context) error {
 		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/addresses?tab=%s", projectID, tab))
 	}
 
-	// Collect dynamic column data
+	// Collect dynamic column data (fixed columns are collected separately below)
+	dynamicCols := config.DynamicColumns()
 	data := make(map[string]string)
-	for _, col := range config.ColumnDefinitions {
+	for _, col := range dynamicCols {
 		data[col.Name] = strings.TrimSpace(c.FormValue("field_" + sanitizeFieldName(col.Name)))
 	}
+
+	// Collect address code
+	addressCode := strings.TrimSpace(c.FormValue("address_code"))
 
 	// Collect fixed fields for ship-to
 	var districtName, mandalName, mandalCode string
@@ -397,13 +478,24 @@ func CreateAddressUnified(c echo.Context) error {
 		}
 	}
 
-	errs := database.ValidateAddressData(data, config.ColumnDefinitions)
+	errs := database.ValidateAddressData(data, dynamicCols)
 	if len(errs) > 0 {
 		auth.SetFlash(c.Request(), "error", strings.Join(errs, "; "))
 		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/addresses?tab=%s", projectID, tab))
 	}
 
-	if _, err := database.CreateAddress(config.ID, data, districtName, mandalName, mandalCode); err != nil {
+	// Validate address_code uniqueness
+	if addressCode != "" {
+		unique, err := database.CheckAddressCodeUnique(addressCode, 0)
+		if err != nil {
+			slog.Warn("error checking address code uniqueness", slog.String("error", err.Error()))
+		} else if !unique {
+			auth.SetFlash(c.Request(), "error", "This address code is already in use")
+			return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/addresses?tab=%s", projectID, tab))
+		}
+	}
+
+	if _, err := database.CreateAddress(config.ID, data, districtName, mandalName, mandalCode, addressCode); err != nil {
 		slog.Error("error creating address", slog.String("error", err.Error()), slog.Int("projectID", projectID), slog.String("tab", tab))
 		auth.SetFlash(c.Request(), "error", "Failed to create address")
 		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/addresses?tab=%s", projectID, tab))
@@ -432,16 +524,30 @@ func UpdateAddressUnified(c echo.Context) error {
 		return "bill_to"
 	}())
 
+	// Check if address is used in an issued DC before allowing edit
+	usedInIssued, checkErr := database.IsAddressUsedInIssuedDC(addressID)
+	if checkErr != nil {
+		slog.Error("error checking issued DC usage", slog.String("error", checkErr.Error()), slog.Int("addressID", addressID))
+	}
+	if usedInIssued {
+		auth.SetFlash(c.Request(), "error", "Cannot edit this address because it is used in an issued delivery challan")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/addresses?tab=%s", projectID, tab))
+	}
+
 	config, err := database.GetOrCreateAddressConfig(projectID, tab)
 	if err != nil {
 		auth.SetFlash(c.Request(), "error", "Failed to load config")
 		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/addresses?tab=%s", projectID, tab))
 	}
 
+	dynamicCols := config.DynamicColumns()
 	data := make(map[string]string)
-	for _, col := range config.ColumnDefinitions {
+	for _, col := range dynamicCols {
 		data[col.Name] = strings.TrimSpace(c.FormValue("field_" + sanitizeFieldName(col.Name)))
 	}
+
+	// Collect address code
+	addressCode := strings.TrimSpace(c.FormValue("address_code"))
 
 	var districtName, mandalName, mandalCode string
 	if tab == "ship_to" {
@@ -455,13 +561,24 @@ func UpdateAddressUnified(c echo.Context) error {
 		}
 	}
 
-	errs := database.ValidateAddressData(data, config.ColumnDefinitions)
+	errs := database.ValidateAddressData(data, dynamicCols)
 	if len(errs) > 0 {
 		auth.SetFlash(c.Request(), "error", strings.Join(errs, "; "))
 		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/addresses?tab=%s", projectID, tab))
 	}
 
-	if err := database.UpdateAddress(addressID, data, districtName, mandalName, mandalCode); err != nil {
+	// Validate address_code uniqueness excluding current address
+	if addressCode != "" {
+		unique, err := database.CheckAddressCodeUnique(addressCode, addressID)
+		if err != nil {
+			slog.Warn("error checking address code uniqueness", slog.String("error", err.Error()))
+		} else if !unique {
+			auth.SetFlash(c.Request(), "error", "This address code is already in use")
+			return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/addresses?tab=%s", projectID, tab))
+		}
+	}
+
+	if err := database.UpdateAddress(addressID, data, districtName, mandalName, mandalCode, addressCode); err != nil {
 		slog.Error("error updating address", slog.String("error", err.Error()), slog.Int("addressID", addressID), slog.Int("projectID", projectID))
 		auth.SetFlash(c.Request(), "error", "Failed to update address")
 		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/addresses?tab=%s", projectID, tab))
@@ -490,13 +607,27 @@ func DeleteAddressUnified(c echo.Context) error {
 		return "bill_to"
 	}())
 
+	// Check if address is used in an issued DC before allowing delete
+	usedInIssued, checkErr := database.IsAddressUsedInIssuedDC(addressID)
+	if checkErr != nil {
+		slog.Error("delete address: error checking issued DC usage", slog.String("error", checkErr.Error()), slog.Int("addressID", addressID))
+	}
+	if usedInIssued {
+		return c.JSON(http.StatusConflict, map[string]interface{}{"error": "Cannot delete this address because it is used in an issued delivery challan"})
+	}
+
 	config, err := database.GetOrCreateAddressConfig(projectID, tab)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "Failed to load config"})
+		slog.Error("delete address: failed to load config", slog.String("error", err.Error()), slog.Int("projectID", projectID), slog.String("tab", tab))
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": fmt.Sprintf("Failed to load config: %v", err)})
 	}
 
 	if err := database.DeleteAddress(addressID, config.ID); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "Failed to delete address"})
+		slog.Error("delete address: failed to delete", slog.String("error", err.Error()), slog.Int("addressID", addressID), slog.Int("configID", config.ID), slog.Int("projectID", projectID), slog.String("tab", tab))
+		if strings.Contains(err.Error(), "FOREIGN KEY constraint failed") {
+			return c.JSON(http.StatusConflict, map[string]interface{}{"error": "Cannot delete this address because it is used in one or more delivery challans"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": fmt.Sprintf("Failed to delete address: %v", err)})
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{"success": true})
@@ -518,11 +649,30 @@ func DeleteAllAddressesUnified(c echo.Context) error {
 
 	config, err := database.GetOrCreateAddressConfig(projectID, tab)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "Failed to load config"})
+		slog.Error("delete all addresses: failed to load config", slog.String("error", err.Error()), slog.Int("projectID", projectID), slog.String("tab", tab))
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": fmt.Sprintf("Failed to load config: %v", err)})
+	}
+
+	// Check if any address in this config is used in an issued DC
+	allAddresses, listErr := database.ListAddresses(config.ID, 1, 100000, "")
+	if listErr != nil {
+		slog.Error("delete all addresses: failed to list addresses", slog.String("error", listErr.Error()), slog.Int("configID", config.ID))
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "Failed to check address usage"})
+	}
+	for _, addr := range allAddresses.Addresses {
+		usedInIssued, checkErr := database.IsAddressUsedInIssuedDC(addr.ID)
+		if checkErr != nil {
+			slog.Error("delete all addresses: error checking issued DC usage", slog.String("error", checkErr.Error()), slog.Int("addressID", addr.ID))
+			continue
+		}
+		if usedInIssued {
+			return c.JSON(http.StatusConflict, map[string]interface{}{"error": "Cannot delete all addresses because some are used in issued delivery challans"})
+		}
 	}
 
 	if err := database.DeleteAllAddresses(config.ID); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "Failed to delete addresses"})
+		slog.Error("delete all addresses: failed to delete", slog.String("error", err.Error()), slog.Int("configID", config.ID), slog.Int("projectID", projectID), slog.String("tab", tab))
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": fmt.Sprintf("Failed to delete addresses: %v", err)})
 	}
 
 	auth.SetFlash(c.Request(), "success", "All addresses deleted")
@@ -543,6 +693,7 @@ func GetAddressJSONUnified(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"id":            addr.ID,
+		"address_code":  addr.AddressCode,
 		"data":          addr.Data,
 		"district_name": addr.DistrictName,
 		"mandal_name":   addr.MandalName,
@@ -626,6 +777,19 @@ func parseCSVFile(file io.Reader, columns []models.ColumnDefinition) ([]map[stri
 				row[col.Name] = strings.TrimSpace(record[idx])
 			}
 		}
+
+		// Skip entirely empty rows
+		allEmpty := true
+		for _, v := range row {
+			if v != "" {
+				allEmpty = false
+				break
+			}
+		}
+		if allEmpty {
+			continue
+		}
+
 		rows = append(rows, row)
 	}
 
@@ -676,6 +840,19 @@ func parseExcelFile(file io.Reader, _ interface{}, columns []models.ColumnDefini
 				row[col.Name] = strings.TrimSpace(excelRow[idx])
 			}
 		}
+
+		// Skip entirely empty rows
+		allEmpty := true
+		for _, v := range row {
+			if v != "" {
+				allEmpty = false
+				break
+			}
+		}
+		if allEmpty {
+			continue
+		}
+
 		rows = append(rows, row)
 	}
 

@@ -18,7 +18,7 @@ func transitPrintIDStr(id int) string {
 	return fmt.Sprintf("%d", id)
 }
 
-func TransitPrint(currentProject *models.Project, dc *models.DeliveryChallan) templ.Component {
+func TransitPrint(currentProject *models.Project, dc *models.DeliveryChallan, billFromAddr *models.Address, dispatchFromAddr *models.Address, billFromConfig *models.AddressListConfig, dispatchFromConfig *models.AddressListConfig) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -121,32 +121,32 @@ func TransitPrint(currentProject *models.Project, dc *models.DeliveryChallan) te
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" class=\"inline-flex items-center gap-2 h-9 px-4 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all\">Back to DC</a></div><!-- DC Preview Document --><div class=\"dc-document rounded-lg overflow-hidden print-area\" style=\"background: white; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);\"><div class=\"p-6 sm:p-8 lg:p-10\"><!-- Company Header (project-level) --><div class=\"text-center mb-6 pb-4 border-b-2 border-gray-800\"><h1 class=\"text-lg font-bold text-gray-900 uppercase tracking-wide\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" class=\"inline-flex items-center gap-2 h-9 px-4 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all\">Back to DC</a></div><!-- DC Preview Document --><div class=\"dc-document rounded-lg overflow-hidden print-area\" style=\"background: white; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);\"><div class=\"p-6 sm:p-8 lg:p-10\"><!-- Company Header --><div class=\"text-center mb-6 pb-4 border-b-2 border-gray-800\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var7 string
-		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.Name)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 55, Col: 94}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</h1>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if currentProject.BillFromAddress != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"text-xs text-gray-600 mt-1.5 leading-relaxed max-w-lg mx-auto\">")
+		if billFromAddr != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<h1 class=\"text-lg font-bold text-gray-900 uppercase tracking-wide\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var7 string
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(addressDataValue(billFromAddr, "Company Name"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 56, Col: 122}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</h1><p class=\"text-xs text-gray-600 mt-1.5 leading-relaxed max-w-lg mx-auto\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.BillFromAddress)
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(billFromAddr.DisplayName())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 57, Col: 111}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 57, Col: 107}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -156,286 +156,453 @@ func TransitPrint(currentProject *models.Project, dc *models.DeliveryChallan) te
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-		}
-		if currentProject.CompanyGSTIN != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"text-xs text-gray-700 mt-1 font-semibold font-mono\">GSTIN: ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
+			if addressDataValue(billFromAddr, "GSTIN") != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"text-xs text-gray-700 mt-1 font-semibold font-mono\">GSTIN: ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var9 string
+				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(addressDataValue(billFromAddr, "GSTIN"))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 60, Col: 56}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, " ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if addressDataValue(billFromAddr, "CIN No.") != "" {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<span class=\"ml-4\">CIN: ")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var10 string
+					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(addressDataValue(billFromAddr, "CIN No."))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 62, Col: 76}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</span>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			var templ_7745c5c3_Var9 string
-			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.CompanyGSTIN)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 60, Col: 104}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</p>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div><!-- DC Title --><div class=\"text-center mb-6\"><h2 class=\"text-base font-bold text-gray-900 uppercase tracking-widest border border-gray-300 inline-block px-8 py-1.5\">Delivery Challan</h2></div><!-- Two Column Header --><div class=\"grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5 text-xs\"><!-- Left Column: DC Details --><div class=\"border border-gray-200 rounded p-3 space-y-1.5\"><div class=\"flex justify-between\"><span class=\"text-gray-500 font-medium\">DC No:</span> <span class=\"font-semibold text-gray-800 font-mono\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var10 string
-		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(dc.DCNumber)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 73, Col: 72}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</span></div>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if dc.ChallanDate != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"flex justify-between\"><span class=\"text-gray-500 font-medium\">Date:</span> <span class=\"text-gray-800\">")
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<h1 class=\"text-lg font-bold text-gray-900 uppercase tracking-wide\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 string
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(*dc.ChallanDate)
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 78, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 67, Col: 95}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</span></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</h1>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if currentProject.BillFromAddress != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"text-xs text-gray-600 mt-1.5 leading-relaxed max-w-lg mx-auto\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var12 string
+				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.BillFromAddress)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 69, Col: 112}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, " ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if currentProject.CompanyGSTIN != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<p class=\"text-xs text-gray-700 mt-1 font-semibold font-mono\">GSTIN: ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var13 string
+				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.CompanyGSTIN)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 72, Col: 105}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</div><!-- DC Title --><div class=\"text-center mb-6\"><h2 class=\"text-base font-bold text-gray-900 uppercase tracking-widest border border-gray-300 inline-block px-8 py-1.5\">Delivery Challan</h2></div><!-- Two Column Header --><div class=\"grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5 text-xs\"><!-- Left Column: DC Details --><div class=\"border border-gray-200 rounded p-3 space-y-1.5\"><div class=\"flex justify-between\"><span class=\"text-gray-500 font-medium\">DC No:</span> <span class=\"font-semibold text-gray-800 font-mono\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var14 string
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(dc.DCNumber)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 86, Col: 72}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</span></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if dc.ChallanDate != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div class=\"flex justify-between\"><span class=\"text-gray-500 font-medium\">Date:</span> <span class=\"text-gray-800\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var15 string
+			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(*dc.ChallanDate)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 91, Col: 53}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</span></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div class=\"flex justify-between\"><span class=\"text-gray-500 font-medium\">Type:</span> <span class=\"text-gray-800\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div class=\"flex justify-between\"><span class=\"text-gray-500 font-medium\">Type:</span> <span class=\"text-gray-800\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var12 string
-		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(dc.DCType)
+		var templ_7745c5c3_Var16 string
+		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(dc.DCType)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 83, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 96, Col: 46}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</span></div><div class=\"flex justify-between\"><span class=\"text-gray-500 font-medium\">Reverse Charge:</span> <span class=\"text-gray-800\">No</span></div></div><!-- Right Column: Project/PO Details --><div class=\"border border-gray-200 rounded p-3 space-y-1.5\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</span></div><div class=\"flex justify-between\"><span class=\"text-gray-500 font-medium\">Reverse Charge:</span> <span class=\"text-gray-800\">No</span></div></div><!-- Right Column: Project/PO Details --><div class=\"border border-gray-200 rounded p-3 space-y-1.5\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if currentProject.POReference != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"flex justify-between\"><span class=\"text-gray-500 font-medium\">PO Number:</span> <span class=\"font-semibold text-gray-800 font-mono\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<div class=\"flex justify-between\"><span class=\"text-gray-500 font-medium\">PO Number:</span> <span class=\"font-semibold text-gray-800 font-mono\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.POReference)
+			var templ_7745c5c3_Var17 string
+			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.POReference)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 95, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 108, Col: 88}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</span></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</span></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if currentProject.PODate != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<div class=\"flex justify-between\"><span class=\"text-gray-500 font-medium\">PO Date:</span> <span class=\"text-gray-800\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var14 string
-			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(*currentProject.PODate)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 101, Col: 60}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</span></div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<div class=\"flex justify-between\"><span class=\"text-gray-500 font-medium\">Project:</span> <span class=\"text-gray-800\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var15 string
-		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.Name)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 107, Col: 29}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, " ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if currentProject.Description != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<span>&nbsp;&mdash;&nbsp;")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var16 string
-			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.Description)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 109, Col: 62}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</span>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</span></div></div></div><!-- Address Blocks --><div class=\"grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6\"><!-- Bill From --><div class=\"border border-gray-200 rounded p-3\"><p class=\"text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1\">Bill From</p><p class=\"text-xs font-semibold text-gray-800\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var17 string
-		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.Name)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 120, Col: 74}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</p>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if currentProject.BillFromAddress != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-xs text-gray-600 leading-relaxed\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<div class=\"flex justify-between\"><span class=\"text-gray-500 font-medium\">PO Date:</span> <span class=\"text-gray-800\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 string
-			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.BillFromAddress)
+			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(*currentProject.PODate)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 122, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 114, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</span></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		if currentProject.CompanyGSTIN != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<p class=\"text-xs text-gray-600 mt-0.5\"><span class=\"font-medium\">GSTIN:</span> ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var19 string
-			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.CompanyGSTIN)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 126, Col: 77}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</p>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</div><!-- Dispatch From --><div class=\"border border-gray-200 rounded p-3\"><p class=\"text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1\">Dispatch From</p><p class=\"text-xs font-semibold text-gray-800\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<div class=\"flex justify-between\"><span class=\"text-gray-500 font-medium\">Project:</span> <span class=\"text-gray-800\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var20 string
-		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.Name)
+		var templ_7745c5c3_Var19 string
+		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 133, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 120, Col: 29}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</p>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if currentProject.DispatchFromAddress != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<p class=\"text-xs text-gray-600 leading-relaxed\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var21 string
-			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.DispatchFromAddress)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 135, Col: 92}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</p>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</div></div><!-- Product Table --><div class=\"overflow-x-auto mb-6 -mx-2 px-2\"><table class=\"w-full border-collapse\" style=\"min-width: 820px;\"><thead><tr><th style=\"width: 36px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">S.No</th><th style=\"width: 140px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">Item Description</th><th style=\"width: 110px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">Serial Nos</th><th style=\"width: 40px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">UoM</th><th style=\"width: 50px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">HSN Code</th><th style=\"width: 36px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">Qty</th><th style=\"width: 80px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">Per Unit Price</th><th style=\"width: 80px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">Taxable Value</th><th style=\"width: 40px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">GST %</th><th style=\"width: 75px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">GST Amount</th><th style=\"width: 80px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">Total Value</th></tr></thead> <tbody><!-- Line items are populated server-side; this templ renders the shell.\n\t\t\t\t\t\t\t     Actual line items rendered via server-rendered data injection. --></tbody></table></div><!-- Tax Summary --><div class=\"flex justify-end mb-6\"><div class=\"w-full sm:w-72 border border-gray-200 rounded overflow-hidden text-xs\"><div class=\"flex justify-between px-3 py-2 border-b border-gray-100\"><span class=\"text-gray-500\">Taxable Value</span> <span class=\"font-semibold text-gray-800 font-mono\">—</span></div><div class=\"flex justify-between px-3 py-2 border-b border-gray-100\"><span class=\"text-gray-500\">CGST</span> <span class=\"font-semibold text-gray-800 font-mono\">—</span></div><div class=\"flex justify-between px-3 py-2 border-b border-gray-100\"><span class=\"text-gray-500\">SGST</span> <span class=\"font-semibold text-gray-800 font-mono\">—</span></div><div class=\"flex justify-between px-3 py-2 border-b border-gray-100\"><span class=\"text-gray-500\">Round Off</span> <span class=\"font-semibold text-gray-800 font-mono\">—</span></div><div class=\"flex justify-between px-3 py-2.5 bg-gray-50\"><span class=\"font-bold text-gray-900\">Invoice Value</span> <span class=\"font-bold text-gray-900 font-mono\">—</span></div></div></div><!-- Amount in Words --><div class=\"border border-gray-200 rounded p-3 mb-6\"><p class=\"text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5\">Amount in Words</p><p class=\"text-xs font-semibold text-gray-800\">—</p></div><!-- Signature Section --><div class=\"grid grid-cols-2 gap-8 pt-4 border-t border-gray-200\"><!-- Receiver --><div><p class=\"text-xs font-semibold text-gray-700 mb-10\">Receiver&#39;s Signature</p><div class=\"border-b border-gray-300 mb-1\"></div><p class=\"text-[10px] text-gray-400\">Name: _________________________</p></div><!-- Authorised Signatory --><div class=\"text-right\"><p class=\"text-xs font-semibold text-gray-700 mb-2\">For ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, " ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var22 string
-		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.Name)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 208, Col: 83}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</p><div class=\"h-12 mb-2 flex items-end justify-end\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if currentProject.CompanySignaturePath != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<img src=\"")
+		if currentProject.Description != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<span>&nbsp;&mdash;&nbsp;")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var23 string
-			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.CompanySignaturePath)
+			var templ_7745c5c3_Var20 string
+			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.Description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 211, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 122, Col: 62}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" alt=\"Signature\" class=\"h-10\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</span>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</span></div></div></div><!-- Address Blocks --><div class=\"grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6\"><!-- Bill From --><div class=\"border border-gray-200 rounded p-3\"><p class=\"text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1\">Bill From</p>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if billFromAddr != nil {
+			for _, v := range filteredAddressLines(billFromAddr, billFromConfig) {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<p class=\"text-xs text-gray-600\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var21 string
+				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(v)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 135, Col: 44}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<p class=\"text-xs font-semibold text-gray-800\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var22 string
+			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.Name)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 138, Col: 75}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if currentProject.BillFromAddress != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<p class=\"text-xs text-gray-600 leading-relaxed\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var23 string
+				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.BillFromAddress)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 140, Col: 89}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, " ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if currentProject.CompanyGSTIN != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<p class=\"text-xs text-gray-600 mt-0.5\"><span class=\"font-medium\">GSTIN:</span> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var24 string
+				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.CompanyGSTIN)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 144, Col: 78}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "</div><!-- Dispatch From --><div class=\"border border-gray-200 rounded p-3\"><p class=\"text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1\">Dispatch From</p>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if dispatchFromAddr != nil {
+			for _, v := range filteredAddressLines(dispatchFromAddr, dispatchFromConfig) {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<p class=\"text-xs text-gray-600\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var25 string
+				templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(v)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 154, Col: 44}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<p class=\"text-xs font-semibold text-gray-800\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var26 string
+			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.Name)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 157, Col: 75}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if currentProject.DispatchFromAddress != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<p class=\"text-xs text-gray-600 leading-relaxed\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var27 string
+				templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.DispatchFromAddress)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 159, Col: 93}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "</div></div><!-- Product Table --><div class=\"overflow-x-auto mb-6 -mx-2 px-2\"><table class=\"w-full border-collapse\" style=\"min-width: 820px;\"><thead><tr><th style=\"width: 36px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">S.No</th><th style=\"width: 140px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">Item Description</th><th style=\"width: 110px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">Serial Nos</th><th style=\"width: 40px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">UoM</th><th style=\"width: 50px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">HSN Code</th><th style=\"width: 36px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">Qty</th><th style=\"width: 80px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">Per Unit Price</th><th style=\"width: 80px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">Taxable Value</th><th style=\"width: 40px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">GST %</th><th style=\"width: 75px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">GST Amount</th><th style=\"width: 80px; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-weight: 600; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.025em; color: #334155;\">Total Value</th></tr></thead> <tbody><!-- Line items are populated server-side; this templ renders the shell.\n\t\t\t\t\t\t\t     Actual line items rendered via server-rendered data injection. --></tbody></table></div><!-- Tax Summary --><div class=\"flex justify-end mb-6\"><div class=\"w-full sm:w-72 border border-gray-200 rounded overflow-hidden text-xs\"><div class=\"flex justify-between px-3 py-2 border-b border-gray-100\"><span class=\"text-gray-500\">Taxable Value</span> <span class=\"font-semibold text-gray-800 font-mono\">—</span></div><div class=\"flex justify-between px-3 py-2 border-b border-gray-100\"><span class=\"text-gray-500\">CGST</span> <span class=\"font-semibold text-gray-800 font-mono\">—</span></div><div class=\"flex justify-between px-3 py-2 border-b border-gray-100\"><span class=\"text-gray-500\">SGST</span> <span class=\"font-semibold text-gray-800 font-mono\">—</span></div><div class=\"flex justify-between px-3 py-2 border-b border-gray-100\"><span class=\"text-gray-500\">Round Off</span> <span class=\"font-semibold text-gray-800 font-mono\">—</span></div><div class=\"flex justify-between px-3 py-2.5 bg-gray-50\"><span class=\"font-bold text-gray-900\">Invoice Value</span> <span class=\"font-bold text-gray-900 font-mono\">—</span></div></div></div><!-- Amount in Words --><div class=\"border border-gray-200 rounded p-3 mb-6\"><p class=\"text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5\">Amount in Words</p><p class=\"text-xs font-semibold text-gray-800\">—</p></div><!-- Signature Section --><div class=\"grid grid-cols-2 gap-8 pt-4 border-t border-gray-200\"><!-- Receiver --><div><p class=\"text-xs font-semibold text-gray-700 mb-10\">Receiver&#39;s Signature</p><div class=\"border-b border-gray-300 mb-1\"></div><p class=\"text-[10px] text-gray-400\">Name: _________________________</p></div><!-- Authorised Signatory --><div class=\"text-right\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if billFromAddr != nil && addressDataValue(billFromAddr, "Company Name") != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<p class=\"text-xs font-semibold text-gray-700 mb-2\">For ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var28 string
+			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(addressDataValue(billFromAddr, "Company Name"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 234, Col: 111}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<div class=\"w-32 h-10 border border-dashed border-gray-300 rounded flex items-center justify-center\"><span class=\"text-[10px] text-gray-300 italic\">Signature</span></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<p class=\"text-xs font-semibold text-gray-700 mb-2\">For ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var29 string
+			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.Name)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 236, Col: 84}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</div><p class=\"text-xs font-semibold text-gray-600\">Authorised Signatory</p></div></div></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<div class=\"h-12 mb-2 flex items-end justify-end\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if currentProject.CompanySignaturePath != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "<img src=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var30 string
+			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(currentProject.CompanySignaturePath)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/transit_print.templ`, Line: 240, Col: 54}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\" alt=\"Signature\" class=\"h-10\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "<div class=\"w-32 h-10 border border-dashed border-gray-300 rounded flex items-center justify-center\"><span class=\"text-[10px] text-gray-300 italic\">Signature</span></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</div><p class=\"text-xs font-semibold text-gray-600\">Authorised Signatory</p></div></div></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

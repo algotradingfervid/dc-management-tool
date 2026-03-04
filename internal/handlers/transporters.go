@@ -2,10 +2,14 @@ package handlers
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gorilla/csrf"
 	"github.com/labstack/echo/v4"
@@ -103,7 +107,7 @@ func CreateTransporterHandler(c echo.Context) error {
 		IsActive:      true,
 	}
 
-	errors := helpers.ValidateStruct(&transporter)
+	errors := helpers.ValidateStruct(transporter)
 
 	if len(errors) > 0 {
 		return components.RenderOK(c, htmxtransporters.TransporterForm(htmxtransporters.TransporterFormProps{
@@ -184,7 +188,7 @@ func UpdateTransporterHandler(c echo.Context) error {
 		IsActive:      existing.IsActive,
 	}
 
-	errors := helpers.ValidateStruct(&transporter)
+	errors := helpers.ValidateStruct(transporter)
 
 	if len(errors) > 0 {
 		return components.RenderOK(c, htmxtransporters.TransporterForm(htmxtransporters.TransporterFormProps{
@@ -286,7 +290,64 @@ func ShowTransporterDetail(c echo.Context) error {
 	return components.RenderOK(c, layouts.MainWithContent("Transporter Details", sidebar, topbar, flashMessage, flashType, pageContent))
 }
 
+// saveVehicleDocument saves an uploaded vehicle document file and returns the URL path.
+// Returns "" if no file was provided.
+func saveVehicleDocument(c echo.Context, fieldName string, vehicleID int, prefix string) (string, error) {
+	fh, err := c.FormFile(fieldName)
+	if err != nil {
+		// No file provided — not an error
+		return "", nil
+	}
+
+	const maxSize = 5 * 1024 * 1024 // 5 MB
+	if fh.Size > maxSize {
+		return "", fmt.Errorf("file too large (max 5MB)")
+	}
+
+	ext := strings.ToLower(filepath.Ext(fh.Filename))
+	allowed := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".pdf": true}
+	if !allowed[ext] {
+		return "", fmt.Errorf("unsupported file type %q — use JPG, PNG, or PDF", ext)
+	}
+
+	uploadRoot := os.Getenv("UPLOAD_PATH")
+	if uploadRoot == "" {
+		uploadRoot = "./static/uploads"
+	}
+	dir := filepath.Join(uploadRoot, "vehicles")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", fmt.Errorf("cannot create upload directory: %w", err)
+	}
+
+	filename := fmt.Sprintf("%s_%d_%d%s", prefix, vehicleID, time.Now().UnixMilli(), ext)
+	dst := filepath.Join(dir, filename)
+
+	src, err := fh.Open()
+	if err != nil {
+		return "", fmt.Errorf("cannot open uploaded file: %w", err)
+	}
+	defer src.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return "", fmt.Errorf("cannot create destination file: %w", err)
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, src); err != nil {
+		return "", fmt.Errorf("cannot save file: %w", err)
+	}
+
+	return "/static/uploads/vehicles/" + filename, nil
+}
+
 func AddVehicleHandler(c echo.Context) error {
+	// Parse multipart form explicitly; gorilla/csrf reads the CSRF token from
+	// the X-CSRF-Token header (set by hx-headers), so it never consumes the body.
+	if err := c.Request().ParseMultipartForm(32 << 20); err != nil {
+		slog.Error("AddVehicleHandler: failed to parse multipart form", slog.String("error", err.Error()))
+	}
+
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid project ID"})
@@ -315,14 +376,32 @@ func AddVehicleHandler(c echo.Context) error {
 		vehicle.VehicleType = "truck"
 	}
 
-	errors := helpers.ValidateStruct(&vehicle)
-	if len(errors) > 0 {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": errors["vehicle_number"]})
+	errs := helpers.ValidateStruct(vehicle)
+	if len(errs) > 0 {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": errs["vehicle_number"]})
 	}
 
 	if err := database.CreateVehicle(vehicle); err != nil {
 		slog.Error("Error adding vehicle", slog.String("error", err.Error()), slog.Int("transporterID", transporterID))
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "Failed to add vehicle"})
+	}
+
+	// Save document images (optional); vehicle.ID is now set after insert
+	rcPath, err := saveVehicleDocument(c, "rc_image", vehicle.ID, "rc")
+	if err != nil {
+		slog.Warn("RC image upload failed", slog.String("error", err.Error()), slog.Int("vehicleID", vehicle.ID))
+		rcPath = ""
+	}
+	dlPath, err := saveVehicleDocument(c, "driver_license", vehicle.ID, "dl")
+	if err != nil {
+		slog.Warn("Driver license upload failed", slog.String("error", err.Error()), slog.Int("vehicleID", vehicle.ID))
+		dlPath = ""
+	}
+
+	if rcPath != "" || dlPath != "" {
+		if err := database.UpdateVehicleImagePaths(vehicle.ID, rcPath, dlPath); err != nil {
+			slog.Error("Error saving vehicle image paths", slog.String("error", err.Error()), slog.Int("vehicleID", vehicle.ID))
+		}
 	}
 
 	vehicles, _ := database.GetVehiclesByTransporterID(transporterID)

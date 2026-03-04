@@ -223,20 +223,23 @@ func (q *Queries) GetTransportersByProjectID(ctx context.Context, projectID int6
 
 const GetVehicleByID = `-- name: GetVehicleByID :one
 SELECT id, transporter_id, vehicle_number, vehicle_type,
-       driver_name, driver_phone1, driver_phone2, created_at
+       driver_name, driver_phone1, driver_phone2, created_at,
+       rc_image_path, driver_license_path
 FROM transporter_vehicles
 WHERE id = ?
 `
 
 type GetVehicleByIDRow struct {
-	ID            int64
-	TransporterID int64
-	VehicleNumber string
-	VehicleType   sql.NullString
-	DriverName    sql.NullString
-	DriverPhone1  sql.NullString
-	DriverPhone2  sql.NullString
-	CreatedAt     sql.NullTime
+	ID                int64
+	TransporterID     int64
+	VehicleNumber     string
+	VehicleType       sql.NullString
+	DriverName        sql.NullString
+	DriverPhone1      sql.NullString
+	DriverPhone2      sql.NullString
+	CreatedAt         sql.NullTime
+	RcImagePath       string
+	DriverLicensePath string
 }
 
 func (q *Queries) GetVehicleByID(ctx context.Context, id int64) (GetVehicleByIDRow, error) {
@@ -251,27 +254,32 @@ func (q *Queries) GetVehicleByID(ctx context.Context, id int64) (GetVehicleByIDR
 		&i.DriverPhone1,
 		&i.DriverPhone2,
 		&i.CreatedAt,
+		&i.RcImagePath,
+		&i.DriverLicensePath,
 	)
 	return i, err
 }
 
 const GetVehiclesByTransporterID = `-- name: GetVehiclesByTransporterID :many
 SELECT id, transporter_id, vehicle_number, vehicle_type,
-       driver_name, driver_phone1, driver_phone2, created_at
+       driver_name, driver_phone1, driver_phone2, created_at,
+       rc_image_path, driver_license_path
 FROM transporter_vehicles
 WHERE transporter_id = ?
 ORDER BY vehicle_number ASC
 `
 
 type GetVehiclesByTransporterIDRow struct {
-	ID            int64
-	TransporterID int64
-	VehicleNumber string
-	VehicleType   sql.NullString
-	DriverName    sql.NullString
-	DriverPhone1  sql.NullString
-	DriverPhone2  sql.NullString
-	CreatedAt     sql.NullTime
+	ID                int64
+	TransporterID     int64
+	VehicleNumber     string
+	VehicleType       sql.NullString
+	DriverName        sql.NullString
+	DriverPhone1      sql.NullString
+	DriverPhone2      sql.NullString
+	CreatedAt         sql.NullTime
+	RcImagePath       string
+	DriverLicensePath string
 }
 
 func (q *Queries) GetVehiclesByTransporterID(ctx context.Context, transporterID int64) ([]GetVehiclesByTransporterIDRow, error) {
@@ -292,6 +300,8 @@ func (q *Queries) GetVehiclesByTransporterID(ctx context.Context, transporterID 
 			&i.DriverPhone1,
 			&i.DriverPhone2,
 			&i.CreatedAt,
+			&i.RcImagePath,
+			&i.DriverLicensePath,
 		); err != nil {
 			return nil, err
 		}

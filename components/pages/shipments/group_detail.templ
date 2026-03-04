@@ -61,7 +61,9 @@ templ GroupDetail(
 				</div>
 			</div>
 			<div class="flex items-center gap-2">
+				<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments", currentProject.ID)) } class="btn btn-secondary text-sm">Back to Shipments</a>
 				if group.Status == "draft" {
+					<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/%d/edit", currentProject.ID, group.ID)) } class="btn btn-secondary text-sm">Edit Draft</a>
 					<button
 						type="button"
 						onclick="issueAllDCs()"
@@ -70,7 +72,6 @@ templ GroupDetail(
 						Issue All DCs
 					</button>
 				}
-				<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments", currentProject.ID)) } class="btn btn-secondary text-sm">Back to Shipments</a>
 			</div>
 		</div>
 		<!-- Group Info -->

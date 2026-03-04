@@ -16,14 +16,16 @@ type Transporter struct {
 }
 
 type TransporterVehicle struct {
-	ID            int       `json:"id"`
-	TransporterID int       `json:"transporter_id"`
-	VehicleNumber string    `json:"vehicle_number" validate:"required,max=50"`
-	VehicleType   string    `json:"vehicle_type" validate:"required,max=50"`
-	DriverName    string    `json:"driver_name" validate:"required,max=255"`
-	DriverPhone1  string    `json:"driver_phone1" validate:"required,max=15"`
-	DriverPhone2  string    `json:"driver_phone2" validate:"omitempty,max=15"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID                int       `json:"id"`
+	TransporterID     int       `json:"transporter_id"`
+	VehicleNumber     string    `json:"vehicle_number" validate:"required,max=50"`
+	VehicleType       string    `json:"vehicle_type" validate:"required,max=50"`
+	DriverName        string    `json:"driver_name" validate:"required,max=255"`
+	DriverPhone1      string    `json:"driver_phone1" validate:"required,max=15"`
+	DriverPhone2      string    `json:"driver_phone2" validate:"omitempty,max=15"`
+	RcImagePath       string    `json:"rc_image_path"`
+	DriverLicensePath string    `json:"driver_license_path"`
+	CreatedAt         time.Time `json:"created_at"`
 }
 
 type TransporterPage struct {

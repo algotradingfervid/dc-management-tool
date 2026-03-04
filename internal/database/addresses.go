@@ -25,6 +25,7 @@ func mapAddressRow(r db.GetAddressRow) *models.Address {
 		DistrictName: r.DistrictName,
 		MandalName:   r.MandalName,
 		MandalCode:   r.MandalCode,
+		AddressCode:  r.AddressCode.String,
 		CreatedAt:    r.CreatedAt.Time,
 		UpdatedAt:    r.UpdatedAt.Time,
 	}
@@ -39,6 +40,7 @@ func mapListAddressesRow(r db.ListAddressesRow) *models.Address {
 		DistrictName: r.DistrictName,
 		MandalName:   r.MandalName,
 		MandalCode:   r.MandalCode,
+		AddressCode:  r.AddressCode.String,
 		CreatedAt:    r.CreatedAt.Time,
 		UpdatedAt:    r.UpdatedAt.Time,
 	}
@@ -53,6 +55,7 @@ func mapListAddressesWithSearchRow(r db.ListAddressesWithSearchRow) *models.Addr
 		DistrictName: r.DistrictName,
 		MandalName:   r.MandalName,
 		MandalCode:   r.MandalCode,
+		AddressCode:  r.AddressCode.String,
 		CreatedAt:    r.CreatedAt.Time,
 		UpdatedAt:    r.UpdatedAt.Time,
 	}
@@ -67,6 +70,7 @@ func mapSearchAddressesForSelectorRow(r db.SearchAddressesForSelectorRow) *model
 		DistrictName: r.DistrictName,
 		MandalName:   r.MandalName,
 		MandalCode:   r.MandalCode,
+		AddressCode:  r.AddressCode.String,
 		CreatedAt:    r.CreatedAt.Time,
 		UpdatedAt:    r.UpdatedAt.Time,
 	}
@@ -81,6 +85,7 @@ func mapSearchAddressesForSelectorSimpleRow(r db.SearchAddressesForSelectorSimpl
 		DistrictName: r.DistrictName,
 		MandalName:   r.MandalName,
 		MandalCode:   r.MandalCode,
+		AddressCode:  r.AddressCode.String,
 		CreatedAt:    r.CreatedAt.Time,
 		UpdatedAt:    r.UpdatedAt.Time,
 	}
@@ -95,6 +100,7 @@ func mapSearchAddressesNoFilterRow(r db.SearchAddressesNoFilterRow) *models.Addr
 		DistrictName: r.DistrictName,
 		MandalName:   r.MandalName,
 		MandalCode:   r.MandalCode,
+		AddressCode:  r.AddressCode.String,
 		CreatedAt:    r.CreatedAt.Time,
 		UpdatedAt:    r.UpdatedAt.Time,
 	}
@@ -203,6 +209,7 @@ func BulkInsertAddresses(configID int, addresses []*models.Address) error {
 			DistrictName: addr.DistrictName,
 			MandalName:   addr.MandalName,
 			MandalCode:   addr.MandalCode,
+			AddressCode:  sql.NullString{String: addr.AddressCode, Valid: addr.AddressCode != ""},
 		})
 		if err != nil {
 			return fmt.Errorf("failed to insert address: %w", err)
@@ -335,7 +342,7 @@ func CountAddresses(configID int) (int, error) {
 }
 
 // CreateAddress inserts a single address.
-func CreateAddress(configID int, data map[string]string, districtName, mandalName, mandalCode string) (int, error) {
+func CreateAddress(configID int, data map[string]string, districtName, mandalName, mandalCode, addressCode string) (int, error) {
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
 		return 0, err
@@ -347,6 +354,7 @@ func CreateAddress(configID int, data map[string]string, districtName, mandalNam
 		DistrictName: districtName,
 		MandalName:   mandalName,
 		MandalCode:   mandalCode,
+		AddressCode:  sql.NullString{String: addressCode, Valid: addressCode != ""},
 	})
 	if err != nil {
 		return 0, err
@@ -373,7 +381,7 @@ func GetAddress(addressID int) (*models.Address, error) {
 }
 
 // UpdateAddress updates a single address's data.
-func UpdateAddress(addressID int, data map[string]string, districtName, mandalName, mandalCode string) error {
+func UpdateAddress(addressID int, data map[string]string, districtName, mandalName, mandalCode, addressCode string) error {
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -384,6 +392,7 @@ func UpdateAddress(addressID int, data map[string]string, districtName, mandalNa
 		DistrictName: districtName,
 		MandalName:   mandalName,
 		MandalCode:   mandalCode,
+		AddressCode:  sql.NullString{String: addressCode, Valid: addressCode != ""},
 		ID:           int64(addressID),
 	})
 }
@@ -467,4 +476,40 @@ func SearchAddressesForSelector(configID int, search string, addressType string,
 	}
 
 	return addresses, nil
+}
+
+// CheckAddressCodeUnique checks if an address code is unique. If excludeID > 0, excludes that address from the check.
+func CheckAddressCodeUnique(addressCode string, excludeID int) (bool, error) {
+	ctx := context.Background()
+	q := addressQueries()
+	if excludeID > 0 {
+		count, err := q.CheckAddressCodeUniqueExcludeID(ctx, db.CheckAddressCodeUniqueExcludeIDParams{
+			AddressCode: sql.NullString{String: addressCode, Valid: addressCode != ""},
+			ID:          int64(excludeID),
+		})
+		if err != nil {
+			return false, err
+		}
+		return count == 0, nil
+	}
+	count, err := q.CheckAddressCodeUnique(ctx, sql.NullString{String: addressCode, Valid: addressCode != ""})
+	if err != nil {
+		return false, err
+	}
+	return count == 0, nil
+}
+
+// IsAddressUsedInIssuedDC checks if an address is referenced by any issued delivery challan.
+func IsAddressUsedInIssuedDC(addressID int) (bool, error) {
+	var count int
+	err := DB.QueryRow(
+		`SELECT COUNT(*) FROM delivery_challans
+		 WHERE status = 'issued'
+		   AND (bill_to_address_id = ? OR ship_to_address_id = ?)`,
+		addressID, addressID,
+	).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }

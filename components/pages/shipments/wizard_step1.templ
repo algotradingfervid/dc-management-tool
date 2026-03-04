@@ -2,6 +2,7 @@ package shipments
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
@@ -15,28 +16,48 @@ templ WizardStep1(
 	flashType string,
 	flashMessage string,
 	csrfToken string,
+	editGroupID int,
+	prefill *ShipStep1Prefill,
 ) {
 	<div class="max-w-4xl mx-auto">
-		<h1 class="text-2xl font-bold mb-6">Create New Shipment - Step 1: Basic Details</h1>
-		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/new/step2", currentProject.ID)) }>
+		if editGroupID > 0 {
+			<h1 class="text-2xl font-bold mb-6">Edit Shipment — Step 1: Basic Details</h1>
+		} else {
+			<h1 class="text-2xl font-bold mb-6">Create New Shipment - Step 1: Basic Details</h1>
+		}
+		<form
+			method="POST"
+			if editGroupID > 0 {
+				action={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/%d/edit/step2", currentProject.ID, editGroupID)) }
+			} else {
+				action={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/new/step2", currentProject.ID)) }
+			}
+		>
 			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			if editGroupID > 0 {
+				<input type="hidden" name="edit_group_id" value={ strconv.Itoa(editGroupID) }/>
+			}
 			<div class="bg-white shadow rounded-lg p-6 space-y-4">
 				<div>
 					<label class="block text-sm font-medium text-gray-700">Template</label>
 					<select name="template_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
 						<option value="">Select a template...</option>
 						for _, t := range templates {
-							<option value={ fmt.Sprintf("%d", t.ID) }>{ t.Name }</option>
+							if prefill != nil && prefill.TemplateID != nil && *prefill.TemplateID == t.ID {
+								<option value={ fmt.Sprintf("%d", t.ID) } selected>{ t.Name }</option>
+							} else {
+								<option value={ fmt.Sprintf("%d", t.ID) }>{ t.Name }</option>
+							}
 						}
 					</select>
 				</div>
 				<div>
 					<label class="block text-sm font-medium text-gray-700">Number of Sets</label>
-					<input type="number" name="num_sets" min="1" value="1" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
+					<input type="number" name="num_sets" min="1" value={ prefillNumSets(prefill) } required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
 				</div>
 				<div>
 					<label class="block text-sm font-medium text-gray-700">Challan Date</label>
-					<input type="date" name="challan_date" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
+					<input type="date" name="challan_date" value={ prefillStr(prefill, func(p *ShipStep1Prefill) string { return p.ChallanDate }) } required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
 				</div>
 				<div>
 					<label class="block text-sm font-medium text-gray-700">Transporter</label>
@@ -46,7 +67,7 @@ templ WizardStep1(
 							<option value={ fmt.Sprintf("%d", t.ID) } data-vehicles={ vehiclesJSON(t.Vehicles) }>{ t.CompanyName }</option>
 						}
 					</select>
-					<input type="hidden" name="transporter_name" id="transporter-name-hidden"/>
+					<input type="hidden" name="transporter_name" id="transporter-name-hidden" value={ prefillStr(prefill, func(p *ShipStep1Prefill) string { return p.TransporterName }) }/>
 				</div>
 				<div>
 					<label class="block text-sm font-medium text-gray-700">Vehicle</label>
@@ -58,24 +79,40 @@ templ WizardStep1(
 				</div>
 				<div>
 					<label class="block text-sm font-medium text-gray-700">E-Way Bill Number</label>
-					<input type="text" name="eway_bill_number" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
+					<input type="text" name="eway_bill_number" value={ prefillStr(prefill, func(p *ShipStep1Prefill) string { return p.EwayBillNumber }) } class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
 				</div>
 				<div>
 					<label class="block text-sm font-medium text-gray-700">Docket Number</label>
-					<input type="text" name="docket_number" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
+					<input type="text" name="docket_number" value={ prefillStr(prefill, func(p *ShipStep1Prefill) string { return p.DocketNumber }) } class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
 				</div>
 				<div>
 					<label class="block text-sm font-medium text-gray-700">Tax Type</label>
 					<select name="tax_type" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-						<option value="cgst_sgst">CGST + SGST</option>
-						<option value="igst">IGST</option>
+						<option value="cgst_sgst"
+							if prefill != nil && prefill.TaxType == "cgst_sgst" {
+								selected
+							}
+						>CGST + SGST</option>
+						<option value="igst"
+							if prefill != nil && prefill.TaxType == "igst" {
+								selected
+							}
+						>IGST</option>
 					</select>
 				</div>
 				<div>
 					<label class="block text-sm font-medium text-gray-700">Reverse Charge</label>
 					<select name="reverse_charge" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-						<option value="N">No</option>
-						<option value="Y">Yes</option>
+						<option value="N"
+							if prefill != nil && prefill.ReverseCharge == "N" {
+								selected
+							}
+						>No</option>
+						<option value="Y"
+							if prefill != nil && prefill.ReverseCharge == "Y" {
+								selected
+							}
+						>Yes</option>
 					</select>
 				</div>
 			</div>

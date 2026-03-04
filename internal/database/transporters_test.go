@@ -48,6 +48,8 @@ func setupTestDB(t *testing.T) func() {
 		driver_name TEXT DEFAULT '',
 		driver_phone1 TEXT DEFAULT '',
 		driver_phone2 TEXT DEFAULT '',
+		rc_image_path TEXT NOT NULL DEFAULT '',
+		driver_license_path TEXT NOT NULL DEFAULT '',
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (transporter_id) REFERENCES transporters(id) ON DELETE CASCADE
 	)`)

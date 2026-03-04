@@ -18,6 +18,7 @@ type Address struct {
 	DistrictName string
 	MandalName   string
 	MandalCode   string
+	AddressCode  sql.NullString
 }
 
 type AddressListConfig struct {
@@ -175,6 +176,7 @@ type Product struct {
 	GstPercentage   sql.NullFloat64
 	CreatedAt       sql.NullTime
 	UpdatedAt       sql.NullTime
+	ProductCode     sql.NullString
 }
 
 type Project struct {
@@ -202,6 +204,9 @@ type Project struct {
 	CompanySealPath      sql.NullString
 	PurposeText          string
 	SeqPadding           int64
+	SignatoryName        string
+	SignatoryDesignation string
+	SignatoryMobile      string
 }
 
 type SerialNumber struct {
@@ -245,14 +250,16 @@ type Transporter struct {
 }
 
 type TransporterVehicle struct {
-	ID            int64
-	TransporterID int64
-	VehicleNumber string
-	VehicleType   sql.NullString
-	CreatedAt     sql.NullTime
-	DriverName    sql.NullString
-	DriverPhone1  sql.NullString
-	DriverPhone2  sql.NullString
+	ID                int64
+	TransporterID     int64
+	VehicleNumber     string
+	VehicleType       sql.NullString
+	CreatedAt         sql.NullTime
+	DriverName        sql.NullString
+	DriverPhone1      sql.NullString
+	DriverPhone2      sql.NullString
+	RcImagePath       string
+	DriverLicensePath string
 }
 
 type User struct {
