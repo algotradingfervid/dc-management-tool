@@ -20,35 +20,48 @@ func createBorder() []excelize.Border {
 
 // TransitDCExcelData holds data needed for Transit DC Excel generation.
 type TransitDCExcelData struct {
-	DC             *models.DeliveryChallan
-	LineItems      []models.DCLineItem
-	Company        *models.CompanySettings
-	Project        *models.Project
-	ShipToAddress  *models.Address
-	BillToAddress  *models.Address
-	TransitDetails *models.DCTransitDetails
-	TotalTaxable   float64
-	TotalTax       float64
-	GrandTotal     float64
-	RoundedTotal   float64
-	RoundOff       float64
-	CGST           float64
-	SGST           float64
-	AmountInWords  string
+	DC                  *models.DeliveryChallan
+	LineItems           []models.DCLineItem
+	Company             *models.CompanySettings
+	Project             *models.Project
+	ShipToAddress       *models.Address
+	BillToAddress       *models.Address
+	BillFromAddress     *models.Address
+	DispatchFromAddress *models.Address
+	TransitDetails      *models.DCTransitDetails
+	ShipToConfig        *models.AddressListConfig
+	BillToConfig        *models.AddressListConfig
+	BillFromConfig      *models.AddressListConfig
+	DispatchFromConfig  *models.AddressListConfig
+	TotalTaxable        float64
+	TotalTax            float64
+	GrandTotal          float64
+	RoundedTotal        float64
+	RoundOff            float64
+	HalfTax             float64
+	TotalQty            int
+	AmountInWords       string
 }
 
 // OfficialDCExcelData holds data needed for Official DC Excel generation.
 type OfficialDCExcelData struct {
-	DC            *models.DeliveryChallan
-	LineItems     []models.DCLineItem
-	Company       *models.CompanySettings
-	Project       *models.Project
-	ShipToAddress *models.Address
-	BillToAddress *models.Address
-	TotalQty      int
+	DC                  *models.DeliveryChallan
+	LineItems           []models.DCLineItem
+	Company             *models.CompanySettings
+	Project             *models.Project
+	ShipToAddress       *models.Address
+	BillToAddress       *models.Address
+	BillFromAddress     *models.Address
+	DispatchFromAddress *models.Address
+	TransitDetails      *models.DCTransitDetails
+	ShipToConfig        *models.AddressListConfig
+	BillToConfig        *models.AddressListConfig
+	BillFromConfig      *models.AddressListConfig
+	DispatchFromConfig  *models.AddressListConfig
+	TotalQty            int
 }
 
-// GenerateTransitDCExcel creates an Excel file matching the FSS-Transit-DC layout.
+// GenerateTransitDCExcel creates an Excel file matching the Transit DC PDF layout.
 func GenerateTransitDCExcel(data *TransitDCExcelData) (*excelize.File, error) {
 	f := excelize.NewFile()
 	sheet := "Transit DC"
@@ -60,20 +73,20 @@ func GenerateTransitDCExcel(data *TransitDCExcelData) (*excelize.File, error) {
 		return nil, err
 	}
 
-	// Column widths (A-M: 13 columns)
+	// Column widths (A-K: 11 columns matching PDF)
 	_ = f.SetColWidth(sheet, "A", "A", 6)   // S.No
-	_ = f.SetColWidth(sheet, "B", "B", 20)  // Item Name
-	_ = f.SetColWidth(sheet, "C", "C", 25)  // Description
-	_ = f.SetColWidth(sheet, "D", "D", 12)  // Brand/Model
-	_ = f.SetColWidth(sheet, "E", "E", 25)  // Serial Nos
-	_ = f.SetColWidth(sheet, "F", "F", 8)   // UoM
-	_ = f.SetColWidth(sheet, "G", "G", 10)  // HSN
-	_ = f.SetColWidth(sheet, "H", "H", 6)   // Qty
-	_ = f.SetColWidth(sheet, "I", "I", 14)  // Per Unit Price
-	_ = f.SetColWidth(sheet, "J", "J", 14)  // Taxable Value
-	_ = f.SetColWidth(sheet, "K", "K", 8)   // GST %
-	_ = f.SetColWidth(sheet, "L", "L", 12)  // GST Amount
-	_ = f.SetColWidth(sheet, "M", "M", 14)  // Total Value
+	_ = f.SetColWidth(sheet, "B", "B", 40)  // Description (merged: item name + brand/model + description)
+	_ = f.SetColWidth(sheet, "C", "C", 25)  // Serials
+	_ = f.SetColWidth(sheet, "D", "D", 8)   // UoM
+	_ = f.SetColWidth(sheet, "E", "E", 10)  // HSN
+	_ = f.SetColWidth(sheet, "F", "F", 8)   // Qty
+	_ = f.SetColWidth(sheet, "G", "G", 14)  // Rate
+	_ = f.SetColWidth(sheet, "H", "H", 14)  // Taxable
+	_ = f.SetColWidth(sheet, "I", "I", 8)   // GST %
+	_ = f.SetColWidth(sheet, "J", "J", 12)  // GST
+	_ = f.SetColWidth(sheet, "K", "K", 14)  // Total
+
+	lastCol := "K" // last column letter for merges
 
 	// Styles
 	headerStyle, err := f.NewStyle(&excelize.Style{
@@ -122,6 +135,25 @@ func GenerateTransitDCExcel(data *TransitDCExcelData) (*excelize.File, error) {
 	if err != nil {
 		return nil, err
 	}
+	totalRowStyle, err := f.NewStyle(&excelize.Style{
+		Border:    createBorder(),
+		Font:      &excelize.Font{Bold: true, Size: 9},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"F1F5F9"}, Pattern: 1},
+		Alignment: &excelize.Alignment{Vertical: "top", WrapText: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+	totalRowNumStyle, err := f.NewStyle(&excelize.Style{
+		Border:    createBorder(),
+		Font:      &excelize.Font{Bold: true, Size: 9},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"F1F5F9"}, Pattern: 1},
+		NumFmt:    4,
+		Alignment: &excelize.Alignment{Horizontal: "right"},
+	})
+	if err != nil {
+		return nil, err
+	}
 	totalLabelStyle, err := f.NewStyle(&excelize.Style{
 		Font:      &excelize.Font{Bold: true, Size: 10},
 		Alignment: &excelize.Alignment{Horizontal: "right"},
@@ -138,37 +170,59 @@ func GenerateTransitDCExcel(data *TransitDCExcelData) (*excelize.File, error) {
 	if err != nil {
 		return nil, err
 	}
+	addrLabelStyle, err := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 7},
+		Alignment: &excelize.Alignment{Horizontal: "left"},
+	})
+	if err != nil {
+		return nil, err
+	}
+	addrStyle, err := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Size: 9},
+		Alignment: &excelize.Alignment{Vertical: "top", WrapText: true},
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	row := 1
 
-	// Company header
-	if data.Company != nil {
-		_ = f.MergeCell(sheet, "A1", "M1")
-		_ = f.SetCellValue(sheet, "A1", data.Company.Name)
-		_ = f.SetCellStyle(sheet, "A1", "M1", headerStyle)
+	// --- Company header (matches PDF drawCompanyHeader with showEmail=false) ---
+	name, addr, gstin, cin, pan := resolveCompanyHeader(data.Project, data.Company)
+
+	if name != "" {
+		_ = f.MergeCell(sheet, "A1", lastCol+"1")
+		_ = f.SetCellValue(sheet, "A1", strings.ToUpper(name))
+		_ = f.SetCellStyle(sheet, "A1", lastCol+"1", headerStyle)
 		_ = f.SetRowHeight(sheet, 1, 28)
 
-		_ = f.MergeCell(sheet, "A2", "M2")
-		addr := fmt.Sprintf("%s, %s, %s %s", data.Company.Address, data.Company.City, data.Company.State, data.Company.Pincode)
-		_ = f.SetCellValue(sheet, "A2", addr)
-		_ = f.SetCellStyle(sheet, "A2", "M2", subHeaderStyle)
+		if addr != "" {
+			_ = f.MergeCell(sheet, "A2", lastCol+"2")
+			_ = f.SetCellValue(sheet, "A2", addr)
+			_ = f.SetCellStyle(sheet, "A2", lastCol+"2", subHeaderStyle)
+		}
 
-		info := fmt.Sprintf("GSTIN: %s", data.Company.GSTIN)
-		if data.Company.Email != "" {
-			info = fmt.Sprintf("Email: %s | %s", data.Company.Email, info)
+		var regParts []string
+		if gstin != "" {
+			regParts = append(regParts, "GSTIN: "+gstin)
 		}
-		if data.Company.CIN != "" {
-			info += fmt.Sprintf(" | CIN: %s", data.Company.CIN)
+		if cin != "" {
+			regParts = append(regParts, "CIN: "+cin)
 		}
-		_ = f.MergeCell(sheet, "A3", "M3")
-		_ = f.SetCellValue(sheet, "A3", info)
-		_ = f.SetCellStyle(sheet, "A3", "M3", subHeaderStyle)
+		if pan != "" {
+			regParts = append(regParts, "PAN: "+pan)
+		}
+		if len(regParts) > 0 {
+			_ = f.MergeCell(sheet, "A3", lastCol+"3")
+			_ = f.SetCellValue(sheet, "A3", strings.Join(regParts, "    "))
+			_ = f.SetCellStyle(sheet, "A3", lastCol+"3", subHeaderStyle)
+		}
 		row = 4
 	}
 
-	// Title
+	// --- Title ---
 	row++
-	_ = f.MergeCell(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("M%d", row))
+	_ = f.MergeCell(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("%s%d", lastCol, row))
 	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "DELIVERY CHALLAN")
 	titleStyle, err := f.NewStyle(&excelize.Style{
 		Font:      &excelize.Font{Bold: true, Size: 12},
@@ -177,40 +231,20 @@ func GenerateTransitDCExcel(data *TransitDCExcelData) (*excelize.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("M%d", row), titleStyle)
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("%s%d", lastCol, row), titleStyle)
 	_ = f.SetRowHeight(sheet, row, 22)
 
-	// DC details
+	// --- DC details + PO details (matches PDF drawDCAndPOGrid) ---
 	row += 2
-	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "DC Number:")
+	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "DC No:")
 	_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), data.DC.DCNumber)
-	_ = f.SetCellValue(sheet, fmt.Sprintf("I%d", row), "DC Date:")
-	if data.DC.ChallanDate != nil {
-		_ = f.SetCellValue(sheet, fmt.Sprintf("J%d", row), *data.DC.ChallanDate)
-	}
 	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
-	_ = f.SetCellStyle(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("I%d", row), boldStyle)
-
-	row++
-	if data.Project != nil {
-		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Project:")
-		_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), data.Project.Name)
-		_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
-
-		if data.Project.POReference != "" {
-			row++
-			_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "PO Number:")
-			_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), data.Project.POReference)
-			_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
-			if data.Project.PODate != nil {
-				_ = f.SetCellValue(sheet, fmt.Sprintf("I%d", row), "PO Date:")
-				_ = f.SetCellValue(sheet, fmt.Sprintf("J%d", row), *data.Project.PODate)
-				_ = f.SetCellStyle(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("I%d", row), boldStyle)
-			}
-		}
+	if data.DC.ChallanDate != nil {
+		_ = f.SetCellValue(sheet, fmt.Sprintf("G%d", row), "DC Date:")
+		_ = f.SetCellValue(sheet, fmt.Sprintf("H%d", row), *data.DC.ChallanDate)
+		_ = f.SetCellStyle(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("G%d", row), boldStyle)
 	}
 
-	// Transit details (Transporter, Vehicle, E-Way Bill)
 	if data.TransitDetails != nil {
 		if data.TransitDetails.TransporterName != "" {
 			row++
@@ -219,9 +253,9 @@ func GenerateTransitDCExcel(data *TransitDCExcelData) (*excelize.File, error) {
 			_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
 		}
 		if data.TransitDetails.VehicleNumber != "" {
-			_ = f.SetCellValue(sheet, fmt.Sprintf("I%d", row), "Vehicle No:")
-			_ = f.SetCellValue(sheet, fmt.Sprintf("J%d", row), data.TransitDetails.VehicleNumber)
-			_ = f.SetCellStyle(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("I%d", row), boldStyle)
+			_ = f.SetCellValue(sheet, fmt.Sprintf("G%d", row), "Vehicle:")
+			_ = f.SetCellValue(sheet, fmt.Sprintf("H%d", row), data.TransitDetails.VehicleNumber)
+			_ = f.SetCellStyle(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("G%d", row), boldStyle)
 		}
 		if data.TransitDetails.EwayBillNumber != "" {
 			row++
@@ -231,29 +265,85 @@ func GenerateTransitDCExcel(data *TransitDCExcelData) (*excelize.File, error) {
 		}
 	}
 
-	// Addresses
-	row += 2
-	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Bill To:")
-	_ = f.SetCellValue(sheet, fmt.Sprintf("H%d", row), "Ship To:")
+	row++
+	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Reverse Charge:")
+	_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), "No")
 	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
-	_ = f.SetCellStyle(sheet, fmt.Sprintf("H%d", row), fmt.Sprintf("H%d", row), boldStyle)
+
+	// PO details (right side)
+	poRow := row - 1
+	if data.Project != nil {
+		if data.Project.POReference != "" {
+			_ = f.SetCellValue(sheet, fmt.Sprintf("G%d", poRow), "PO Number:")
+			_ = f.SetCellValue(sheet, fmt.Sprintf("H%d", poRow), data.Project.POReference)
+			_ = f.SetCellStyle(sheet, fmt.Sprintf("G%d", poRow), fmt.Sprintf("G%d", poRow), boldStyle)
+		}
+		if data.Project.PODate != nil {
+			poRow++
+			_ = f.SetCellValue(sheet, fmt.Sprintf("G%d", poRow), "PO Date:")
+			_ = f.SetCellValue(sheet, fmt.Sprintf("H%d", poRow), *data.Project.PODate)
+			_ = f.SetCellStyle(sheet, fmt.Sprintf("G%d", poRow), fmt.Sprintf("G%d", poRow), boldStyle)
+		}
+		_ = f.SetCellValue(sheet, fmt.Sprintf("G%d", row), "Project:")
+		_ = f.SetCellValue(sheet, fmt.Sprintf("H%d", row), data.Project.Name)
+		_ = f.SetCellStyle(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("G%d", row), boldStyle)
+	}
+
+	// --- Address Grid (2x2 matching PDF drawTransitAddressGrid) ---
+	row += 2
+
+	// Row 1: Bill From (A-E) / Bill To (G-K)
+	_ = f.MergeCell(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("E%d", row))
+	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "BILL FROM")
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("E%d", row), addrLabelStyle)
+	_ = f.MergeCell(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("%s%d", lastCol, row))
+	_ = f.SetCellValue(sheet, fmt.Sprintf("G%d", row), "BILL TO")
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("%s%d", lastCol, row), addrLabelStyle)
 
 	row++
-	if data.BillToAddress != nil {
-		billTo := formatAddressData(data.BillToAddress.Data)
-		_ = f.MergeCell(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("G%d", row+1))
-		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), billTo)
+	billFromLines := addressLinesFiltered(data.BillFromAddress, data.BillFromConfig)
+	if len(billFromLines) == 0 {
+		billFromLines = companyAddressLines(data.Company)
 	}
-	if data.ShipToAddress != nil {
-		shipTo := formatAddressData(data.ShipToAddress.Data)
-		_ = f.MergeCell(sheet, fmt.Sprintf("H%d", row), fmt.Sprintf("M%d", row+1))
-		_ = f.SetCellValue(sheet, fmt.Sprintf("H%d", row), shipTo)
+	_ = f.MergeCell(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("E%d", row+1))
+	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), strings.Join(billFromLines, "\n"))
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("E%d", row+1), addrStyle)
+
+	billToLines := addressLinesFiltered(data.BillToAddress, data.BillToConfig)
+	_ = f.MergeCell(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("%s%d", lastCol, row+1))
+	_ = f.SetCellValue(sheet, fmt.Sprintf("G%d", row), strings.Join(billToLines, "\n"))
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("%s%d", lastCol, row+1), addrStyle)
+	_ = f.SetRowHeight(sheet, row, 30)
+
+	row += 2
+
+	// Row 2: Dispatch From (A-E) / Ship To (G-K)
+	_ = f.MergeCell(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("E%d", row))
+	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "DISPATCH FROM")
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("E%d", row), addrLabelStyle)
+	_ = f.MergeCell(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("%s%d", lastCol, row))
+	_ = f.SetCellValue(sheet, fmt.Sprintf("G%d", row), "SHIP TO")
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("%s%d", lastCol, row), addrLabelStyle)
+
+	row++
+	dispatchFromLines := addressLinesFiltered(data.DispatchFromAddress, data.DispatchFromConfig)
+	if len(dispatchFromLines) == 0 {
+		dispatchFromLines = companyAddressLines(data.Company)
 	}
+	_ = f.MergeCell(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("E%d", row+1))
+	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), strings.Join(dispatchFromLines, "\n"))
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("E%d", row+1), addrStyle)
+
+	shipToLines := addressLinesFiltered(data.ShipToAddress, data.ShipToConfig)
+	_ = f.MergeCell(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("%s%d", lastCol, row+1))
+	_ = f.SetCellValue(sheet, fmt.Sprintf("G%d", row), strings.Join(shipToLines, "\n"))
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("G%d", row), fmt.Sprintf("%s%d", lastCol, row+1), addrStyle)
+	_ = f.SetRowHeight(sheet, row, 30)
 
 	row += 3
 
-	// Product table header
-	headers := []string{"S.No", "Item Name", "Description", "Brand/Model", "Serial Nos", "UoM", "HSN", "Qty", "Per Unit Price", "Taxable Value", "GST %", "GST Amount", "Total Value"}
+	// --- Product table (11 columns matching PDF) ---
+	headers := []string{"S.No", "Description", "Serials", "UoM", "HSN", "Qty", "Rate", "Taxable", "GST %", "GST", "Total"}
 	for i, h := range headers {
 		col := string(rune('A' + i))
 		_ = f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, row), h)
@@ -263,73 +353,160 @@ func GenerateTransitDCExcel(data *TransitDCExcelData) (*excelize.File, error) {
 
 	// Product rows
 	row++
-	startRow := row
 	for i, li := range data.LineItems {
-		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), i+1)
-		_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), li.ItemName)
-		_ = f.SetCellValue(sheet, fmt.Sprintf("C%d", row), li.ItemDescription)
-		_ = f.SetCellValue(sheet, fmt.Sprintf("D%d", row), li.BrandModel)
-		_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), strings.Join(li.SerialNumbers, "\n"))
-		_ = f.SetCellValue(sheet, fmt.Sprintf("F%d", row), li.UoM)
-		_ = f.SetCellValue(sheet, fmt.Sprintf("G%d", row), li.HSNCode)
-		_ = f.SetCellValue(sheet, fmt.Sprintf("H%d", row), li.Quantity)
-		_ = f.SetCellValue(sheet, fmt.Sprintf("I%d", row), li.Rate)
-		_ = f.SetCellValue(sheet, fmt.Sprintf("J%d", row), li.TaxableAmount)
-		_ = f.SetCellValue(sheet, fmt.Sprintf("K%d", row), fmt.Sprintf("%.0f%%", li.TaxPercentage))
-		_ = f.SetCellValue(sheet, fmt.Sprintf("L%d", row), li.TaxAmount)
-		_ = f.SetCellValue(sheet, fmt.Sprintf("M%d", row), li.TotalAmount)
+		// Merge description: item name + brand/model + description (matching PDF)
+		desc := li.ItemName
+		if li.BrandModel != "" {
+			desc += "\n" + li.BrandModel
+		}
+		if li.ItemDescription != "" {
+			desc += "\n" + li.ItemDescription
+		}
+		serials := strings.Join(li.SerialNumbers, "\n")
 
-		for col := 'A'; col <= 'M'; col++ {
+		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), i+1)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), desc)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("C%d", row), serials)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("D%d", row), li.UoM)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), li.HSNCode)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("F%d", row), li.Quantity)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("G%d", row), li.Rate)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("H%d", row), li.TaxableAmount)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("%.0f%%", li.TaxPercentage))
+		_ = f.SetCellValue(sheet, fmt.Sprintf("J%d", row), li.TaxAmount)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("K%d", row), li.TotalAmount)
+
+		for col := 'A'; col <= 'K'; col++ {
 			s := cellStyle
-			if (col >= 'I' && col <= 'M') && col != 'K' {
+			if col == 'G' || col == 'H' || col == 'J' || col == 'K' {
 				s = numStyle
 			}
 			_ = f.SetCellStyle(sheet, fmt.Sprintf("%c%d", col, row), fmt.Sprintf("%c%d", col, row), s)
 		}
 		row++
 	}
-	_ = startRow
 
-	// Tax summary
-	row++
+	// Totals row (matching PDF)
+	_ = f.MergeCell(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("C%d", row))
+	_ = f.SetCellValue(sheet, fmt.Sprintf("C%d", row), "Total")
+	_ = f.SetCellValue(sheet, fmt.Sprintf("F%d", row), data.TotalQty)
+	_ = f.SetCellValue(sheet, fmt.Sprintf("H%d", row), data.TotalTaxable)
+	_ = f.SetCellValue(sheet, fmt.Sprintf("J%d", row), data.TotalTax)
+	_ = f.SetCellValue(sheet, fmt.Sprintf("K%d", row), data.GrandTotal)
+	for col := 'A'; col <= 'K'; col++ {
+		s := totalRowStyle
+		if col == 'H' || col == 'J' || col == 'K' {
+			s = totalRowNumStyle
+		}
+		_ = f.SetCellStyle(sheet, fmt.Sprintf("%c%d", col, row), fmt.Sprintf("%c%d", col, row), s)
+	}
+
+	// --- Tax summary (matching PDF drawTaxSummary) ---
+	row += 2
 	summaryItems := []struct {
 		label string
 		value float64
 	}{
 		{"Taxable Value:", data.TotalTaxable},
-		{"CGST:", data.CGST},
-		{"SGST:", data.SGST},
+		{"CGST:", data.HalfTax},
+		{"SGST:", data.HalfTax},
 		{"Round Off:", data.RoundOff},
 		{"Invoice Value:", data.RoundedTotal},
 	}
 	for _, item := range summaryItems {
-		_ = f.SetCellValue(sheet, fmt.Sprintf("L%d", row), item.label)
-		_ = f.SetCellValue(sheet, fmt.Sprintf("M%d", row), item.value)
-		_ = f.SetCellStyle(sheet, fmt.Sprintf("L%d", row), fmt.Sprintf("L%d", row), totalLabelStyle)
-		_ = f.SetCellStyle(sheet, fmt.Sprintf("M%d", row), fmt.Sprintf("M%d", row), totalValueStyle)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("J%d", row), item.label)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("K%d", row), item.value)
+		_ = f.SetCellStyle(sheet, fmt.Sprintf("J%d", row), fmt.Sprintf("J%d", row), totalLabelStyle)
+		_ = f.SetCellStyle(sheet, fmt.Sprintf("K%d", row), fmt.Sprintf("K%d", row), totalValueStyle)
 		row++
 	}
 
-	// Amount in words
+	// --- Amount in words ---
 	row++
-	_ = f.MergeCell(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("M%d", row))
+	_ = f.MergeCell(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("%s%d", lastCol, row))
 	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Amount in Words: "+data.AmountInWords)
-	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("M%d", row), boldStyle)
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("%s%d", lastCol, row), boldStyle)
 
-	// Signature section
-	row += 3
-	if data.Company != nil {
-		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Receiver's Signature")
-		_ = f.SetCellValue(sheet, fmt.Sprintf("K%d", row), fmt.Sprintf("For %s", data.Company.Name))
+	// --- Notes (matching PDF drawNotes) ---
+	if data.TransitDetails != nil && data.TransitDetails.Notes != "" {
+		row += 2
+		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Notes:")
 		_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
-		_ = f.SetCellStyle(sheet, fmt.Sprintf("K%d", row), fmt.Sprintf("K%d", row), boldStyle)
+		row++
+		_ = f.MergeCell(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("%s%d", lastCol, row))
+		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), data.TransitDetails.Notes)
+	}
 
-		row += 4
-		_ = f.SetCellValue(sheet, fmt.Sprintf("K%d", row), "Authorized Signatory")
-		_ = f.SetCellStyle(sheet, fmt.Sprintf("K%d", row), fmt.Sprintf("K%d", row), boldStyle)
+	// --- Signature section (matching PDF drawTransitSignatures) ---
+	row += 3
+
+	// Left: Receiver's Signature
+	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Receiver's Signature")
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
+
+	// Right: For [Company]
+	companyName := ""
+	if data.Company != nil {
+		companyName = data.Company.Name
+	}
+	if data.Project != nil && data.Project.CompanyName != "" {
+		companyName = data.Project.CompanyName
+	}
+	_ = f.MergeCell(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("%s%d", lastCol, row))
+	_ = f.SetCellValue(sheet, fmt.Sprintf("I%d", row), "For "+companyName)
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("%s%d", lastCol, row), boldStyle)
+
+	row += 4
+	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Name: _________________________")
+
+	_ = f.MergeCell(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("%s%d", lastCol, row))
+	_ = f.SetCellValue(sheet, fmt.Sprintf("I%d", row), "Authorized Signatory")
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("%s%d", lastCol, row), boldStyle)
+
+	// Signatory details from project settings (matching PDF)
+	if data.Project != nil {
+		if data.Project.SignatoryName != "" {
+			row++
+			_ = f.MergeCell(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("%s%d", lastCol, row))
+			_ = f.SetCellValue(sheet, fmt.Sprintf("I%d", row), data.Project.SignatoryName)
+		}
+		if data.Project.SignatoryDesignation != "" {
+			row++
+			_ = f.MergeCell(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("%s%d", lastCol, row))
+			_ = f.SetCellValue(sheet, fmt.Sprintf("I%d", row), data.Project.SignatoryDesignation)
+		}
+		if data.Project.SignatoryMobile != "" {
+			row++
+			_ = f.MergeCell(sheet, fmt.Sprintf("I%d", row), fmt.Sprintf("%s%d", lastCol, row))
+			_ = f.SetCellValue(sheet, fmt.Sprintf("I%d", row), "Ph: "+data.Project.SignatoryMobile)
+		}
 	}
 
 	return f, nil
+}
+
+// resolveCompanyHeader returns company header fields from project settings with CompanySettings fallback.
+func resolveCompanyHeader(project *models.Project, company *models.CompanySettings) (name, addr, gstin, cin, pan string) {
+	if project != nil {
+		name = project.CompanyName
+		addr = project.BillFromAddress
+		gstin = project.CompanyGSTIN
+		cin = project.CompanyCIN
+		pan = project.CompanyPAN
+	}
+	if name == "" && company != nil {
+		name = company.Name
+	}
+	if addr == "" && company != nil {
+		addr = fmt.Sprintf("%s, %s, %s %s", company.Address, company.City, company.State, company.Pincode)
+	}
+	if gstin == "" && company != nil {
+		gstin = company.GSTIN
+	}
+	if cin == "" && company != nil {
+		cin = company.CIN
+	}
+	return
 }
 
 // GenerateOfficialDCExcel creates an Excel file matching the Fervid-DC-V1 layout.
@@ -394,28 +571,47 @@ func GenerateOfficialDCExcel(data *OfficialDCExcelData) (*excelize.File, error) 
 
 	row := 1
 
-	// Company header
-	if data.Company != nil {
+	// --- Company header (project settings with CompanySettings fallback, includes email) ---
+	name, addr, gstin, cin, pan := resolveCompanyHeader(data.Project, data.Company)
+	var email string
+	if data.Project != nil {
+		email = data.Project.CompanyEmail
+	}
+	if email == "" && data.Company != nil {
+		email = data.Company.Email
+	}
+
+	if name != "" {
 		_ = f.MergeCell(sheet, "A1", "G1")
-		_ = f.SetCellValue(sheet, "A1", data.Company.Name)
+		_ = f.SetCellValue(sheet, "A1", name)
 		_ = f.SetCellStyle(sheet, "A1", "G1", headerStyle)
 		_ = f.SetRowHeight(sheet, 1, 28)
 
-		_ = f.MergeCell(sheet, "A2", "G2")
-		addr := fmt.Sprintf("%s, %s, %s %s", data.Company.Address, data.Company.City, data.Company.State, data.Company.Pincode)
-		_ = f.SetCellValue(sheet, "A2", addr)
-		_ = f.SetCellStyle(sheet, "A2", "G2", subHeaderStyle)
+		if addr != "" {
+			_ = f.MergeCell(sheet, "A2", "G2")
+			_ = f.SetCellValue(sheet, "A2", addr)
+			_ = f.SetCellStyle(sheet, "A2", "G2", subHeaderStyle)
+		}
 
-		info := fmt.Sprintf("GSTIN: %s", data.Company.GSTIN)
-		if data.Company.Email != "" {
-			info = fmt.Sprintf("Email: %s | %s", data.Company.Email, info)
+		// Email + registration line
+		var regParts []string
+		if email != "" {
+			regParts = append(regParts, "Email: "+email)
 		}
-		if data.Company.CIN != "" {
-			info += fmt.Sprintf(" | CIN: %s", data.Company.CIN)
+		if gstin != "" {
+			regParts = append(regParts, "GSTIN: "+gstin)
 		}
-		_ = f.MergeCell(sheet, "A3", "G3")
-		_ = f.SetCellValue(sheet, "A3", info)
-		_ = f.SetCellStyle(sheet, "A3", "G3", subHeaderStyle)
+		if cin != "" {
+			regParts = append(regParts, "CIN: "+cin)
+		}
+		if pan != "" {
+			regParts = append(regParts, "PAN: "+pan)
+		}
+		if len(regParts) > 0 {
+			_ = f.MergeCell(sheet, "A3", "G3")
+			_ = f.SetCellValue(sheet, "A3", strings.Join(regParts, " | "))
+			_ = f.SetCellStyle(sheet, "A3", "G3", subHeaderStyle)
+		}
 		row = 4
 	}
 
@@ -433,16 +629,62 @@ func GenerateOfficialDCExcel(data *OfficialDCExcelData) (*excelize.File, error) 
 	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("G%d", row), titleStyle)
 	_ = f.SetRowHeight(sheet, row, 22)
 
-	// DC details
+	// --- DC details (matching PDF drawDCAndPOGrid) ---
 	row += 2
+	// Left column: DC No, Date, Transporter, Vehicle, E-Way Bill, Reverse Charge
 	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "DC Number:")
 	_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), data.DC.DCNumber)
-	_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "DC Date:")
-	if data.DC.ChallanDate != nil {
-		_ = f.SetCellValue(sheet, fmt.Sprintf("F%d", row), *data.DC.ChallanDate)
-	}
 	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
-	_ = f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("E%d", row), boldStyle)
+	if data.DC.ChallanDate != nil {
+		_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "DC Date:")
+		_ = f.SetCellValue(sheet, fmt.Sprintf("F%d", row), *data.DC.ChallanDate)
+		_ = f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("E%d", row), boldStyle)
+	}
+
+	if data.TransitDetails != nil {
+		if data.TransitDetails.TransporterName != "" {
+			row++
+			_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Transporter:")
+			_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), data.TransitDetails.TransporterName)
+			_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
+		}
+		if data.TransitDetails.VehicleNumber != "" {
+			_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "Vehicle No:")
+			_ = f.SetCellValue(sheet, fmt.Sprintf("F%d", row), data.TransitDetails.VehicleNumber)
+			_ = f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("E%d", row), boldStyle)
+		}
+		if data.TransitDetails.EwayBillNumber != "" {
+			row++
+			_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "E-Way Bill:")
+			_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), data.TransitDetails.EwayBillNumber)
+			_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
+		}
+	}
+
+	row++
+	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Reverse Charge:")
+	_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), "No")
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
+
+	// Right column: PO Number, PO Date, Project
+	if data.Project != nil {
+		if data.Project.POReference != "" {
+			row++
+			_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "PO Number:")
+			_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), data.Project.POReference)
+			_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
+			if data.Project.PODate != nil {
+				_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "PO Date:")
+				_ = f.SetCellValue(sheet, fmt.Sprintf("F%d", row), *data.Project.PODate)
+				_ = f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("E%d", row), boldStyle)
+			}
+		}
+		row++
+		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Project:")
+		_ = f.MergeCell(sheet, fmt.Sprintf("B%d", row), fmt.Sprintf("G%d", row))
+		_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), data.Project.Name)
+		_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
+	}
 
 	// Mandal info from ship-to address
 	if data.ShipToAddress != nil {
@@ -459,37 +701,57 @@ func GenerateOfficialDCExcel(data *OfficialDCExcelData) (*excelize.File, error) 
 		}
 	}
 
-	// Project details
-	if data.Project != nil {
-		row += 2
-		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Project:")
-		_ = f.MergeCell(sheet, fmt.Sprintf("B%d", row), fmt.Sprintf("G%d", row))
-		_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), data.Project.Name)
-		_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
+	// --- 2x2 Address grid (Bill From, Bill To, Dispatch From, Ship To) ---
+	addressWrapStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Size: 9},
+		Alignment: &excelize.Alignment{WrapText: true, Vertical: "top"},
+	})
 
-		if data.Project.POReference != "" {
-			row++
-			_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "PO Number:")
-			_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), data.Project.POReference)
-			_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
-		}
-	}
-
-	// Issued To
-	if data.ShipToAddress != nil {
-		row += 2
-		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Issued To:")
-		_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
-		row++
-		shipTo := formatAddressData(data.ShipToAddress.Data)
-		_ = f.MergeCell(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("G%d", row+1))
-		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), shipTo)
-		row += 2
-	}
-
+	// Row 1: Bill From / Bill To
+	row += 2
+	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Bill From:")
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
+	_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "Bill To:")
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("E%d", row), boldStyle)
 	row++
 
-	// Product table (NO PRICING)
+	billFromLines := addressLinesFiltered(data.BillFromAddress, data.BillFromConfig)
+	if len(billFromLines) == 0 {
+		billFromLines = companyAddressLines(data.Company)
+	}
+	_ = f.MergeCell(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("D%d", row+1))
+	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), strings.Join(billFromLines, ", "))
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("D%d", row+1), addressWrapStyle)
+
+	billToLines := addressLinesFiltered(data.BillToAddress, data.BillToConfig)
+	_ = f.MergeCell(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("G%d", row+1))
+	_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), strings.Join(billToLines, ", "))
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("G%d", row+1), addressWrapStyle)
+	row += 2
+
+	// Row 2: Dispatch From / Ship To
+	row++
+	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Dispatch From:")
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), boldStyle)
+	_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "Ship To:")
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("E%d", row), boldStyle)
+	row++
+
+	dispatchFromLines := addressLinesFiltered(data.DispatchFromAddress, data.DispatchFromConfig)
+	if len(dispatchFromLines) == 0 {
+		dispatchFromLines = companyAddressLines(data.Company)
+	}
+	_ = f.MergeCell(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("D%d", row+1))
+	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), strings.Join(dispatchFromLines, ", "))
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("D%d", row+1), addressWrapStyle)
+
+	shipToLines := addressLinesFiltered(data.ShipToAddress, data.ShipToConfig)
+	_ = f.MergeCell(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("G%d", row+1))
+	_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), strings.Join(shipToLines, ", "))
+	_ = f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("G%d", row+1), addressWrapStyle)
+	row += 3
+
+	// --- Product table (NO PRICING) ---
 	headers := []string{"S.No", "Item Name", "Description", "Brand/Model No", "Qty", "Serial Number", "Remarks"}
 	for i, h := range headers {
 		col := string(rune('A' + i))
@@ -522,7 +784,7 @@ func GenerateOfficialDCExcel(data *OfficialDCExcelData) (*excelize.File, error) 
 	row += 2
 	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Date of Receipt: _______________________")
 
-	// Dual signature blocks
+	// --- Dual signature blocks ---
 	row += 3
 	_ = f.MergeCell(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("C%d", row))
 	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "FSSPL Representative")
@@ -532,14 +794,29 @@ func GenerateOfficialDCExcel(data *OfficialDCExcelData) (*excelize.File, error) 
 	_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "Department Official")
 	_ = f.SetCellStyle(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("G%d", row), boldStyle)
 
+	// FSSPL Representative: fill signatory details from project settings
 	row += 4
-	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Name: ___________________")
+	if data.Project != nil && data.Project.SignatoryName != "" {
+		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Name: "+data.Project.SignatoryName)
+	} else {
+		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Name: ___________________")
+	}
 	_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "Name: ___________________")
+
 	row++
-	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Designation: ____________")
+	if data.Project != nil && data.Project.SignatoryDesignation != "" {
+		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Designation: "+data.Project.SignatoryDesignation)
+	} else {
+		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Designation: ____________")
+	}
 	_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "Designation: ____________")
+
 	row++
-	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Mobile: _________________")
+	if data.Project != nil && data.Project.SignatoryMobile != "" {
+		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Mobile: "+data.Project.SignatoryMobile)
+	} else {
+		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), "Mobile: _________________")
+	}
 	_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "Mobile: _________________")
 
 	return f, nil

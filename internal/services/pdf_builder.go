@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-pdf/fpdf"
 	"github.com/narendhupati/dc-management-tool/internal/models"
+	qrcode "github.com/skip2/go-qrcode"
 )
 
 //go:embed fonts/DejaVuSans.ttf
@@ -24,18 +25,8 @@ var dejaVuSansBold []byte
 type rgb struct{ R, G, B int }
 
 var (
-	colorGray900 = rgb{17, 24, 39}    // #111827
-	colorGray800 = rgb{31, 41, 55}    // #1f2937
-	colorGray700 = rgb{55, 65, 81}    // #374151
-	colorGray600 = rgb{75, 85, 99}    // #4b5563
-	colorGray500 = rgb{107, 114, 128} // #6b7280
-	colorGray400 = rgb{156, 163, 175} // #9ca3af
-	colorGray300 = rgb{209, 213, 219} // #d1d5db
-	colorSlate300 = rgb{203, 213, 225} // #cbd5e1
-	colorSlate100 = rgb{241, 245, 249} // #f1f5f9
-	colorSlate50  = rgb{248, 250, 252} // #f8fafc
-	colorBlack    = rgb{0, 0, 0}
-	colorWhite    = rgb{255, 255, 255}
+	colorBlack = rgb{0, 0, 0}
+	colorWhite = rgb{255, 255, 255}
 )
 
 // --- Page constants ---
@@ -47,7 +38,7 @@ const (
 	marginT     = 10.0
 	marginB     = 10.0
 	contentW    = pageW - marginL - marginR // 190mm
-	lineH       = 4.5                       // default line height mm
+	lineH       = 4.0                       // default line height mm
 	cellPad     = 1.5                       // cell padding mm
 	tblMarginL  = 7.0                       // table uses tighter margins
 	tblW        = pageW - 2*tblMarginL      // 196mm
@@ -82,16 +73,20 @@ type TransitDCPDFData struct {
 
 // OfficialDCPDFData holds all data needed to generate an Official DC PDF.
 type OfficialDCPDFData struct {
-	Project         *models.Project
-	DC              *models.DeliveryChallan
-	LineItems       []models.DCLineItem
-	Company         *models.CompanySettings
-	ShipToAddress   *models.Address
-	BillToAddress   *models.Address
-	BillFromAddress *models.Address
-	ShipToConfig    *models.AddressListConfig // optional: for print column filtering
-	BillToConfig    *models.AddressListConfig // optional: for print column filtering
-	TotalQty        int
+	Project             *models.Project
+	DC                  *models.DeliveryChallan
+	TransitDetails      *models.DCTransitDetails
+	LineItems           []models.DCLineItem
+	Company             *models.CompanySettings
+	ShipToAddress       *models.Address
+	BillToAddress       *models.Address
+	BillFromAddress     *models.Address
+	DispatchFromAddress *models.Address
+	ShipToConfig        *models.AddressListConfig // optional: for print column filtering
+	BillToConfig        *models.AddressListConfig // optional: for print column filtering
+	BillFromConfig      *models.AddressListConfig // optional: for print column filtering
+	DispatchFromConfig  *models.AddressListConfig // optional: for print column filtering
+	TotalQty            int
 }
 
 // --- Table column definition ---
@@ -108,7 +103,7 @@ type tableCol struct {
 func GenerateTransitDCPDF(data *TransitDCPDFData) ([]byte, error) {
 	pdf := newPDF()
 
-	drawCompanyHeader(pdf, data.Company, data.BillFromAddress, false, true)
+	drawCompanyHeader(pdf, data.Project, data.Company, false, 0)
 	drawDCTitle(pdf, "Delivery Challan", false)
 	drawDCAndPOGrid(pdf, data.DC, data.TransitDetails, data.Project)
 	drawTransitAddressGrid(pdf, data.Company, data.BillFromAddress, data.DispatchFromAddress, data.BillToAddress, data.ShipToAddress, data.BillFromConfig, data.DispatchFromConfig, data.BillToConfig, data.ShipToConfig)
@@ -116,8 +111,8 @@ func GenerateTransitDCPDF(data *TransitDCPDFData) ([]byte, error) {
 	drawTaxSummary(pdf, data.TotalTaxable, data.HalfTax, data.RoundOff, data.RoundedTotal)
 	drawAmountInWords(pdf, data.AmountInWords)
 
-	if data.TransitDetails != nil && data.TransitDetails.Notes != "" {
-		drawNotes(pdf, data.TransitDetails.Notes)
+	if data.Project != nil && data.Project.Notes != "" {
+		drawNotes(pdf, data.Project.Notes)
 	}
 
 	drawTransitSignatures(pdf, data.Company, data.Project)
@@ -129,20 +124,28 @@ func GenerateTransitDCPDF(data *TransitDCPDFData) ([]byte, error) {
 func GenerateOfficialDCPDF(data *OfficialDCPDFData) ([]byte, error) {
 	pdf := newPDF()
 
-	drawCompanyHeader(pdf, data.Company, data.BillFromAddress, true, true)
-	drawDCTitle(pdf, "Delivery Challan", true)
-	drawCopyIndicators(pdf)
-	drawOfficialMetaGrid(pdf, data.DC, data.ShipToAddress)
-	drawReferenceInfo(pdf, data.Project)
+	drawCompanyHeader(pdf, data.Project, data.Company, true, 25)
+	drawQRCode(pdf, data.DC.DCNumber)
+	drawDCTitle(pdf, "Official Delivery Challan", false)
+	drawDCAndPOGrid(pdf, data.DC, data.TransitDetails, data.Project)
+	drawTransitAddressGrid(pdf, data.Company, data.BillFromAddress, data.DispatchFromAddress, data.BillToAddress, data.ShipToAddress, data.BillFromConfig, data.DispatchFromConfig, data.BillToConfig, data.ShipToConfig)
+	drawOfficialProductTable(pdf, data.LineItems)
 
-	if data.Project != nil && data.Project.PurposeText != "" {
-		drawPurpose(pdf, data.Project.PurposeText)
+	// Ensure acknowledgement + notes + signatures all land on the same page
+	ackH := 15.0 // acknowledgement height + gap
+	notesH := 0.0
+	if data.Project != nil && data.Project.Notes != "" {
+		notesH = estimateNotesHeight(pdf, data.Project.Notes)
+	}
+	sigH := 65.0 // signature section reserved height
+	ensureSpace(pdf, ackH+notesH+sigH)
+
+	drawAcknowledgement(pdf)
+
+	if data.Project != nil && data.Project.Notes != "" {
+		drawNotes(pdf, data.Project.Notes)
 	}
 
-	drawIssuedTo(pdf, data.ShipToAddress)
-	drawAddressPair(pdf, data.BillToAddress, data.ShipToAddress, data.BillToConfig, data.ShipToConfig)
-	drawOfficialProductTable(pdf, data.LineItems)
-	drawAcknowledgement(pdf)
 	drawOfficialSignatures(pdf, data.Project)
 
 	return pdfToBytes(pdf)
@@ -204,7 +207,7 @@ func spacer(pdf *fpdf.Fpdf, h float64) {
 
 // drawBorderedRect draws a rectangle with a light gray border.
 func drawBorderedRect(pdf *fpdf.Fpdf, x, y, w, h float64) {
-	setDrawColor(pdf, colorSlate300)
+	setDrawColor(pdf, colorBlack)
 	pdf.SetLineWidth(0.3)
 	pdf.Rect(x, y, w, h, "D")
 }
@@ -212,7 +215,7 @@ func drawBorderedRect(pdf *fpdf.Fpdf, x, y, w, h float64) {
 // drawFilledRect draws a filled rectangle.
 func drawFilledRect(pdf *fpdf.Fpdf, x, y, w, h float64, fill rgb) {
 	setFillColor(pdf, fill)
-	setDrawColor(pdf, colorSlate300)
+	setDrawColor(pdf, colorBlack)
 	pdf.SetLineWidth(0.3)
 	pdf.Rect(x, y, w, h, "FD")
 }
@@ -223,24 +226,17 @@ func kvRow(pdf *fpdf.Fpdf, label, value string, labelW, totalW float64) {
 	x := pdf.GetX()
 
 	setFont(pdf, "B", 8)
-	setColor(pdf, colorGray500)
+	setColor(pdf, colorBlack)
 	pdf.SetXY(x, y)
 	pdf.CellFormat(labelW, lineH, label, "", 0, "L", false, 0, "")
 
 	setFont(pdf, "", 8)
-	setColor(pdf, colorGray800)
+	setColor(pdf, colorBlack)
 	valueW := totalW - labelW
 	if valueW < 1 {
 		valueW = 1
 	}
 	pdf.CellFormat(valueW, lineH, value, "", 1, "R", false, 0, "")
-}
-
-// kvRowLeft draws a label: value pair left-aligned.
-func kvRowLeft(pdf *fpdf.Fpdf, label, value string) {
-	setFont(pdf, "B", 8)
-	setColor(pdf, colorGray500)
-	pdf.CellFormat(0, lineH, label+" "+value, "", 1, "L", false, 0, "")
 }
 
 // --- Formatting helpers ---
@@ -337,23 +333,6 @@ func addressLinesFiltered(addr *models.Address, config *models.AddressListConfig
 	return lines
 }
 
-// calcMultiCellHeight estimates the height a MultiCell would require.
-func calcMultiCellHeight(pdf *fpdf.Fpdf, w float64, txt string, fontSize float64) float64 {
-	if txt == "" {
-		return lineH
-	}
-	setFont(pdf, "", fontSize)
-	availW := w - 2*cellPad
-	if availW < 1 {
-		availW = 1
-	}
-	lines := pdf.SplitText(txt, availW)
-	if len(lines) == 0 {
-		return lineH
-	}
-	return float64(len(lines)) * lineH
-}
-
 // ensureSpace checks remaining page space and adds a new page if insufficient.
 func ensureSpace(pdf *fpdf.Fpdf, needed float64) {
 	if pdf.GetY()+needed > pageH-marginB {
@@ -363,24 +342,40 @@ func ensureSpace(pdf *fpdf.Fpdf, needed float64) {
 
 // --- Section: Company Header ---
 
-func drawCompanyHeader(pdf *fpdf.Fpdf, company *models.CompanySettings, billFromAddr *models.Address, showEmail, showCIN bool) {
-	// Extract header fields from Bill From address when available, fall back to CompanySettings.
-	var name, addr, email, gstin, cin string
+// drawQRCode generates a QR code containing the DC number and places it in the
+// top-right corner of the page. Uses absolute positioning so it doesn't affect
+// the Y cursor.
+func drawQRCode(pdf *fpdf.Fpdf, dcNumber string) {
+	if dcNumber == "" {
+		return
+	}
+	png, err := qrcode.Encode(dcNumber, qrcode.Medium, 256)
+	if err != nil {
+		return // silently skip QR on error
+	}
+	const qrSize = 20.0
+	x := pageW - marginR - qrSize
+	y := marginT
 
-	if billFromAddr != nil && billFromAddr.Data != nil {
-		name = strings.TrimSpace(billFromAddr.Data["Company Name"])
-		// Build address line from address fields
-		var addrParts []string
-		for _, key := range []string{"Address Line 1", "Address Line 2", "City", "State", "PIN Code"} {
-			v := strings.TrimSpace(billFromAddr.Data[key])
-			if v != "" {
-				addrParts = append(addrParts, v)
-			}
-		}
-		addr = strings.Join(addrParts, ", ")
-		email = strings.TrimSpace(billFromAddr.Data["Email"])
-		gstin = strings.TrimSpace(billFromAddr.Data["GSTIN"])
-		cin = strings.TrimSpace(billFromAddr.Data["CIN No."])
+	opts := fpdf.ImageOptions{ImageType: "PNG", ReadDpi: true}
+	pdf.RegisterImageOptionsReader("qr_"+dcNumber, opts, bytes.NewReader(png))
+
+	savedY := pdf.GetY()
+	pdf.ImageOptions("qr_"+dcNumber, x, y, qrSize, qrSize, false, opts, 0, "")
+	pdf.SetY(savedY)
+}
+
+func drawCompanyHeader(pdf *fpdf.Fpdf, project *models.Project, company *models.CompanySettings, showEmail bool, qrReserved float64) {
+	// Pull header fields from project settings; fall back to CompanySettings for legacy data.
+	var name, addr, email, gstin, cin, pan string
+
+	if project != nil {
+		name = project.CompanyName
+		addr = project.BillFromAddress
+		email = project.CompanyEmail
+		gstin = project.CompanyGSTIN
+		cin = project.CompanyCIN
+		pan = project.CompanyPAN
 	}
 
 	// Fall back to CompanySettings for any missing fields
@@ -404,36 +399,63 @@ func drawCompanyHeader(pdf *fpdf.Fpdf, company *models.CompanySettings, billFrom
 		return
 	}
 
+	hdrW := contentW - qrReserved
+
 	setFont(pdf, "B", 14)
-	setColor(pdf, colorGray900)
-	pdf.CellFormat(contentW, 6, strings.ToUpper(name), "", 1, "C", false, 0, "")
+	setColor(pdf, colorBlack)
+	pdf.CellFormat(hdrW, 6, strings.ToUpper(name), "", 1, "C", false, 0, "")
 
-	if addr != "" {
-		setFont(pdf, "", 8)
-		setColor(pdf, colorGray600)
-		pdf.CellFormat(contentW, 4, addr, "", 1, "C", false, 0, "")
-	}
-
-	if showEmail && email != "" {
-		setFont(pdf, "", 8)
-		setColor(pdf, colorGray500)
-		pdf.CellFormat(contentW, 4, "Email: "+email, "", 1, "C", false, 0, "")
-	}
-
-	// GSTIN (and optionally CIN)
-	if gstin != "" {
-		setFont(pdf, "B", 8)
-		setColor(pdf, colorGray700)
-		gstinLine := "GSTIN: " + gstin
-		if showCIN && cin != "" {
-			gstinLine += "    CIN: " + cin
+	// Strip any existing email line from the address so we can place it inline.
+	addrLine := addr
+	if email != "" {
+		// Remove lines like "Email: x@y.com" or bare "x@y.com" from the address
+		var cleaned []string
+		for _, line := range strings.Split(addrLine, "\n") {
+			trimmed := strings.TrimSpace(line)
+			if trimmed == "" {
+				continue
+			}
+			if strings.Contains(trimmed, email) {
+				continue
+			}
+			cleaned = append(cleaned, trimmed)
 		}
-		pdf.CellFormat(contentW, 4, gstinLine, "", 1, "C", false, 0, "")
+		addrLine = strings.Join(cleaned, "\n")
+	}
+	// Append email inline
+	if showEmail && email != "" {
+		if addrLine != "" {
+			addrLine += ",  Email: " + email
+		} else {
+			addrLine = "Email: " + email
+		}
+	}
+	if addrLine != "" {
+		setFont(pdf, "", 8)
+		setColor(pdf, colorBlack)
+		pdf.MultiCell(hdrW, 4, addrLine, "", "C", false)
 	}
 
+	// GSTIN, CIN, PAN line
+	var regParts []string
+	if gstin != "" {
+		regParts = append(regParts, "GSTIN: "+gstin)
+	}
+	if cin != "" {
+		regParts = append(regParts, "CIN: "+cin)
+	}
+	if pan != "" {
+		regParts = append(regParts, "PAN: "+pan)
+	}
+	if len(regParts) > 0 {
+		setFont(pdf, "B", 8)
+		setColor(pdf, colorBlack)
+		pdf.MultiCell(hdrW, 4, strings.Join(regParts, "    "), "", "C", false)
+	}
+
+	spacer(pdf, 1)
+	drawHLine(pdf, pdf.GetY(), colorBlack, 0.5)
 	spacer(pdf, 2)
-	drawHLine(pdf, pdf.GetY(), colorGray800, 0.5)
-	spacer(pdf, 4)
 }
 
 // --- Section: DC Title ---
@@ -442,27 +464,23 @@ func drawDCTitle(pdf *fpdf.Fpdf, title string, doubleBorder bool) {
 	y := pdf.GetY()
 
 	if doubleBorder {
-		drawHLine(pdf, y, colorGray800, 0.5)
+		drawHLine(pdf, y, colorBlack, 0.5)
 		spacer(pdf, 2)
 	}
 
 	setFont(pdf, "B", 12)
-	setColor(pdf, colorGray900)
-	titleW := pdf.GetStringWidth(title) + 20
-	x := marginL + (contentW-titleW)/2
+	setColor(pdf, colorBlack)
 
 	if doubleBorder {
 		pdf.CellFormat(contentW, 6, strings.ToUpper(title), "", 1, "C", false, 0, "")
 		spacer(pdf, 1)
-		drawHLine(pdf, pdf.GetY(), colorGray800, 0.5)
+		drawHLine(pdf, pdf.GetY(), colorBlack, 0.5)
 	} else {
-		setDrawColor(pdf, colorSlate300)
-		pdf.SetLineWidth(0.3)
-		pdf.SetXY(x, pdf.GetY())
-		pdf.CellFormat(titleW, 7, strings.ToUpper(title), "1", 1, "C", false, 0, "")
+		setFont(pdf, "B", 10)
+		pdf.CellFormat(contentW, 6, strings.ToUpper(title), "", 1, "C", false, 0, "")
 	}
 
-	spacer(pdf, 4)
+	spacer(pdf, 2)
 	_ = y
 }
 
@@ -553,7 +571,7 @@ func drawDCAndPOGrid(pdf *fpdf.Fpdf, dc *models.DeliveryChallan, td *models.DCTr
 		kvRow(pdf, "Project:", project.Name, 22, innerW)
 	}
 
-	pdf.SetY(y + boxH + 4)
+	pdf.SetY(y + boxH + 2)
 }
 
 // --- Section: Transit Address Grid (2x2) ---
@@ -572,7 +590,7 @@ func drawTransitAddressGrid(pdf *fpdf.Fpdf, company *models.CompanySettings, bil
 	h1 := drawAddressBox(pdf, marginL, y, colW, "Bill From", billFromLines)
 	h2 := drawAddressBox(pdf, marginL+colW+gap, y, colW, "Bill To", addressLinesFiltered(billTo, billToConfig))
 	rowH := math.Max(h1, h2)
-	pdf.SetY(y + rowH + 2)
+	pdf.SetY(y + rowH + 1)
 
 	y = pdf.GetY()
 	// Row 2: Dispatch From / Ship To
@@ -584,7 +602,7 @@ func drawTransitAddressGrid(pdf *fpdf.Fpdf, company *models.CompanySettings, bil
 	h1 = drawAddressBox(pdf, marginL, y, colW, "Dispatch From", dispatchFromLines)
 	h2 = drawAddressBox(pdf, marginL+colW+gap, y, colW, "Ship To", addressLinesFiltered(shipTo, shipToConfig))
 	rowH = math.Max(h1, h2)
-	pdf.SetY(y + rowH + 4)
+	pdf.SetY(y + rowH + 2)
 }
 
 func companyAddressLines(company *models.CompanySettings) []string {
@@ -600,7 +618,7 @@ func companyAddressLines(company *models.CompanySettings) []string {
 
 // drawAddressBox draws a titled address block with text wrapping and returns its height.
 func drawAddressBox(pdf *fpdf.Fpdf, x, y, w float64, title string, lines []string) float64 {
-	minH := 20.0
+	minH := 16.0
 	lh := 3.5
 	innerW := w - 2*cellPad
 
@@ -639,22 +657,22 @@ func drawAddressBox(pdf *fpdf.Fpdf, x, y, w float64, title string, lines []strin
 	// Title
 	pdf.SetXY(x+cellPad, y+cellPad)
 	setFont(pdf, "B", 7)
-	setColor(pdf, colorGray400)
+	setColor(pdf, colorBlack)
 	pdf.CellFormat(innerW, 3.5, strings.ToUpper(title), "", 1, "L", false, 0, "")
 
 	if len(lines) == 0 {
 		setFont(pdf, "", 8)
-		setColor(pdf, colorGray400)
+		setColor(pdf, colorBlack)
 		pdf.SetX(x + cellPad)
 		pdf.CellFormat(innerW, lh, "Not specified", "", 1, "L", false, 0, "")
 	} else {
 		for i, line := range lines {
 			if i == 0 {
 				setFont(pdf, "B", 8)
-				setColor(pdf, colorGray800)
+				setColor(pdf, colorBlack)
 			} else {
 				setFont(pdf, "", 8)
-				setColor(pdf, colorGray600)
+				setColor(pdf, colorBlack)
 			}
 			pdf.SetX(x + cellPad)
 			// Use MultiCell for text wrapping within the box width
@@ -730,7 +748,7 @@ func drawTaxSummary(pdf *fpdf.Fpdf, totalTaxable, halfTax, roundOff, roundedTota
 	x := marginL + contentW - boxW
 	y := pdf.GetY()
 
-	setDrawColor(pdf, colorSlate300)
+	setDrawColor(pdf, colorBlack)
 	pdf.SetLineWidth(0.3)
 
 	rows := []struct {
@@ -755,10 +773,10 @@ func drawTaxSummary(pdf *fpdf.Fpdf, totalTaxable, halfTax, roundOff, roundedTota
 	for i, row := range rows {
 		ry := y + float64(i)*rowH
 		if row.bold {
-			drawFilledRect(pdf, x, ry, boxW, rowH, colorSlate50)
+			drawFilledRect(pdf, x, ry, boxW, rowH, colorWhite)
 		}
 		if i < len(rows)-1 {
-			setDrawColor(pdf, colorSlate100)
+			setDrawColor(pdf, colorBlack)
 			pdf.SetLineWidth(0.1)
 			pdf.Line(x, ry+rowH, x+boxW, ry+rowH)
 		}
@@ -768,16 +786,16 @@ func drawTaxSummary(pdf *fpdf.Fpdf, totalTaxable, halfTax, roundOff, roundedTota
 		} else {
 			setFont(pdf, "", 8)
 		}
-		setColor(pdf, colorGray500)
+		setColor(pdf, colorBlack)
 		pdf.SetXY(x+cellPad, ry+0.5)
 		pdf.CellFormat(boxW/2-cellPad, rowH-1, row.label, "", 0, "L", false, 0, "")
 
 		if row.bold {
 			setFont(pdf, "B", 8)
-			setColor(pdf, colorGray900)
+			setColor(pdf, colorBlack)
 		} else {
 			setFont(pdf, "B", 8)
-			setColor(pdf, colorGray800)
+			setColor(pdf, colorBlack)
 		}
 		pdf.CellFormat(boxW/2-cellPad, rowH-1, row.value, "", 0, "R", false, 0, "")
 	}
@@ -795,12 +813,12 @@ func drawAmountInWords(pdf *fpdf.Fpdf, words string) {
 
 	pdf.SetXY(marginL+cellPad, y+cellPad)
 	setFont(pdf, "B", 7)
-	setColor(pdf, colorGray400)
+	setColor(pdf, colorBlack)
 	pdf.CellFormat(contentW-2*cellPad, 3.5, "AMOUNT IN WORDS", "", 1, "L", false, 0, "")
 
 	pdf.SetX(marginL + cellPad)
 	setFont(pdf, "B", 8)
-	setColor(pdf, colorGray800)
+	setColor(pdf, colorBlack)
 	pdf.CellFormat(contentW-2*cellPad, 4, words, "", 1, "L", false, 0, "")
 
 	pdf.SetY(y + h + 4)
@@ -809,30 +827,29 @@ func drawAmountInWords(pdf *fpdf.Fpdf, words string) {
 // --- Section: Notes ---
 
 func drawNotes(pdf *fpdf.Fpdf, notes string) {
-	ensureSpace(pdf, 14)
-	y := pdf.GetY()
+	pdf.SetX(marginL)
+	setFont(pdf, "B", 8)
+	setColor(pdf, colorBlack)
+	labelW := pdf.GetStringWidth("Note: ") + 1
+	pdf.CellFormat(labelW, lineH, "Note: ", "", 0, "L", false, 0, "")
 
-	// Calculate height needed
 	setFont(pdf, "", 8)
-	noteLines := pdf.SplitText(notes, contentW-2*cellPad)
-	h := 3.5 + float64(len(noteLines))*lineH + 2*cellPad + 2
-	if h < 12 {
-		h = 12
+	setColor(pdf, colorBlack)
+	pdf.MultiCell(contentW-labelW, lineH, notes, "", "L", false)
+
+	spacer(pdf, 3)
+}
+
+// estimateNotesHeight returns the approximate height the notes section will occupy.
+func estimateNotesHeight(pdf *fpdf.Fpdf, notes string) float64 {
+	if notes == "" {
+		return 0
 	}
-
-	drawBorderedRect(pdf, marginL, y, contentW, h)
-
-	pdf.SetXY(marginL+cellPad, y+cellPad)
-	setFont(pdf, "B", 7)
-	setColor(pdf, colorGray400)
-	pdf.CellFormat(contentW-2*cellPad, 3.5, "NOTES", "", 1, "L", false, 0, "")
-
-	pdf.SetX(marginL + cellPad)
 	setFont(pdf, "", 8)
-	setColor(pdf, colorGray700)
-	pdf.MultiCell(contentW-2*cellPad, lineH, notes, "", "L", false)
-
-	pdf.SetY(y + h + 6)
+	labelW := 15.0 // approximate "Note: " width
+	noteLines := pdf.SplitText(notes, contentW-labelW)
+	h := float64(len(noteLines))*lineH + 3 // lines + spacer
+	return h
 }
 
 // --- Section: Transit Signatures ---
@@ -840,7 +857,7 @@ func drawNotes(pdf *fpdf.Fpdf, notes string) {
 func drawTransitSignatures(pdf *fpdf.Fpdf, company *models.CompanySettings, project *models.Project) {
 	ensureSpace(pdf, 45)
 
-	drawHLine(pdf, pdf.GetY(), colorSlate300, 0.3)
+	drawHLine(pdf, pdf.GetY(), colorBlack, 0.3)
 	spacer(pdf, 4)
 
 	y := pdf.GetY()
@@ -849,17 +866,17 @@ func drawTransitSignatures(pdf *fpdf.Fpdf, company *models.CompanySettings, proj
 	// Left: Receiver
 	pdf.SetXY(marginL, y)
 	setFont(pdf, "B", 8)
-	setColor(pdf, colorGray700)
+	setColor(pdf, colorBlack)
 	pdf.CellFormat(colW, lineH, "Receiver's Signature", "", 1, "L", false, 0, "")
 	spacer(pdf, 16)
 	pdf.SetX(marginL)
-	setDrawColor(pdf, colorGray400)
+	setDrawColor(pdf, colorBlack)
 	pdf.SetLineWidth(0.3)
 	pdf.Line(marginL, pdf.GetY(), marginL+60, pdf.GetY())
 	spacer(pdf, 2)
 	pdf.SetX(marginL)
 	setFont(pdf, "", 8)
-	setColor(pdf, colorGray400)
+	setColor(pdf, colorBlack)
 	pdf.CellFormat(colW, lineH, "Name: _________________________", "", 1, "L", false, 0, "")
 
 	// Right: Authorized Signatory
@@ -867,7 +884,7 @@ func drawTransitSignatures(pdf *fpdf.Fpdf, company *models.CompanySettings, proj
 	pdf.SetXY(rightX, y)
 	if company != nil {
 		setFont(pdf, "B", 8)
-		setColor(pdf, colorGray700)
+		setColor(pdf, colorBlack)
 		pdf.CellFormat(colW, lineH, "For "+company.Name, "", 1, "R", false, 0, "")
 	}
 
@@ -896,13 +913,13 @@ func drawTransitSignatures(pdf *fpdf.Fpdf, company *models.CompanySettings, proj
 
 	pdf.SetXY(rightX, sigBottomY)
 	setFont(pdf, "B", 8)
-	setColor(pdf, colorGray600)
+	setColor(pdf, colorBlack)
 	pdf.CellFormat(colW, lineH, "Authorized Signatory", "", 1, "R", false, 0, "")
 
 	// Print signatory details if configured
 	if project != nil && project.SignatoryName != "" {
 		setFont(pdf, "", 7)
-		setColor(pdf, colorGray700)
+		setColor(pdf, colorBlack)
 		spacer(pdf, 1)
 		if project.SignatoryName != "" {
 			pdf.SetX(rightX)
@@ -919,187 +936,13 @@ func drawTransitSignatures(pdf *fpdf.Fpdf, company *models.CompanySettings, proj
 	}
 }
 
-// --- Section: Copy Indicators ---
-
-func drawCopyIndicators(pdf *fpdf.Fpdf) {
-	setFont(pdf, "", 8)
-	setColor(pdf, colorGray600)
-	labels := []string{"Original", "Duplicate", "Triplicate"}
-	totalW := float64(0)
-	for _, l := range labels {
-		totalW += pdf.GetStringWidth(l) + 8
-	}
-	x := marginL + contentW - totalW
-	for _, l := range labels {
-		// checkbox (checked)
-		pdf.SetXY(x, pdf.GetY())
-		pdf.CellFormat(4, lineH, "[x]", "", 0, "C", false, 0, "")
-		x += 4
-		w := pdf.GetStringWidth(l) + 4
-		pdf.CellFormat(w, lineH, l, "", 0, "L", false, 0, "")
-		x += w
-	}
-	spacer(pdf, 6)
-}
-
-// --- Section: Official Meta Grid ---
-
-func drawOfficialMetaGrid(pdf *fpdf.Fpdf, dc *models.DeliveryChallan, shipTo *models.Address) {
-	colW := contentW / 2
-
-	setFont(pdf, "B", 8)
-	setColor(pdf, colorGray500)
-	pdf.CellFormat(colW, lineH, "DC No: ", "", 0, "L", false, 0, "")
-
-	setFont(pdf, "B", 9)
-	setColor(pdf, colorGray900)
-	y := pdf.GetY()
-	pdf.SetXY(marginL+18, y)
-	pdf.CellFormat(colW-18, lineH, dc.DCNumber, "", 0, "L", false, 0, "")
-
-	if dc.ChallanDate != nil {
-		pdf.SetXY(marginL+colW, y)
-		setFont(pdf, "B", 8)
-		setColor(pdf, colorGray500)
-		pdf.CellFormat(14, lineH, "Date: ", "", 0, "L", false, 0, "")
-		setFont(pdf, "B", 9)
-		setColor(pdf, colorGray900)
-		pdf.CellFormat(colW-14, lineH, *dc.ChallanDate, "", 0, "L", false, 0, "")
-	}
-	pdf.Ln(lineH + 1)
-
-	if shipTo != nil {
-		if mandal, ok := shipTo.Data["mandal"]; ok && mandal != "" {
-			setFont(pdf, "B", 8)
-			setColor(pdf, colorGray500)
-			pdf.CellFormat(25, lineH, "Mandal/ULB: ", "", 0, "L", false, 0, "")
-			setFont(pdf, "B", 9)
-			setColor(pdf, colorGray900)
-			pdf.CellFormat(colW-25, lineH, mandal, "", 0, "L", false, 0, "")
-		}
-		if code, ok := shipTo.Data["mandal_code"]; ok && code != "" {
-			setFont(pdf, "B", 8)
-			setColor(pdf, colorGray500)
-			pdf.CellFormat(25, lineH, "Mandal Code: ", "", 0, "L", false, 0, "")
-			setFont(pdf, "B", 9)
-			setColor(pdf, colorGray900)
-			pdf.CellFormat(colW-25, lineH, code, "", 0, "L", false, 0, "")
-		}
-		pdf.Ln(lineH + 1)
-	}
-
-	spacer(pdf, 4)
-}
-
-// --- Section: Reference Info ---
-
-func drawReferenceInfo(pdf *fpdf.Fpdf, project *models.Project) {
-	if project == nil {
-		return
-	}
-
-	if project.TenderRefNumber != "" {
-		setFont(pdf, "B", 8)
-		setColor(pdf, colorGray500)
-		pdf.CellFormat(22, lineH, "Tender Ref: ", "", 0, "L", false, 0, "")
-		setFont(pdf, "", 9)
-		setColor(pdf, colorGray800)
-		pdf.CellFormat(0, lineH, project.TenderRefNumber, "", 1, "L", false, 0, "")
-	}
-	if project.POReference != "" {
-		setFont(pdf, "B", 8)
-		setColor(pdf, colorGray500)
-		pdf.CellFormat(22, lineH, "PO Ref: ", "", 0, "L", false, 0, "")
-		setFont(pdf, "", 9)
-		setColor(pdf, colorGray800)
-		po := project.POReference
-		if project.PODate != nil {
-			po += " (" + *project.PODate + ")"
-		}
-		pdf.CellFormat(0, lineH, po, "", 1, "L", false, 0, "")
-	}
-
-	setFont(pdf, "B", 8)
-	setColor(pdf, colorGray500)
-	pdf.CellFormat(22, lineH, "Project: ", "", 0, "L", false, 0, "")
-	setFont(pdf, "", 9)
-	setColor(pdf, colorGray800)
-	pdf.CellFormat(0, lineH, project.Name, "", 1, "L", false, 0, "")
-
-	spacer(pdf, 4)
-}
-
-// --- Section: Purpose ---
-
-func drawPurpose(pdf *fpdf.Fpdf, purpose string) {
-	setFont(pdf, "B", 8)
-	setColor(pdf, colorGray500)
-	pdf.CellFormat(18, lineH, "Purpose: ", "", 0, "L", false, 0, "")
-	setFont(pdf, "B", 9)
-	setColor(pdf, colorGray900)
-	pdf.CellFormat(0, lineH, strings.ToUpper(purpose), "", 1, "L", false, 0, "")
-	spacer(pdf, 3)
-}
-
-// --- Section: Issued To ---
-
-func drawIssuedTo(pdf *fpdf.Fpdf, shipTo *models.Address) {
-	if shipTo == nil {
-		return
-	}
-	issuedTo := ""
-	if d, ok := shipTo.Data["district"]; ok && d != "" {
-		issuedTo = d + " District"
-	}
-	if m, ok := shipTo.Data["mandal"]; ok && m != "" {
-		if issuedTo != "" {
-			issuedTo += ", "
-		}
-		issuedTo += m + " Mandal/ULB"
-	}
-	if issuedTo == "" {
-		return
-	}
-
-	setFont(pdf, "B", 8)
-	setColor(pdf, colorGray500)
-	pdf.CellFormat(20, lineH, "Issued To: ", "", 0, "L", false, 0, "")
-	setFont(pdf, "B", 9)
-	setColor(pdf, colorGray900)
-	pdf.CellFormat(0, lineH, issuedTo, "", 1, "L", false, 0, "")
-	spacer(pdf, 3)
-}
-
-// --- Section: Address Pair (Bill To / Ship To) ---
-
-func drawAddressPair(pdf *fpdf.Fpdf, billTo, shipTo *models.Address, billToConfig, shipToConfig *models.AddressListConfig) {
-	colW := contentW/2 - 2
-	gap := 4.0
-	y := pdf.GetY()
-
-	h1 := 0.0
-	if billTo != nil {
-		h1 = drawAddressBox(pdf, marginL, y, colW, "Bill To", addressLinesFiltered(billTo, billToConfig))
-	}
-	h2 := 0.0
-	if shipTo != nil {
-		h2 = drawAddressBox(pdf, marginL+colW+gap, y, colW, "Ship To", addressLinesFiltered(shipTo, shipToConfig))
-	}
-	rowH := math.Max(h1, h2)
-	if rowH < 1 {
-		rowH = 0
-	}
-	pdf.SetY(y + rowH + 4)
-}
 
 // --- Section: Official Product Table ---
 
 func drawOfficialProductTable(pdf *fpdf.Fpdf, items []models.DCLineItem) {
 	cols := []tableCol{
 		{"S.No", 12, "C"},
-		{"Item Name", 35, "L"},
-		{"Description", 38, "L"},
-		{"Brand / Model No", 30, "L"},
+		{"Item Details", 103, "L"},
 		{"Qty", 13, "C"},
 		{"Serial Number", 40, "L"},
 		{"Remarks", 22, "L"},
@@ -1109,11 +952,19 @@ func drawOfficialProductTable(pdf *fpdf.Fpdf, items []models.DCLineItem) {
 
 	for i, li := range items {
 		serials := strings.Join(li.SerialNumbers, "\n")
+
+		// Combine item name, description, and brand/model into one stacked cell
+		itemDetails := li.ItemName
+		if li.ItemDescription != "" {
+			itemDetails += "\n" + li.ItemDescription
+		}
+		if li.BrandModel != "" {
+			itemDetails += "\nMake & Model: " + li.BrandModel
+		}
+
 		values := []string{
 			fmt.Sprintf("%d", i+1),
-			li.ItemName,
-			li.ItemDescription,
-			li.BrandModel,
+			itemDetails,
 			fmt.Sprintf("%d", li.Quantity),
 			serials,
 			"-",
@@ -1121,33 +972,29 @@ func drawOfficialProductTable(pdf *fpdf.Fpdf, items []models.DCLineItem) {
 		drawTableDataRow(pdf, cols, values, false)
 	}
 
-	spacer(pdf, 6)
+	spacer(pdf, 3)
 }
 
 // --- Section: Acknowledgement ---
 
 func drawAcknowledgement(pdf *fpdf.Fpdf) {
-	ensureSpace(pdf, 18)
 	y := pdf.GetY()
-	h := 16.0
 
-	drawFilledRect(pdf, marginL, y, contentW, h, colorSlate50)
-
-	pdf.SetXY(marginL+cellPad, y+cellPad)
+	pdf.SetXY(marginL, y)
 	setFont(pdf, "B", 8)
-	setColor(pdf, colorGray800)
-	pdf.CellFormat(contentW-2*cellPad, 5, "\"It is certified that the material is received in good condition.\"", "", 1, "L", false, 0, "")
+	setColor(pdf, colorBlack)
+	pdf.CellFormat(contentW, 5, "\"It is certified that the material is received in good condition.\"", "", 1, "L", false, 0, "")
 
-	pdf.SetX(marginL + cellPad)
+	pdf.SetX(marginL)
 	setFont(pdf, "B", 8)
-	setColor(pdf, colorGray500)
+	setColor(pdf, colorBlack)
 	pdf.CellFormat(30, 5, "Date of Receipt: ", "", 0, "L", false, 0, "")
-	setDrawColor(pdf, colorGray400)
+	setDrawColor(pdf, colorBlack)
 	pdf.SetLineWidth(0.3)
 	lineY := pdf.GetY() + 4.5
-	pdf.Line(marginL+cellPad+30, lineY, marginL+cellPad+100, lineY)
+	pdf.Line(marginL+30, lineY, marginL+100, lineY)
 
-	pdf.SetY(y + h + 6)
+	pdf.SetY(y + 12 + 3)
 }
 
 // --- Section: Official Signatures ---
@@ -1155,7 +1002,7 @@ func drawAcknowledgement(pdf *fpdf.Fpdf) {
 func drawOfficialSignatures(pdf *fpdf.Fpdf, project *models.Project) {
 	ensureSpace(pdf, 65)
 
-	drawHLine(pdf, pdf.GetY(), colorSlate300, 0.3)
+	drawHLine(pdf, pdf.GetY(), colorBlack, 0.3)
 	spacer(pdf, 4)
 
 	y := pdf.GetY()
@@ -1186,7 +1033,7 @@ func drawOfficialSignatures(pdf *fpdf.Fpdf, project *models.Project) {
 	drawSigBlock := func(x, y float64, title string, showSigImage bool) {
 		pdf.SetXY(x, y)
 		setFont(pdf, "B", 8)
-		setColor(pdf, colorGray800)
+		setColor(pdf, colorBlack)
 		w := colW - 10
 		pdf.CellFormat(w, lineH, strings.ToUpper(title), "", 1, "C", false, 0, "")
 		spacer(pdf, 2)
@@ -1209,21 +1056,21 @@ func drawOfficialSignatures(pdf *fpdf.Fpdf, project *models.Project) {
 		} else {
 			// Signature box (dashed)
 			boxX := x + (w-55)/2
-			setDrawColor(pdf, colorGray300)
+			setDrawColor(pdf, colorBlack)
 			pdf.SetLineWidth(0.3)
 			pdf.SetDashPattern([]float64{2, 1}, 0)
 			pdf.Rect(boxX, boxY, 55, 18, "D")
 			pdf.SetDashPattern([]float64{}, 0) // reset dash
 
 			setFont(pdf, "", 7)
-			setColor(pdf, colorGray400)
+			setColor(pdf, colorBlack)
 			pdf.SetXY(boxX, boxY+6)
 			pdf.CellFormat(55, 5, "Signature", "", 0, "C", false, 0, "")
 		}
 
 		pdf.SetXY(x, fieldsY)
 		setFont(pdf, "", 8)
-		setColor(pdf, colorGray800)
+		setColor(pdf, colorBlack)
 
 		type labelVal struct{ Label, Value string }
 		fields := []labelVal{
@@ -1237,7 +1084,7 @@ func drawOfficialSignatures(pdf *fpdf.Fpdf, project *models.Project) {
 			if showSigImage && f.Value != "" {
 				pdf.CellFormat(45, 5, f.Value, "", 0, "L", false, 0, "")
 			} else {
-				setDrawColor(pdf, colorGray400)
+				setDrawColor(pdf, colorBlack)
 				pdf.SetLineWidth(0.2)
 				lx := x + 22
 				ly := pdf.GetY() + 4.5
@@ -1247,8 +1094,8 @@ func drawOfficialSignatures(pdf *fpdf.Fpdf, project *models.Project) {
 		}
 	}
 
-	drawSigBlock(marginL, y, "FSSPL Representative", true)
-	drawSigBlock(marginL+colW, y, "Department Official", false)
+	drawSigBlock(marginL, y, "Department Official", false)
+	drawSigBlock(marginL+colW, y, "FSSPL Representative", true)
 }
 
 // --- Table drawing helpers ---
@@ -1257,13 +1104,13 @@ func drawTableHeaderRow(pdf *fpdf.Fpdf, cols []tableCol) {
 	headerFontSize := 6.0
 	headerLineH := 3.5
 	setFont(pdf, "B", headerFontSize)
-	setColor(pdf, colorGray700)
-	setFillColor(pdf, colorSlate100)
-	setDrawColor(pdf, colorSlate300)
+	setColor(pdf, colorBlack)
+	setFillColor(pdf, colorWhite)
+	setDrawColor(pdf, colorBlack)
 	pdf.SetLineWidth(0.3)
 
 	// Single-line header — fixed height
-	h := headerLineH + 3 // padding top+bottom
+	h := headerLineH + 2 // padding top+bottom
 
 	y := pdf.GetY()
 	x := tblMarginL
@@ -1286,7 +1133,7 @@ func drawTableHeaderRow(pdf *fpdf.Fpdf, cols []tableCol) {
 
 func drawTableDataRow(pdf *fpdf.Fpdf, cols []tableCol, values []string, isTotalRow bool) {
 	dataFontSize := 7.0
-	padding := 2.0
+	padding := 1.5
 	minRowH := lineH + padding
 
 	// Pre-split all cell text into lines
@@ -1372,10 +1219,10 @@ func drawDataRowSlice(pdf *fpdf.Fpdf, cols []tableCol, cellLines [][]string, fro
 	x := tblMarginL
 
 	if isTotalRow {
-		setFillColor(pdf, colorSlate50)
+		setFillColor(pdf, colorWhite)
 	}
 
-	setDrawColor(pdf, colorSlate300)
+	setDrawColor(pdf, colorBlack)
 	pdf.SetLineWidth(0.3)
 
 	for i, col := range cols {
@@ -1389,10 +1236,10 @@ func drawDataRowSlice(pdf *fpdf.Fpdf, cols []tableCol, cellLines [][]string, fro
 		// Set font
 		if isTotalRow {
 			setFont(pdf, "B", 7)
-			setColor(pdf, colorGray900)
+			setColor(pdf, colorBlack)
 		} else {
 			setFont(pdf, "", 7)
-			setColor(pdf, colorGray800)
+			setColor(pdf, colorBlack)
 		}
 
 		// Extract lines for this slice

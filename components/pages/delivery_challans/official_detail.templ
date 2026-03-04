@@ -24,6 +24,9 @@ templ OfficialDetail(
 	lineItems []*models.DCLineItem,
 	shipToAddress *models.Address,
 	billToAddress *models.Address,
+	billFromAddress *models.Address,
+	dispatchFromAddress *models.Address,
+	transitDetails *models.DCTransitDetails,
 	shipmentGroup *models.ShipmentGroup,
 	siblingDCs []*models.DeliveryChallan,
 	dcPosition int,
@@ -243,36 +246,70 @@ templ OfficialDetail(
 				}
 			</div>
 		}
-		<!-- Addresses -->
+		<!-- Transport Details -->
+		if transitDetails != nil {
+			<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+				<div class="flex items-center gap-2 mb-3">
+					<h2 class="text-sm font-bold text-gray-800">Transport Details</h2>
+					<span class="text-[10px] text-gray-400 font-medium">(Inherited from Transit DC)</span>
+				</div>
+				<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+					<div>
+						<div class="text-[10px] text-gray-400 uppercase font-semibold mb-0.5">Transporter</div>
+						<div class="text-sm text-gray-800 font-medium">
+							if transitDetails.TransporterName != "" {
+								{ transitDetails.TransporterName }
+							} else {
+								<span class="text-gray-400">-</span>
+							}
+						</div>
+					</div>
+					<div>
+						<div class="text-[10px] text-gray-400 uppercase font-semibold mb-0.5">Vehicle</div>
+						<div class="text-sm text-gray-800 font-medium">
+							if transitDetails.VehicleNumber != "" {
+								{ transitDetails.VehicleNumber }
+							} else {
+								<span class="text-gray-400">-</span>
+							}
+						</div>
+					</div>
+					<div>
+						<div class="text-[10px] text-gray-400 uppercase font-semibold mb-0.5">E-Way Bill</div>
+						<div class="text-sm text-gray-800 font-medium">
+							if transitDetails.EwayBillNumber != "" {
+								{ transitDetails.EwayBillNumber }
+							} else {
+								<span class="text-gray-400">-</span>
+							}
+						</div>
+					</div>
+					<div>
+						<div class="text-[10px] text-gray-400 uppercase font-semibold mb-0.5">Docket No.</div>
+						<div class="text-sm text-gray-800 font-medium">
+							if transitDetails.Notes != "" {
+								{ transitDetails.Notes }
+							} else {
+								<span class="text-gray-400">-</span>
+							}
+						</div>
+					</div>
+				</div>
+			</div>
+		} else {
+			<div class="bg-gray-50 rounded-xl border border-gray-200 p-5">
+				<div class="flex items-center gap-2">
+					<h2 class="text-sm font-bold text-gray-400">Transport Details</h2>
+					<span class="text-xs text-gray-400">N/A (standalone DC)</span>
+				</div>
+			</div>
+		}
+		<!-- Addresses (4-block layout) -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-			if billToAddress != nil {
-				<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-					<h3 class="text-sm font-bold text-gray-800 mb-2">Bill To</h3>
-					<div class="text-xs text-gray-500 leading-relaxed">
-						for k, v := range billToAddress.Data {
-							if v != "" {
-								<strong>{ k }:</strong>
-								{ v }
-								<br/>
-							}
-						}
-					</div>
-				</div>
-			}
-			if shipToAddress != nil {
-				<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-					<h3 class="text-sm font-bold text-gray-800 mb-2">Ship To</h3>
-					<div class="text-xs text-gray-500 leading-relaxed">
-						for k, v := range shipToAddress.Data {
-							if v != "" {
-								<strong>{ k }:</strong>
-								{ v }
-								<br/>
-							}
-						}
-					</div>
-				</div>
-			}
+			@officialAddressBlock("Bill From", billFromAddress)
+			@officialAddressBlock("Bill To", billToAddress)
+			@officialAddressBlock("Dispatch From", dispatchFromAddress)
+			@officialAddressBlock("Ship To", shipToAddress)
 		</div>
 		<!-- Line Items (No pricing) -->
 		<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-6">
@@ -319,6 +356,25 @@ templ OfficialDetail(
 			<div class="text-xs text-gray-400 text-center mt-4">
 				Issued on { issuedAtFormatted(dc) }
 			</div>
+		}
+	</div>
+}
+
+templ officialAddressBlock(title string, addr *models.Address) {
+	<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+		<h3 class="text-sm font-bold text-gray-800 mb-2">{ title }</h3>
+		if addr != nil {
+			<div class="text-xs text-gray-500 leading-relaxed">
+				for k, v := range addr.Data {
+					if v != "" {
+						<strong>{ k }:</strong>
+						{ v }
+						<br/>
+					}
+				}
+			</div>
+		} else {
+			<div class="text-xs text-gray-400">Not specified</div>
 		}
 	</div>
 }

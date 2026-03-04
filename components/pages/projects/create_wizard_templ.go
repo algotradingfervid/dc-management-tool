@@ -253,133 +253,133 @@ func CreateWizard(user *models.User, allProjects []*models.Project, currentStep 
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</div></div><!-- Step 2: Company Details --><div class=\"card space-y-4 wizard-step hidden\" id=\"step-2\"><h2 class=\"text-lg font-semibold text-gray-900\">Company Details</h2><p class=\"text-sm text-gray-500\">You can skip this step and configure later in project settings.</p><div><label for=\"bill_from_address\" class=\"block text-sm font-medium text-gray-700\">Bill From Address</label> <textarea id=\"bill_from_address\" name=\"bill_from_address\" rows=\"3\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</div></div><!-- Step 2: Company Details --><div class=\"card space-y-4 wizard-step hidden\" id=\"step-2\"><h2 class=\"text-lg font-semibold text-gray-900\">Company Details</h2><p class=\"text-sm text-gray-500\">You can skip this step and configure later in project settings.</p><div><label for=\"company_name\" class=\"block text-sm font-medium text-gray-700\">Company Name</label> <input type=\"text\" id=\"company_name\" name=\"company_name\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var13 string
-		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(formData["bill_from_address"])
+		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(formData["company_name"])
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 112, Col: 221}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 112, Col: 94}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</textarea></div><div><label for=\"dispatch_from_address\" class=\"block text-sm font-medium text-gray-700\">Dispatch From Address</label> <textarea id=\"dispatch_from_address\" name=\"dispatch_from_address\" rows=\"3\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"><p class=\"mt-1 text-sm text-gray-500\">Company name shown in the PDF header</p></div><div><label for=\"bill_from_address\" class=\"block text-sm font-medium text-gray-700\">Bill From Address</label> <textarea id=\"bill_from_address\" name=\"bill_from_address\" rows=\"3\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var14 string
-		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(formData["dispatch_from_address"])
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(formData["bill_from_address"])
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 116, Col: 233}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 117, Col: 221}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</textarea></div><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label for=\"company_gstin\" class=\"block text-sm font-medium text-gray-700\">GSTIN</label> <input type=\"text\" id=\"company_gstin\" name=\"company_gstin\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</textarea></div><div><label for=\"dispatch_from_address\" class=\"block text-sm font-medium text-gray-700\">Dispatch From Address</label> <textarea id=\"dispatch_from_address\" name=\"dispatch_from_address\" rows=\"3\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var15 string
-		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(formData["company_gstin"])
+		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(formData["dispatch_from_address"])
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 121, Col: 98}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 121, Col: 233}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" maxlength=\"15\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"></div><div><label for=\"company_email\" class=\"block text-sm font-medium text-gray-700\">Company Email</label> <input type=\"email\" id=\"company_email\" name=\"company_email\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</textarea></div><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label for=\"company_gstin\" class=\"block text-sm font-medium text-gray-700\">GSTIN</label> <input type=\"text\" id=\"company_gstin\" name=\"company_gstin\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var16 string
-		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(formData["company_email"])
+		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(formData["company_gstin"])
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 125, Col: 99}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 126, Col: 98}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"></div></div><div><label for=\"company_cin\" class=\"block text-sm font-medium text-gray-700\">Company CIN</label> <input type=\"text\" id=\"company_cin\" name=\"company_cin\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\" maxlength=\"15\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"></div><div><label for=\"company_email\" class=\"block text-sm font-medium text-gray-700\">Company Email</label> <input type=\"email\" id=\"company_email\" name=\"company_email\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var17 string
-		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(formData["company_cin"])
+		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(formData["company_email"])
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 130, Col: 91}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 130, Col: 99}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"></div><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label class=\"block text-sm font-medium text-gray-700\">Company Signature</label> <input type=\"file\" name=\"company_signature\" accept=\"image/*\" class=\"mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Company Seal</label> <input type=\"file\" name=\"company_seal\" accept=\"image/*\" class=\"mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100\"></div></div></div><!-- Step 3: DC Configuration --><div class=\"card space-y-4 wizard-step hidden\" id=\"step-3\"><h2 class=\"text-lg font-semibold text-gray-900\">DC Configuration</h2><p class=\"text-sm text-gray-500\">You can skip this step and configure later in project settings.</p><div><label for=\"dc_number_format\" class=\"block text-sm font-medium text-gray-700\">DC Number Format</label> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"></div></div><div><label for=\"company_cin\" class=\"block text-sm font-medium text-gray-700\">Company CIN</label> <input type=\"text\" id=\"company_cin\" name=\"company_cin\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if formData["dc_number_format"] != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<input type=\"text\" id=\"dc_number_format\" name=\"dc_number_format\" value=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var18 string
-			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(formData["dc_number_format"])
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 150, Col: 107}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm font-mono\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<input type=\"text\" id=\"dc_number_format\" name=\"dc_number_format\" value=\"{PREFIX}-{TYPE}-{FY}-{SEQ}\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm font-mono\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
+		var templ_7745c5c3_Var18 string
+		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(formData["company_cin"])
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 135, Col: 91}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<p class=\"mt-1 text-sm text-gray-500\">Tokens: <code class=\"bg-gray-100 px-1 rounded\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"></div><div><label for=\"company_pan\" class=\"block text-sm font-medium text-gray-700\">PAN Number</label> <input type=\"text\" id=\"company_pan\" name=\"company_pan\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var19 string
-		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs("{PREFIX}")
+		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(formData["company_pan"])
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 155, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 139, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</code> <code class=\"bg-gray-100 px-1 rounded\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\" maxlength=\"10\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Company Signature &amp; Seal</label> <input type=\"file\" name=\"company_signature\" accept=\"image/*\" class=\"mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100\"><p class=\"mt-1 text-sm text-gray-500\">Image used on the DC PDF as the authorized signature</p></div></div><!-- Step 3: DC Configuration --><div class=\"card space-y-4 wizard-step hidden\" id=\"step-3\"><h2 class=\"text-lg font-semibold text-gray-900\">DC Configuration</h2><p class=\"text-sm text-gray-500\">You can skip this step and configure later in project settings.</p><div><label for=\"dc_number_format\" class=\"block text-sm font-medium text-gray-700\">DC Number Format</label> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var20 string
-		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs("{PROJECT_CODE}")
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 156, Col: 63}
+		if formData["dc_number_format"] != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<input type=\"text\" id=\"dc_number_format\" name=\"dc_number_format\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var20 string
+			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(formData["dc_number_format"])
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 154, Col: 107}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm font-mono\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<input type=\"text\" id=\"dc_number_format\" name=\"dc_number_format\" value=\"{PREFIX}-{TYPE}-{FY}-{SEQ}\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm font-mono\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</code> <code class=\"bg-gray-100 px-1 rounded\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<p class=\"mt-1 text-sm text-gray-500\">Tokens: <code class=\"bg-gray-100 px-1 rounded\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var21 string
-		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs("{FY}")
+		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs("{PREFIX}")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 157, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 159, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
@@ -390,9 +390,9 @@ func CreateWizard(user *models.User, allProjects []*models.Project, currentStep 
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var22 string
-		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs("{SEQ}")
+		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs("{PROJECT_CODE}")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 158, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 160, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -403,82 +403,108 @@ func CreateWizard(user *models.User, allProjects []*models.Project, currentStep 
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var23 string
-		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs("{TYPE}")
+		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs("{FY}")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 159, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 161, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</code></p></div><div><label for=\"seq_padding\" class=\"block text-sm font-medium text-gray-700\">Sequence Padding</label> <select id=\"seq_padding\" name=\"seq_padding\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"><option value=\"3\" selected>3 digits (001, 002...)</option> <option value=\"4\">4 digits (0001, 0002...)</option></select></div><div><label for=\"purpose_text\" class=\"block text-sm font-medium text-gray-700\">Purpose Text</label> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</code> <code class=\"bg-gray-100 px-1 rounded\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if formData["purpose_text"] != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<input type=\"text\" id=\"purpose_text\" name=\"purpose_text\" value=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var24 string
-			templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(formData["purpose_text"])
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 172, Col: 95}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<input type=\"text\" id=\"purpose_text\" name=\"purpose_text\" value=\"DELIVERED AS PART OF PROJECT EXECUTION\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
+		var templ_7745c5c3_Var24 string
+		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs("{SEQ}")
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 162, Col: 54}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</div><!-- Tender/PO fields --><h3 class=\"text-md font-semibold text-gray-800 pt-4 border-t\">Tender &amp; PO Details</h3><div><label for=\"tender_ref_number\" class=\"block text-sm font-medium text-gray-700\">Tender Reference Number</label> <input type=\"text\" id=\"tender_ref_number\" name=\"tender_ref_number\" value=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</code> <code class=\"bg-gray-100 px-1 rounded\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var25 string
-		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(formData["tender_ref_number"])
+		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs("{TYPE}")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 181, Col: 109}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 163, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"></div><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label for=\"po_reference\" class=\"block text-sm font-medium text-gray-700\">PO Reference</label> <input type=\"text\" id=\"po_reference\" name=\"po_reference\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</code></p></div><div><label for=\"seq_padding\" class=\"block text-sm font-medium text-gray-700\">Sequence Padding</label> <select id=\"seq_padding\" name=\"seq_padding\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"><option value=\"3\" selected>3 digits (001, 002...)</option> <option value=\"4\">4 digits (0001, 0002...)</option></select></div><div><label for=\"purpose_text\" class=\"block text-sm font-medium text-gray-700\">Purpose Text</label> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var26 string
-		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(formData["po_reference"])
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 186, Col: 95}
+		if formData["purpose_text"] != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<input type=\"text\" id=\"purpose_text\" name=\"purpose_text\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var26 string
+			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(formData["purpose_text"])
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 176, Col: 95}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<input type=\"text\" id=\"purpose_text\" name=\"purpose_text\" value=\"DELIVERED AS PART OF PROJECT EXECUTION\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"></div><div><label for=\"po_date\" class=\"block text-sm font-medium text-gray-700\">PO Date</label> <input type=\"date\" id=\"po_date\" name=\"po_date\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "</div><!-- Tender/PO fields --><h3 class=\"text-md font-semibold text-gray-800 pt-4 border-t\">Tender &amp; PO Details</h3><div><label for=\"tender_ref_number\" class=\"block text-sm font-medium text-gray-700\">Tender Reference Number</label> <input type=\"text\" id=\"tender_ref_number\" name=\"tender_ref_number\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var27 string
-		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(formData["po_date"])
+		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(formData["tender_ref_number"])
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 190, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 185, Col: 109}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"></div></div></div><!-- Navigation Buttons --><div class=\"flex items-center justify-between mt-6\"><button type=\"button\" id=\"prev-btn\" class=\"btn btn-secondary hidden\" onclick=\"wizardPrev()\">Previous</button><div class=\"flex-1\"></div><div class=\"flex items-center gap-3\"><button type=\"button\" id=\"skip-btn\" class=\"btn btn-secondary hidden\" onclick=\"wizardNext()\">Skip</button> <button type=\"button\" id=\"next-btn\" class=\"btn btn-primary\" onclick=\"wizardNext()\">Next</button> <button type=\"submit\" id=\"submit-btn\" class=\"btn btn-primary hidden\">Create Project</button></div></div></form></div><script>\n\t\tlet currentStep = 1;\n\t\tconst totalSteps = 3;\n\n\t\tfunction wizardNext() {\n\t\t\tif (currentStep === 1) {\n\t\t\t\tconst name = document.getElementById('name').value.trim();\n\t\t\t\tconst prefix = document.getElementById('dc_prefix').value.trim();\n\t\t\t\tif (!name) { document.getElementById('name').focus(); return; }\n\t\t\t\tif (!prefix) { document.getElementById('dc_prefix').focus(); return; }\n\t\t\t}\n\t\t\tif (currentStep < totalSteps) {\n\t\t\t\tshowStep(currentStep + 1);\n\t\t\t}\n\t\t}\n\n\t\tfunction wizardPrev() {\n\t\t\tif (currentStep > 1) {\n\t\t\t\tshowStep(currentStep - 1);\n\t\t\t}\n\t\t}\n\n\t\tfunction showStep(step) {\n\t\t\tcurrentStep = step;\n\t\t\tdocument.querySelectorAll('.wizard-step').forEach(s => s.classList.add('hidden'));\n\t\t\tdocument.getElementById('step-' + step).classList.remove('hidden');\n\n\t\t\tfor (let i = 1; i <= totalSteps; i++) {\n\t\t\t\tconst circle = document.getElementById('step-circle-' + i);\n\t\t\t\tconst label = document.getElementById('step-label-' + i);\n\t\t\t\tif (i < step) {\n\t\t\t\t\tcircle.className = 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold bg-green-600 text-white';\n\t\t\t\t\tlabel.className = 'ml-2 text-sm font-medium text-green-600';\n\t\t\t\t} else if (i === step) {\n\t\t\t\t\tcircle.className = 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold bg-brand-600 text-white';\n\t\t\t\t\tlabel.className = 'ml-2 text-sm font-medium text-brand-600';\n\t\t\t\t} else {\n\t\t\t\t\tcircle.className = 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold bg-gray-200 text-gray-600';\n\t\t\t\t\tlabel.className = 'ml-2 text-sm font-medium text-gray-500';\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tdocument.getElementById('prev-btn').classList.toggle('hidden', step === 1);\n\t\t\tdocument.getElementById('next-btn').classList.toggle('hidden', step === totalSteps);\n\t\t\tdocument.getElementById('skip-btn').classList.toggle('hidden', step === 1 || step === totalSteps);\n\t\t\tdocument.getElementById('submit-btn').classList.toggle('hidden', step !== totalSteps);\n\t\t}\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"></div><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4\"><div><label for=\"po_reference\" class=\"block text-sm font-medium text-gray-700\">PO Reference</label> <input type=\"text\" id=\"po_reference\" name=\"po_reference\" value=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var28 string
+		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(formData["po_reference"])
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 190, Col: 95}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"></div><div><label for=\"po_date\" class=\"block text-sm font-medium text-gray-700\">PO Date</label> <input type=\"date\" id=\"po_date\" name=\"po_date\" value=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var29 string
+		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(formData["po_date"])
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/projects/create_wizard.templ`, Line: 194, Col: 80}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm\"></div></div></div><!-- Navigation Buttons --><div class=\"flex items-center justify-between mt-6\"><button type=\"button\" id=\"prev-btn\" class=\"btn btn-secondary hidden\" onclick=\"wizardPrev()\">Previous</button><div class=\"flex-1\"></div><div class=\"flex items-center gap-3\"><button type=\"button\" id=\"skip-btn\" class=\"btn btn-secondary hidden\" onclick=\"wizardNext()\">Skip</button> <button type=\"button\" id=\"next-btn\" class=\"btn btn-primary\" onclick=\"wizardNext()\">Next</button> <button type=\"submit\" id=\"submit-btn\" class=\"btn btn-primary hidden\">Create Project</button></div></div></form></div><script>\n\t\tlet currentStep = 1;\n\t\tconst totalSteps = 3;\n\n\t\tfunction wizardNext() {\n\t\t\tif (currentStep === 1) {\n\t\t\t\tconst name = document.getElementById('name').value.trim();\n\t\t\t\tconst prefix = document.getElementById('dc_prefix').value.trim();\n\t\t\t\tif (!name) { document.getElementById('name').focus(); return; }\n\t\t\t\tif (!prefix) { document.getElementById('dc_prefix').focus(); return; }\n\t\t\t}\n\t\t\tif (currentStep < totalSteps) {\n\t\t\t\tshowStep(currentStep + 1);\n\t\t\t}\n\t\t}\n\n\t\tfunction wizardPrev() {\n\t\t\tif (currentStep > 1) {\n\t\t\t\tshowStep(currentStep - 1);\n\t\t\t}\n\t\t}\n\n\t\tfunction showStep(step) {\n\t\t\tcurrentStep = step;\n\t\t\tdocument.querySelectorAll('.wizard-step').forEach(s => s.classList.add('hidden'));\n\t\t\tdocument.getElementById('step-' + step).classList.remove('hidden');\n\n\t\t\tfor (let i = 1; i <= totalSteps; i++) {\n\t\t\t\tconst circle = document.getElementById('step-circle-' + i);\n\t\t\t\tconst label = document.getElementById('step-label-' + i);\n\t\t\t\tif (i < step) {\n\t\t\t\t\tcircle.className = 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold bg-green-600 text-white';\n\t\t\t\t\tlabel.className = 'ml-2 text-sm font-medium text-green-600';\n\t\t\t\t} else if (i === step) {\n\t\t\t\t\tcircle.className = 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold bg-brand-600 text-white';\n\t\t\t\t\tlabel.className = 'ml-2 text-sm font-medium text-brand-600';\n\t\t\t\t} else {\n\t\t\t\t\tcircle.className = 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold bg-gray-200 text-gray-600';\n\t\t\t\t\tlabel.className = 'ml-2 text-sm font-medium text-gray-500';\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tdocument.getElementById('prev-btn').classList.toggle('hidden', step === 1);\n\t\t\tdocument.getElementById('next-btn').classList.toggle('hidden', step === totalSteps);\n\t\t\tdocument.getElementById('skip-btn').classList.toggle('hidden', step === 1 || step === totalSteps);\n\t\t\tdocument.getElementById('submit-btn').classList.toggle('hidden', step !== totalSteps);\n\t\t}\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

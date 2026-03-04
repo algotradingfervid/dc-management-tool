@@ -146,7 +146,7 @@ func buildOfficialPDF(projectID, dcID int, dc *models.DeliveryChallan) ([]byte, 
 		totalQty += li.Quantity
 	}
 
-	var shipToAddress, billToAddress, billFromAddress *models.Address
+	var shipToAddress, billToAddress, billFromAddress, dispatchFromAddress *models.Address
 	if dc.ShipToAddressID > 0 {
 		shipToAddress, _ = database.GetAddress(dc.ShipToAddressID)
 	}
@@ -156,23 +156,51 @@ func buildOfficialPDF(projectID, dcID int, dc *models.DeliveryChallan) ([]byte, 
 	if dc.BillFromAddressID != nil && *dc.BillFromAddressID > 0 {
 		billFromAddress, _ = database.GetAddress(*dc.BillFromAddressID)
 	}
+	if dc.DispatchFromAddressID != nil && *dc.DispatchFromAddressID > 0 {
+		dispatchFromAddress, _ = database.GetAddress(*dc.DispatchFromAddressID)
+	}
 	company, _ := database.GetCompanySettings()
+
+	// Fetch transit details and inherit addresses from parent TDC in the same shipment group
+	var transitDetails *models.DCTransitDetails
+	if dc.ShipmentGroupID != nil && *dc.ShipmentGroupID > 0 {
+		groupDCs, _ := database.GetDCsByShipmentGroup(*dc.ShipmentGroupID)
+		for _, groupDC := range groupDCs {
+			if groupDC.DCType == "transit" {
+				transitDetails, _ = database.GetTransitDetailsByDCID(groupDC.ID)
+				// Fall back to TDC's addresses for ODCs created before address inheritance was added
+				if billFromAddress == nil && groupDC.BillFromAddressID != nil && *groupDC.BillFromAddressID > 0 {
+					billFromAddress, _ = database.GetAddress(*groupDC.BillFromAddressID)
+				}
+				if dispatchFromAddress == nil && groupDC.DispatchFromAddressID != nil && *groupDC.DispatchFromAddressID > 0 {
+					dispatchFromAddress, _ = database.GetAddress(*groupDC.DispatchFromAddressID)
+				}
+				break
+			}
+		}
+	}
 
 	// Fetch address configs for print column filtering
 	shipToConfig, _ := database.GetOrCreateAddressConfig(projectID, "ship_to")
 	billToConfig, _ := database.GetOrCreateAddressConfig(projectID, "bill_to")
+	billFromConfig, _ := database.GetOrCreateAddressConfig(projectID, "bill_from")
+	dispatchFromConfig, _ := database.GetOrCreateAddressConfig(projectID, "dispatch_from")
 
 	return services.GenerateOfficialDCPDF(&services.OfficialDCPDFData{
-		Project:         project,
-		DC:              dc,
-		LineItems:       lineItems,
-		Company:         company,
-		ShipToAddress:   shipToAddress,
-		BillToAddress:   billToAddress,
-		BillFromAddress: billFromAddress,
-		ShipToConfig:    shipToConfig,
-		BillToConfig:    billToConfig,
-		TotalQty:        totalQty,
+		Project:             project,
+		DC:                  dc,
+		TransitDetails:      transitDetails,
+		LineItems:           lineItems,
+		Company:             company,
+		ShipToAddress:       shipToAddress,
+		BillToAddress:       billToAddress,
+		BillFromAddress:     billFromAddress,
+		DispatchFromAddress: dispatchFromAddress,
+		ShipToConfig:        shipToConfig,
+		BillToConfig:        billToConfig,
+		BillFromConfig:      billFromConfig,
+		DispatchFromConfig:  dispatchFromConfig,
+		TotalQty:            totalQty,
 	})
 }
 
@@ -218,14 +246,54 @@ func ExportDCExcel(c echo.Context) error {
 			totalQty += li.Quantity
 		}
 
+		// Fetch Bill From and Dispatch From addresses
+		var billFromAddress, dispatchFromAddress *models.Address
+		if dc.BillFromAddressID != nil && *dc.BillFromAddressID > 0 {
+			billFromAddress, _ = database.GetAddress(*dc.BillFromAddressID)
+		}
+		if dc.DispatchFromAddressID != nil && *dc.DispatchFromAddressID > 0 {
+			dispatchFromAddress, _ = database.GetAddress(*dc.DispatchFromAddressID)
+		}
+
+		// Fetch transit details from parent TDC in shipment group
+		var transitDetails *models.DCTransitDetails
+		if dc.ShipmentGroupID != nil && *dc.ShipmentGroupID > 0 {
+			groupDCs, _ := database.GetDCsByShipmentGroup(*dc.ShipmentGroupID)
+			for _, groupDC := range groupDCs {
+				if groupDC.DCType == "transit" {
+					transitDetails, _ = database.GetTransitDetailsByDCID(groupDC.ID)
+					if billFromAddress == nil && groupDC.BillFromAddressID != nil && *groupDC.BillFromAddressID > 0 {
+						billFromAddress, _ = database.GetAddress(*groupDC.BillFromAddressID)
+					}
+					if dispatchFromAddress == nil && groupDC.DispatchFromAddressID != nil && *groupDC.DispatchFromAddressID > 0 {
+						dispatchFromAddress, _ = database.GetAddress(*groupDC.DispatchFromAddressID)
+					}
+					break
+				}
+			}
+		}
+
+		// Fetch address configs for print column filtering
+		shipToConfig, _ := database.GetOrCreateAddressConfig(projectID, "ship_to")
+		billToConfig, _ := database.GetOrCreateAddressConfig(projectID, "bill_to")
+		billFromConfig, _ := database.GetOrCreateAddressConfig(projectID, "bill_from")
+		dispatchFromConfig, _ := database.GetOrCreateAddressConfig(projectID, "dispatch_from")
+
 		excelFile, err := services.GenerateOfficialDCExcel(&services.OfficialDCExcelData{
-			DC:            dc,
-			LineItems:     lineItems,
-			Company:       company,
-			Project:       project,
-			ShipToAddress: shipToAddress,
-			BillToAddress: billToAddress,
-			TotalQty:      totalQty,
+			DC:                  dc,
+			LineItems:           lineItems,
+			Company:             company,
+			Project:             project,
+			ShipToAddress:       shipToAddress,
+			BillToAddress:       billToAddress,
+			BillFromAddress:     billFromAddress,
+			DispatchFromAddress: dispatchFromAddress,
+			TransitDetails:      transitDetails,
+			ShipToConfig:        shipToConfig,
+			BillToConfig:        billToConfig,
+			BillFromConfig:      billFromConfig,
+			DispatchFromConfig:  dispatchFromConfig,
+			TotalQty:            totalQty,
 		})
 		if err != nil {
 			slog.Error("error generating official DC Excel", slog.String("error", err.Error()), slog.Int("dcID", dcID), slog.Int("projectID", projectID))
@@ -239,25 +307,52 @@ func ExportDCExcel(c echo.Context) error {
 		}
 	} else {
 		transitDetails, _ := database.GetTransitDetailsByDCID(dcID)
-		totalTaxable, totalTax, grandTotal, roundedTotal, roundOff, cgst, sgst := services.CalcTransitTotals(lineItems)
+		totalTaxable, totalTax, grandTotal, roundedTotal, roundOff, _, _ := services.CalcTransitTotals(lineItems)
+		halfTax := totalTax / 2.0
 		amountInWords := helpers.NumberToIndianWords(roundedTotal)
 
+		var totalQty int
+		for _, li := range lineItems { //nolint:gocritic
+			totalQty += li.Quantity
+		}
+
+		// Fetch Bill From and Dispatch From addresses
+		var billFromAddress, dispatchFromAddress *models.Address
+		if dc.BillFromAddressID != nil && *dc.BillFromAddressID > 0 {
+			billFromAddress, _ = database.GetAddress(*dc.BillFromAddressID)
+		}
+		if dc.DispatchFromAddressID != nil && *dc.DispatchFromAddressID > 0 {
+			dispatchFromAddress, _ = database.GetAddress(*dc.DispatchFromAddressID)
+		}
+
+		// Fetch address configs for print column filtering
+		shipToConfig, _ := database.GetOrCreateAddressConfig(projectID, "ship_to")
+		billToConfig, _ := database.GetOrCreateAddressConfig(projectID, "bill_to")
+		billFromConfig, _ := database.GetOrCreateAddressConfig(projectID, "bill_from")
+		dispatchFromConfig, _ := database.GetOrCreateAddressConfig(projectID, "dispatch_from")
+
 		excelFile, err := services.GenerateTransitDCExcel(&services.TransitDCExcelData{
-			DC:             dc,
-			LineItems:      lineItems,
-			Company:        company,
-			Project:        project,
-			ShipToAddress:  shipToAddress,
-			BillToAddress:  billToAddress,
-			TransitDetails: transitDetails,
-			TotalTaxable:   totalTaxable,
-			TotalTax:       totalTax,
-			GrandTotal:     grandTotal,
-			RoundedTotal:   roundedTotal,
-			RoundOff:       roundOff,
-			CGST:           cgst,
-			SGST:           sgst,
-			AmountInWords:  amountInWords,
+			DC:                  dc,
+			LineItems:           lineItems,
+			Company:             company,
+			Project:             project,
+			ShipToAddress:       shipToAddress,
+			BillToAddress:       billToAddress,
+			BillFromAddress:     billFromAddress,
+			DispatchFromAddress: dispatchFromAddress,
+			TransitDetails:      transitDetails,
+			ShipToConfig:        shipToConfig,
+			BillToConfig:        billToConfig,
+			BillFromConfig:      billFromConfig,
+			DispatchFromConfig:  dispatchFromConfig,
+			TotalTaxable:        totalTaxable,
+			TotalTax:            totalTax,
+			GrandTotal:          grandTotal,
+			RoundedTotal:        roundedTotal,
+			RoundOff:            roundOff,
+			HalfTax:             halfTax,
+			TotalQty:            totalQty,
+			AmountInWords:       amountInWords,
 		})
 		if err != nil {
 			slog.Error("error generating transit DC Excel", slog.String("error", err.Error()), slog.Int("dcID", dcID), slog.Int("projectID", projectID))

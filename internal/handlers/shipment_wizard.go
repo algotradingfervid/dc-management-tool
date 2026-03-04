@@ -80,15 +80,15 @@ func ShipmentWizardStep2(c echo.Context) error {
 	}
 
 	// Parse step 1 data
-	templateID, numSets, challanDate, transporterName, vehicleNumber, ewayBillNumber, docketNumber, taxType, reverseCharge := parseStep2Form(c)
+	templateID, numLocations, challanDate, transporterName, vehicleNumber, ewayBillNumber, docketNumber, taxType, reverseCharge := parseStep2Form(c)
 
 	// Validate
 	errors := make(map[string]string)
 	if templateID == 0 {
 		errors["template_id"] = "Template is required"
 	}
-	if numSets < 1 {
-		errors["num_sets"] = "Number of sets must be at least 1"
+	if numLocations < 1 {
+		errors["num_locations"] = "Number of locations must be at least 1"
 	}
 	if challanDate == "" {
 		errors["challan_date"] = "Challan date is required"
@@ -151,7 +151,7 @@ func ShipmentWizardStep2(c echo.Context) error {
 		project,
 		allProjects,
 		tmpl,
-		numSets,
+		numLocations,
 		challanDate,
 		transitDCNumber,
 		officialDCNumber,
@@ -169,14 +169,15 @@ func ShipmentWizardStep2(c echo.Context) error {
 		csrf.Token(c.Request()),
 		0,
 		nil,
+		0, 0, 0,
 	)
 	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
 	topbar := partials.Topbar(user, project, allProjects, "", "")
 	return components.RenderOK(c, layouts.MainWithContent("Shipment Wizard", sidebar, topbar, "", "", pageContent))
 }
 
-// ShipmentWizardStep3 processes step 2 (addresses) and renders step 3 (serial entry).
-func ShipmentWizardStep3(c echo.Context) error {
+// ShipmentWizardQuantityStep processes step 2 (addresses) and renders step 3 (quantity grid).
+func ShipmentWizardQuantityStep(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -190,15 +191,15 @@ func ShipmentWizardStep3(c echo.Context) error {
 	}
 
 	// Parse step 1 and step 2 data
-	templateID, numSets, challanDate, transporterName, vehicleNumber, ewayBillNumber, docketNumber, taxType, reverseCharge := parseStep2Form(c)
+	templateID, numLocations, challanDate, transporterName, vehicleNumber, ewayBillNumber, docketNumber, taxType, reverseCharge := parseStep2Form(c)
 	billFromAddressID, dispatchFromAddressID, billToAddressID, transitShipToAddrID, shipToAddressIDs := parseStep3Form(c)
 
 	// Validate
 	validationErrors := make(map[string]string)
 	if len(shipToAddressIDs) == 0 {
 		validationErrors["ship_to"] = "Please select at least one ship-to address"
-	} else if len(shipToAddressIDs) != numSets {
-		validationErrors["ship_to"] = fmt.Sprintf("Please select exactly %d ship-to addresses to match the number of sets (got %d)", numSets, len(shipToAddressIDs))
+	} else if len(shipToAddressIDs) != numLocations {
+		validationErrors["ship_to"] = fmt.Sprintf("Please select exactly %d ship-to addresses to match the number of locations (got %d)", numLocations, len(shipToAddressIDs))
 	}
 
 	// Validate transit ship-to is among selected
@@ -258,7 +259,7 @@ func ShipmentWizardStep3(c echo.Context) error {
 			project,
 			allProjects,
 			tmpl,
-			numSets,
+			numLocations,
 			challanDate,
 			transitDCNumber,
 			officialDCNumber,
@@ -276,17 +277,141 @@ func ShipmentWizardStep3(c echo.Context) error {
 			csrf.Token(c.Request()),
 			0,
 			nil,
+			0, 0, 0,
 		)
 		sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
 		topbar := partials.Topbar(user, project, allProjects, "", "")
 		return components.RenderOK(c, layouts.MainWithContent("Shipment Wizard", sidebar, topbar, "", "", pageContent))
 	}
 
-	// Load template products with quantities
+	// Load template products
 	products, err := database.GetTemplateProducts(templateID)
 	if err != nil {
 		auth.SetFlash(c.Request(), "error", "Failed to load template products")
 		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
+	}
+
+	// Load ship-to address details for quantity grid column headers
+	shipToConfig, _ := database.GetOrCreateAddressConfig(projectID, "ship_to")
+	var quantityAddresses []pageshipments.QuantityAddress
+	if shipToConfig != nil {
+		allShipTo, _ := database.GetAllAddressesByConfigID(shipToConfig.ID)
+		selectedSet := make(map[int]bool)
+		for _, id := range shipToAddressIDs {
+			selectedSet[id] = true
+		}
+		for _, a := range allShipTo {
+			if selectedSet[a.ID] {
+				quantityAddresses = append(quantityAddresses, pageshipments.QuantityAddress{
+					ID:   a.ID,
+					Name: a.DisplayName(),
+				})
+			}
+		}
+	}
+
+	allProjects, _ := database.GetAccessibleProjects(user)
+
+	pageContent := pageshipments.WizardStep3Quantities(
+		user,
+		project,
+		allProjects,
+		products,
+		quantityAddresses,
+		templateID,
+		numLocations,
+		challanDate,
+		transporterName,
+		vehicleNumber,
+		ewayBillNumber,
+		docketNumber,
+		taxType,
+		reverseCharge,
+		billFromAddressID,
+		dispatchFromAddressID,
+		billToAddressID,
+		transitShipToAddrID,
+		shipToAddressIDs,
+		csrf.Token(c.Request()),
+		0,
+		"", "",
+		nil, nil,
+	)
+	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(user, project, allProjects, "", "")
+	return components.RenderOK(c, layouts.MainWithContent("Shipment Wizard", sidebar, topbar, "", "", pageContent))
+}
+
+// ShipmentWizardStep4 processes step 3 (quantities) and renders step 4 (serial entry).
+func ShipmentWizardStep4(c echo.Context) error {
+	user := auth.GetCurrentUser(c)
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.Redirect(http.StatusFound, "/projects")
+	}
+
+	project, err := database.GetProjectByID(projectID)
+	if err != nil {
+		auth.SetFlash(c.Request(), "error", "Project not found")
+		return c.Redirect(http.StatusFound, "/projects")
+	}
+
+	// Parse all carry-forward data
+	templateID, numLocations, challanDate, transporterName, vehicleNumber, ewayBillNumber, docketNumber, taxType, reverseCharge := parseStep2Form(c)
+	billFromAddressID, dispatchFromAddressID, billToAddressID, transitShipToAddrID, shipToAddressIDs := parseStep3Form(c)
+
+	// Load template products
+	products, err := database.GetTemplateProducts(templateID)
+	if err != nil {
+		auth.SetFlash(c.Request(), "error", "Failed to load template products")
+		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
+	}
+
+	// Parse quantities from step 3
+	quantities := parseQuantityForm(c, products, shipToAddressIDs)
+
+	// Validate quantities
+	qtyErrors := validateQuantities(quantities, products, shipToAddressIDs)
+	if len(qtyErrors) > 0 {
+		// Build error flash message
+		globalErr := qtyErrors["global"]
+		if globalErr == "" {
+			globalErr = "Please fix the quantity errors below"
+		}
+
+		// Re-render quantity grid with errors
+		shipToConfig, _ := database.GetOrCreateAddressConfig(projectID, "ship_to")
+		var quantityAddresses []pageshipments.QuantityAddress
+		if shipToConfig != nil {
+			allShipTo, _ := database.GetAllAddressesByConfigID(shipToConfig.ID)
+			selectedSet := make(map[int]bool)
+			for _, id := range shipToAddressIDs {
+				selectedSet[id] = true
+			}
+			for _, a := range allShipTo {
+				if selectedSet[a.ID] {
+					quantityAddresses = append(quantityAddresses, pageshipments.QuantityAddress{
+						ID:   a.ID,
+						Name: a.DisplayName(),
+					})
+				}
+			}
+		}
+
+		allProjects, _ := database.GetAccessibleProjects(user)
+		pageContent := pageshipments.WizardStep3Quantities(
+			user, project, allProjects, products, quantityAddresses,
+			templateID, numLocations, challanDate,
+			transporterName, vehicleNumber, ewayBillNumber, docketNumber,
+			taxType, reverseCharge,
+			billFromAddressID, dispatchFromAddressID, billToAddressID, transitShipToAddrID,
+			shipToAddressIDs, csrf.Token(c.Request()), 0,
+			globalErr, "error",
+			quantities, qtyErrors,
+		)
+		sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
+		topbar := partials.Topbar(user, project, allProjects, "error", globalErr)
+		return components.RenderOK(c, layouts.MainWithContent("Shipment Wizard", sidebar, topbar, globalErr, "error", pageContent))
 	}
 
 	// Load ship-to address details for serial assignment UI
@@ -294,7 +419,6 @@ func ShipmentWizardStep3(c echo.Context) error {
 	var shipToAddresses []*models.Address
 	if shipToConfig != nil {
 		allShipTo, _ := database.GetAllAddressesByConfigID(shipToConfig.ID)
-		// Filter to only selected ones
 		selectedSet := make(map[int]bool)
 		for _, id := range shipToAddressIDs {
 			selectedSet[id] = true
@@ -312,6 +436,21 @@ func ShipmentWizardStep3(c echo.Context) error {
 		shipToIDStrings[i] = strconv.Itoa(id)
 	}
 
+	// Build quantity hidden field values for carry-forward
+	var quantityHiddenFields []pageshipments.QuantityHiddenField
+	for _, p := range products {
+		for _, addrID := range shipToAddressIDs {
+			qty := 0
+			if qMap, ok := quantities[p.ID]; ok {
+				qty = qMap[addrID]
+			}
+			quantityHiddenFields = append(quantityHiddenFields, pageshipments.QuantityHiddenField{
+				Name:  fmt.Sprintf("qty_%d_%d", p.ID, addrID),
+				Value: strconv.Itoa(qty),
+			})
+		}
+	}
+
 	allProjects, _ := database.GetAccessibleProjects(user)
 
 	pageContent := pageshipments.WizardStep3(
@@ -319,7 +458,7 @@ func ShipmentWizardStep3(c echo.Context) error {
 		project,
 		allProjects,
 		products,
-		numSets,
+		numLocations,
 		challanDate,
 		strconv.Itoa(templateID),
 		transporterName,
@@ -337,14 +476,16 @@ func ShipmentWizardStep3(c echo.Context) error {
 		csrf.Token(c.Request()),
 		0,
 		nil, nil, nil,
+		quantityHiddenFields,
+		computeProductQuantityTotals(quantities),
 	)
 	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
 	topbar := partials.Topbar(user, project, allProjects, "", "")
 	return components.RenderOK(c, layouts.MainWithContent("Shipment Wizard", sidebar, topbar, "", "", pageContent))
 }
 
-// ShipmentWizardStep4 processes step 3 (serials) and renders review page.
-func ShipmentWizardStep4(c echo.Context) error {
+// ShipmentWizardStep5 processes step 4 (serials) and renders step 5 (review page).
+func ShipmentWizardStep5(c echo.Context) error {
 	user := auth.GetCurrentUser(c)
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -358,7 +499,7 @@ func ShipmentWizardStep4(c echo.Context) error {
 	}
 
 	// Parse all carry-forward data
-	templateID, numSets, challanDate, transporterName, vehicleNumber, ewayBillNumber, docketNumber, taxType, reverseCharge := parseStep2Form(c)
+	templateID, numLocations, challanDate, transporterName, vehicleNumber, ewayBillNumber, docketNumber, taxType, reverseCharge := parseStep2Form(c)
 	billFromAddressID, dispatchFromAddressID, billToAddressID, transitShipToAddrID, shipToAddressIDs := parseStep3Form(c)
 
 	// Load template products
@@ -371,10 +512,17 @@ func ShipmentWizardStep4(c echo.Context) error {
 	// Parse serial numbers per product
 	serialData := parseStep4Form(c, products, shipToAddressIDs)
 
+	// Parse quantities for validation
+	quantities := parseQuantityForm(c, products, shipToAddressIDs)
+
 	// Validate serial counts and collect per-product errors
 	serialErrors := make(map[int]string)
 	for i, pd := range serialData {
-		expectedTotal := products[i].DefaultQuantity * numSets
+		// Sum quantities across all locations for this product
+		expectedTotal := 0
+		for _, addrID := range shipToAddressIDs {
+			expectedTotal += quantities[products[i].ID][addrID]
+		}
 		if len(pd.AllSerials) > 0 && len(pd.AllSerials) != expectedTotal {
 			serialErrors[pd.ProductID] = fmt.Sprintf("Expected %d serials, got %d", expectedTotal, len(pd.AllSerials))
 			continue
@@ -390,11 +538,11 @@ func ShipmentWizardStep4(c echo.Context) error {
 			seen[sn] = true
 		}
 
-		// Check assignment counts don't exceed qty_per_set
+		// Check assignment counts don't exceed per-location quantity
 		for shipToID, assigned := range pd.Assignments {
-			if len(assigned) > products[i].DefaultQuantity {
-				serialErrors[pd.ProductID] = fmt.Sprintf("Too many serials assigned to a destination (max %d)", products[i].DefaultQuantity)
-				_ = shipToID
+			locationQty := quantities[products[i].ID][shipToID]
+			if len(assigned) > locationQty {
+				serialErrors[pd.ProductID] = fmt.Sprintf("Too many serials assigned to a destination (max %d)", locationQty)
 			}
 		}
 
@@ -410,7 +558,22 @@ func ShipmentWizardStep4(c echo.Context) error {
 		}
 	}
 
-	// If any errors, re-render step 3 with pre-filled data and inline errors
+	// Build quantity hidden fields from carry-forward data
+	var quantityHiddenFields []pageshipments.QuantityHiddenField
+	for _, p := range products {
+		for _, addrID := range shipToAddressIDs {
+			qty := 0
+			if qMap, ok := quantities[p.ID]; ok {
+				qty = qMap[addrID]
+			}
+			quantityHiddenFields = append(quantityHiddenFields, pageshipments.QuantityHiddenField{
+				Name:  fmt.Sprintf("qty_%d_%d", p.ID, addrID),
+				Value: strconv.Itoa(qty),
+			})
+		}
+	}
+
+	// If any errors, re-render step 4 (serials) with pre-filled data and inline errors
 	if len(serialErrors) > 0 {
 		prefillSerials := make(map[int][]string)
 		prefillAssignments := make(map[string][]string)
@@ -442,7 +605,7 @@ func ShipmentWizardStep4(c echo.Context) error {
 		allProjects, _ := database.GetAccessibleProjects(user)
 
 		pageContent := pageshipments.WizardStep3(
-			user, project, allProjects, products, numSets, challanDate,
+			user, project, allProjects, products, numLocations, challanDate,
 			strconv.Itoa(templateID), transporterName, vehicleNumber,
 			ewayBillNumber, docketNumber, taxType, reverseCharge,
 			strconv.Itoa(billFromAddressID), strconv.Itoa(dispatchFromAddressID),
@@ -450,6 +613,8 @@ func ShipmentWizardStep4(c echo.Context) error {
 			shipToIDStrings, shipToAddresses,
 			csrf.Token(c.Request()), 0,
 			prefillSerials, prefillAssignments, serialErrors,
+			quantityHiddenFields,
+			computeProductQuantityTotals(quantities),
 		)
 		sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
 		topbar := partials.Topbar(user, project, allProjects, "error", "Please fix the serial number errors below")
@@ -489,7 +654,7 @@ func ShipmentWizardStep4(c echo.Context) error {
 		allProjects,
 		tmpl,
 		products,
-		numSets,
+		numLocations,
 		challanDate,
 		transporterName,
 		vehicleNumber,
@@ -507,6 +672,7 @@ func ShipmentWizardStep4(c echo.Context) error {
 		serialData,
 		csrf.Token(c.Request()),
 		0,
+		quantityHiddenFields,
 	)
 	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
 	topbar := partials.Topbar(user, project, allProjects, "", "")
@@ -523,7 +689,7 @@ func CreateShipment(c echo.Context) error {
 
 	// Re-parse all data from hidden fields
 	templateID, _ := strconv.Atoi(c.FormValue("template_id"))
-	numSets, _ := strconv.Atoi(c.FormValue("num_sets"))
+	numLocations, _ := strconv.Atoi(c.FormValue("num_locations"))
 	challanDate := c.FormValue("challan_date")
 	transporterName := c.FormValue("transporter_name")
 	vehicleNumber := c.FormValue("vehicle_number")
@@ -549,12 +715,12 @@ func CreateShipment(c echo.Context) error {
 	}
 
 	// Re-validate
-	if templateID == 0 || numSets < 1 || challanDate == "" {
+	if templateID == 0 || numLocations < 1 || challanDate == "" {
 		auth.SetFlash(c.Request(), "error", "Invalid shipment data")
 		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 	}
-	if len(shipToAddressIDs) != numSets {
-		auth.SetFlash(c.Request(), "error", fmt.Sprintf("Expected %d ship-to addresses, got %d", numSets, len(shipToAddressIDs)))
+	if len(shipToAddressIDs) != numLocations {
+		auth.SetFlash(c.Request(), "error", fmt.Sprintf("Expected %d ship-to addresses, got %d", numLocations, len(shipToAddressIDs)))
 		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 	}
 
@@ -572,12 +738,20 @@ func CreateShipment(c echo.Context) error {
 		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 	}
 
-	// Build line items with serials
+	// Parse per-product per-location quantities from the quantity grid
+	quantities := parseQuantityForm(c, products, shipToAddressIDs)
+
+	// Build line items with serials and per-location quantities
 	var lineItems []services.ShipmentLineItem
 	for _, p := range products {
+		// Build per-location quantity map from the quantity grid
+		qtyByLoc := make(map[int]int)
+		for _, addrID := range shipToAddressIDs {
+			qtyByLoc[addrID] = quantities[p.ID][addrID]
+		}
 		item := services.ShipmentLineItem{
 			ProductID:     p.ID,
-			QtyPerSet:     p.DefaultQuantity,
+			QtyByLocation: qtyByLoc,
 			Rate:          p.PerUnitPrice,
 			TaxPercentage: p.GSTPercentage,
 			Assignments:   make(map[int][]string),
@@ -610,9 +784,13 @@ func CreateShipment(c echo.Context) error {
 		lineItems = append(lineItems, item)
 	}
 
-	// Validate serial counts
+	// Validate serial counts using actual quantities from the grid
 	for i, item := range lineItems {
-		expectedTotal := products[i].DefaultQuantity * numSets
+		// Sum quantities across all locations for this product
+		expectedTotal := 0
+		for _, addrID := range shipToAddressIDs {
+			expectedTotal += quantities[products[i].ID][addrID]
+		}
 		if len(item.AllSerials) > 0 && len(item.AllSerials) != expectedTotal {
 			auth.SetFlash(c.Request(), "error", fmt.Sprintf("Product %s: expected %d serials, got %d", products[i].ItemName, expectedTotal, len(item.AllSerials)))
 			return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
@@ -628,9 +806,10 @@ func CreateShipment(c echo.Context) error {
 			seen[sn] = true
 		}
 
-		// Check assignments don't exceed qty_per_set
+		// Check assignments don't exceed per-location quantity
 		for shipToID, assigned := range item.Assignments {
-			if len(assigned) > products[i].DefaultQuantity {
+			locationQty := quantities[products[i].ID][shipToID]
+			if len(assigned) > locationQty {
 				auth.SetFlash(c.Request(), "error", fmt.Sprintf("Too many serials assigned for product %s to destination %d", products[i].ItemName, shipToID))
 				return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d/shipments/new", projectID))
 			}
@@ -654,7 +833,7 @@ func CreateShipment(c echo.Context) error {
 	params := services.ShipmentParams{
 		ProjectID:             projectID,
 		TemplateID:            templateID,
-		NumSets:               numSets,
+		NumLocations:          numLocations,
 		ChallanDate:           challanDate,
 		TaxType:               taxType,
 		ReverseCharge:         reverseCharge,

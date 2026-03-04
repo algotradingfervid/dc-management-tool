@@ -126,8 +126,8 @@ func TestGenerateTransitDCExcel(t *testing.T) {
 		GrandTotal:    23600,
 		RoundedTotal:  23600,
 		RoundOff:      0,
-		CGST:          1800,
-		SGST:          1800,
+		HalfTax:       1800,
+		TotalQty:      2,
 		AmountInWords: "Twenty Three Thousand Six Hundred Rupees Only",
 	}
 
@@ -142,10 +142,10 @@ func TestGenerateTransitDCExcel(t *testing.T) {
 		t.Errorf("Expected sheet 'Transit DC', got %v", sheets)
 	}
 
-	// Verify company name in header
+	// Verify company name in header (uppercased to match PDF)
 	val, _ := f.GetCellValue("Transit DC", "A1")
-	if val != "Test Company" {
-		t.Errorf("A1 = %q, want 'Test Company'", val)
+	if val != "TEST COMPANY" {
+		t.Errorf("A1 = %q, want 'TEST COMPANY'", val)
 	}
 }
 

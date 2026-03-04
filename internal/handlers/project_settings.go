@@ -37,8 +37,10 @@ func ShowProjectSettings(c echo.Context) error {
 
 	allProjects, _ := database.GetAccessibleProjects(user)
 
-	// Generate DC number preview (kept for reference; Settings templ handles its own preview)
-	_ = services.PreviewDCNumber(project.DCNumberFormat, project.DCPrefix, project.DCPrefix, project.SeqPadding)
+	activeTab := c.QueryParam("tab")
+	if activeTab == "" {
+		activeTab = "general"
+	}
 
 	pageContent := pageprojects.Settings(
 		user,
@@ -48,6 +50,7 @@ func ShowProjectSettings(c echo.Context) error {
 		csrf.Token(c.Request()),
 		flashType,
 		flashMessage,
+		activeTab,
 	)
 	sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
 	topbar := partials.Topbar(user, project, allProjects, flashType, flashMessage)
@@ -91,11 +94,13 @@ func UpdateProjectSettings(c echo.Context) error {
 		}
 
 	case "company":
+		project.CompanyName = strings.TrimSpace(c.FormValue("company_name"))
 		project.BillFromAddress = c.FormValue("bill_from_address")
 		project.DispatchFromAddress = c.FormValue("dispatch_from_address")
 		project.CompanyGSTIN = strings.ToUpper(strings.TrimSpace(c.FormValue("company_gstin")))
 		project.CompanyEmail = strings.TrimSpace(c.FormValue("company_email"))
 		project.CompanyCIN = strings.TrimSpace(c.FormValue("company_cin"))
+		project.CompanyPAN = strings.ToUpper(strings.TrimSpace(c.FormValue("company_pan")))
 		project.SignatoryName = strings.TrimSpace(c.FormValue("signatory_name"))
 		project.SignatoryDesignation = strings.TrimSpace(c.FormValue("signatory_designation"))
 		project.SignatoryMobile = strings.TrimSpace(c.FormValue("signatory_mobile"))
@@ -129,6 +134,7 @@ func UpdateProjectSettings(c echo.Context) error {
 		project.DCNumberFormat = c.FormValue("dc_number_format")
 		project.DCNumberSeparator = c.FormValue("dc_number_separator")
 		project.PurposeText = c.FormValue("purpose_text")
+		project.Notes = strings.TrimSpace(c.FormValue("notes"))
 		if padding := c.FormValue("seq_padding"); padding != "" {
 			if p, convErr := strconv.Atoi(padding); convErr == nil {
 				project.SeqPadding = p
@@ -160,6 +166,7 @@ func UpdateProjectSettings(c echo.Context) error {
 			csrf.Token(c.Request()),
 			"",
 			"",
+			tab,
 		)
 		sidebar := partials.Sidebar(user, project, allProjects, c.Request().URL.Path)
 		topbar := partials.Topbar(user, project, allProjects, "", "")

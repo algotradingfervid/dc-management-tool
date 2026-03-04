@@ -108,6 +108,11 @@ templ CreateWizard(user *models.User, allProjects []*models.Project, currentStep
 				<h2 class="text-lg font-semibold text-gray-900">Company Details</h2>
 				<p class="text-sm text-gray-500">You can skip this step and configure later in project settings.</p>
 				<div>
+					<label for="company_name" class="block text-sm font-medium text-gray-700">Company Name</label>
+					<input type="text" id="company_name" name="company_name" value={ formData["company_name"] } class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"/>
+					<p class="mt-1 text-sm text-gray-500">Company name shown in the PDF header</p>
+				</div>
+				<div>
 					<label for="bill_from_address" class="block text-sm font-medium text-gray-700">Bill From Address</label>
 					<textarea id="bill_from_address" name="bill_from_address" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">{ formData["bill_from_address"] }</textarea>
 				</div>
@@ -129,15 +134,14 @@ templ CreateWizard(user *models.User, allProjects []*models.Project, currentStep
 					<label for="company_cin" class="block text-sm font-medium text-gray-700">Company CIN</label>
 					<input type="text" id="company_cin" name="company_cin" value={ formData["company_cin"] } class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"/>
 				</div>
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<div>
-						<label class="block text-sm font-medium text-gray-700">Company Signature</label>
-						<input type="file" name="company_signature" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"/>
-					</div>
-					<div>
-						<label class="block text-sm font-medium text-gray-700">Company Seal</label>
-						<input type="file" name="company_seal" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"/>
-					</div>
+				<div>
+					<label for="company_pan" class="block text-sm font-medium text-gray-700">PAN Number</label>
+					<input type="text" id="company_pan" name="company_pan" value={ formData["company_pan"] } maxlength="10" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"/>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Company Signature &amp; Seal</label>
+					<input type="file" name="company_signature" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"/>
+					<p class="mt-1 text-sm text-gray-500">Image used on the DC PDF as the authorized signature</p>
 				</div>
 			</div>
 			<!-- Step 3: DC Configuration -->

@@ -203,10 +203,13 @@ type Project struct {
 	CompanyCin           string
 	CompanySealPath      sql.NullString
 	PurposeText          string
+	Notes                string
 	SeqPadding           int64
 	SignatoryName        string
 	SignatoryDesignation string
 	SignatoryMobile      string
+	CompanyName          string
+	CompanyPan           string
 }
 
 type SerialNumber struct {

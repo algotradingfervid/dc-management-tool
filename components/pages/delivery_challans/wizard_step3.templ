@@ -17,15 +17,15 @@ func step3ProductIDStr(p *models.TemplateProductRow) string {
 	return fmt.Sprintf("%d", p.ID)
 }
 
-func step3RequiredCount(p *models.TemplateProductRow, numSets int) string {
-	return fmt.Sprintf("%d", p.DefaultQuantity*numSets)
+func step3RequiredCount(p *models.TemplateProductRow, numLocations int) string {
+	return fmt.Sprintf("%d", p.DefaultQuantity*numLocations)
 }
 
 func step3QtyPerSet(p *models.TemplateProductRow) string {
 	return fmt.Sprintf("%d", p.DefaultQuantity)
 }
 
-func step3NumSetsStr(n int) string {
+func step3NumLocationsStr(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
@@ -87,7 +87,7 @@ func step3InitScript(
 // Props:
 //   - user, currentProject, allProjects: standard layout data
 //   - products: template products (with DefaultQuantity), one textarea per product
-//   - numSets: number of official DC sets being created
+//   - numLocations: number of official DC locations being created
 //   - shipToAddresses: the selected ship-to addresses (one per set) for JS assignment
 //   - shipToAddressIDs: IDs of selected ship-to addresses (carry-forward hidden fields)
 //   - csrfToken: CSRF token string
@@ -97,7 +97,7 @@ templ WizardStep3(
 	currentProject *models.Project,
 	allProjects []*models.Project,
 	products []*models.TemplateProductRow,
-	numSets int,
+	numLocations int,
 	shipToAddresses []*models.Address,
 	shipToAddressIDs []int,
 	csrfToken string,
@@ -122,7 +122,7 @@ templ WizardStep3(
 			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
 			<!-- Carry forward hidden fields (step 1) -->
 			<input type="hidden" name="template_id" value={ fmt.Sprintf("%d", templateID) }/>
-			<input type="hidden" name="num_sets" value={ step3NumSetsStr(numSets) }/>
+			<input type="hidden" name="num_locations" value={ step3NumLocationsStr(numLocations) }/>
 			<input type="hidden" name="challan_date" value={ challanDate }/>
 			<input type="hidden" name="transporter_name" value={ transporterName }/>
 			<input type="hidden" name="vehicle_number" value={ vehicleNumber }/>
@@ -145,11 +145,11 @@ templ WizardStep3(
 						<div class="flex items-center justify-between mb-4">
 							<h3 class="text-lg font-semibold text-gray-900">{ p.ItemName }</h3>
 							<span class="text-sm text-gray-500" id={ "counter-" + step3ProductIDStr(p) }>
-								Entered: 0 / Required: { step3RequiredCount(p, numSets) }
+								Entered: 0 / Required: { step3RequiredCount(p, numLocations) }
 							</span>
 						</div>
 						<p class="text-sm text-gray-500 mb-3">
-							Enter { step3RequiredCount(p, numSets) } serial numbers ({ step3QtyPerSet(p) } per set &times; { step3NumSetsStr(numSets) } sets), one per line
+							Enter { step3RequiredCount(p, numLocations) } serial numbers ({ step3QtyPerSet(p) } per location &times; { step3NumLocationsStr(numLocations) } locations), one per line
 						</p>
 						<textarea
 							id={ "serials-textarea-" + step3ProductIDStr(p) }
@@ -157,7 +157,7 @@ templ WizardStep3(
 							class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm font-mono"
 							placeholder="Enter serial numbers, one per line..."
 							data-product-id={ step3ProductIDStr(p) }
-							data-required={ step3RequiredCount(p, numSets) }
+							data-required={ step3RequiredCount(p, numLocations) }
 							oninput="SerialAssignment.handleSerialInput(this, window._projectID, window._csrfToken || '')"
 						></textarea>
 						<div id={ "serial-errors-" + step3ProductIDStr(p) } class="mt-2"></div>

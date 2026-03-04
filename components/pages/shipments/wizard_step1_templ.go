@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/narendhupati/dc-management-tool/components/partials"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
@@ -51,6 +52,16 @@ func WizardStep1(
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
+		templ_7745c5c3_Err = partials.WizardSteps([]partials.WizardStep{
+			{Number: 1, Label: "Setup"},
+			{Number: 2, Label: "Addresses"},
+			{Number: 3, Label: "Quantities"},
+			{Number: 4, Label: "Serials"},
+			{Number: 5, Label: "Review"},
+		}, 1).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
 		if editGroupID > 0 {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<h1 class=\"text-2xl font-bold mb-6\">Edit Shipment — Step 1: Basic Details</h1>")
 			if templ_7745c5c3_Err != nil {
@@ -74,7 +85,7 @@ func WizardStep1(
 			var templ_7745c5c3_Var2 templ.SafeURL
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/%d/edit/step2", currentProject.ID, editGroupID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 31, Col: 111}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 39, Col: 111}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -92,7 +103,7 @@ func WizardStep1(
 			var templ_7745c5c3_Var3 templ.SafeURL
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/new/step2", currentProject.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 33, Col: 94}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 41, Col: 94}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -110,7 +121,7 @@ func WizardStep1(
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(csrfToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 36, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 44, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -128,7 +139,7 @@ func WizardStep1(
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(editGroupID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 38, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 46, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -152,7 +163,7 @@ func WizardStep1(
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", t.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 47, Col: 47}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 55, Col: 47}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -165,7 +176,7 @@ func WizardStep1(
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 47, Col: 67}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 55, Col: 67}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -183,7 +194,7 @@ func WizardStep1(
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", t.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 49, Col: 47}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 57, Col: 47}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -196,7 +207,7 @@ func WizardStep1(
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 49, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 57, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -208,14 +219,14 @@ func WizardStep1(
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</select></div><div><label class=\"block text-sm font-medium text-gray-700\">Number of Sets</label> <input type=\"number\" name=\"num_sets\" min=\"1\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</select></div><div><label class=\"block text-sm font-medium text-gray-700\">Number of Locations</label> <input type=\"number\" name=\"num_locations\" min=\"1\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var10 string
-		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(prefillNumSets(prefill))
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(prefillNumLocations(prefill))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 56, Col: 81}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 64, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -228,7 +239,7 @@ func WizardStep1(
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(prefillStr(prefill, func(p *ShipStep1Prefill) string { return p.ChallanDate }))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 60, Col: 130}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 68, Col: 130}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -239,130 +250,189 @@ func WizardStep1(
 			return templ_7745c5c3_Err
 		}
 		for _, t := range transporters {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<option value=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", t.ID))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 67, Col: 46}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\" data-vehicles=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(vehiclesJSON(t.Vehicles))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 67, Col: 89}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var14 string
-			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(t.CompanyName)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 67, Col: 107}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</option>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
+			if prefill != nil && prefill.TransporterID == t.ID {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<option value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var12 string
+				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", t.ID))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 76, Col: 47}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\" data-vehicles=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var13 string
+				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(vehiclesJSON(t.Vehicles))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 76, Col: 90}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\" selected>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var14 string
+				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(t.CompanyName)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 76, Col: 117}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</option>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<option value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var15 string
+				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", t.ID))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 78, Col: 47}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\" data-vehicles=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var16 string
+				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(vehiclesJSON(t.Vehicles))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 78, Col: 90}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var17 string
+				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(t.CompanyName)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 78, Col: 108}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</option>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</select> <input type=\"hidden\" name=\"transporter_name\" id=\"transporter-name-hidden\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</select> <input type=\"hidden\" name=\"transporter_name\" id=\"transporter-name-hidden\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var15 string
-		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(prefillStr(prefill, func(p *ShipStep1Prefill) string { return p.TransporterName }))
+		var templ_7745c5c3_Var18 string
+		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(prefillStr(prefill, func(p *ShipStep1Prefill) string { return p.TransporterName }))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 70, Col: 169}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 82, Col: 169}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Vehicle</label> <select name=\"vehicle_number\" id=\"vehicle-select\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm\"><option value=\"\">-- Select transporter first --</option></select> <input type=\"hidden\" name=\"driver_name\" id=\"driver-name-hidden\"> <input type=\"hidden\" name=\"driver_phone\" id=\"driver-phone-hidden\"></div><div><label class=\"block text-sm font-medium text-gray-700\">E-Way Bill Number</label> <input type=\"text\" name=\"eway_bill_number\" value=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var16 string
-		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(prefillStr(prefill, func(p *ShipStep1Prefill) string { return p.EwayBillNumber }))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 82, Col: 137}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\"> <input type=\"hidden\" id=\"prefill-vehicle-number\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Docket Number</label> <input type=\"text\" name=\"docket_number\" value=\"")
+		var templ_7745c5c3_Var19 string
+		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(prefillStr(prefill, func(p *ShipStep1Prefill) string { return p.VehicleNumber }))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 83, Col: 142}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var17 string
-		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(prefillStr(prefill, func(p *ShipStep1Prefill) string { return p.DocketNumber }))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 86, Col: 132}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Vehicle</label> <select name=\"vehicle_number\" id=\"vehicle-select\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm\"><option value=\"\">-- Select transporter first --</option></select> <input type=\"hidden\" name=\"driver_name\" id=\"driver-name-hidden\"> <input type=\"hidden\" name=\"driver_phone\" id=\"driver-phone-hidden\"></div><div><label class=\"block text-sm font-medium text-gray-700\">E-Way Bill Number</label> <input type=\"text\" name=\"eway_bill_number\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Tax Type</label> <select name=\"tax_type\" required class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm\"><option value=\"cgst_sgst\"")
+		var templ_7745c5c3_Var20 string
+		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(prefillStr(prefill, func(p *ShipStep1Prefill) string { return p.EwayBillNumber }))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 95, Col: 137}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Docket Number</label> <input type=\"text\" name=\"docket_number\" value=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var21 string
+		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(prefillStr(prefill, func(p *ShipStep1Prefill) string { return p.DocketNumber }))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/shipments/wizard_step1.templ`, Line: 99, Col: 132}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm\"></div><div><label class=\"block text-sm font-medium text-gray-700\">Tax Type</label> <select name=\"tax_type\" required class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm\"><option value=\"cgst_sgst\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if prefill != nil && prefill.TaxType == "cgst_sgst" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, " selected")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, " selected")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, ">CGST + SGST</option> <option value=\"igst\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, ">CGST + SGST</option> <option value=\"igst\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if prefill != nil && prefill.TaxType == "igst" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, " selected")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, " selected")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, ">IGST</option></select></div><div><label class=\"block text-sm font-medium text-gray-700\">Reverse Charge</label> <select name=\"reverse_charge\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm\"><option value=\"N\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, ">IGST</option></select></div><div><label class=\"block text-sm font-medium text-gray-700\">Reverse Charge</label> <select name=\"reverse_charge\" class=\"mt-1 block w-full rounded-md border-gray-300 shadow-sm\"><option value=\"N\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if prefill != nil && prefill.ReverseCharge == "N" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, " selected")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, " selected")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, ">No</option> <option value=\"Y\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, ">No</option> <option value=\"Y\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if prefill != nil && prefill.ReverseCharge == "Y" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, " selected")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, " selected")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, ">Yes</option></select></div></div><div class=\"mt-6 flex justify-end\"><button type=\"submit\" class=\"bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700\">Next: Select Addresses →</button></div></form></div><script>\n\t\tdocument.getElementById('transporter-select').addEventListener('change', function() {\n\t\t\tvar opt = this.options[this.selectedIndex];\n\t\t\tdocument.getElementById('transporter-name-hidden').value = opt.text !== '-- None --' ? opt.text : '';\n\t\t\tvar vehicleSelect = document.getElementById('vehicle-select');\n\t\t\tvehicleSelect.innerHTML = '<option value=\"\">-- Select vehicle --</option>';\n\t\t\tdocument.getElementById('driver-name-hidden').value = '';\n\t\t\tdocument.getElementById('driver-phone-hidden').value = '';\n\t\t\tif (!opt.value) return;\n\t\t\ttry {\n\t\t\t\tvar vehicles = JSON.parse(opt.getAttribute('data-vehicles') || '[]');\n\t\t\t\tvehicles.forEach(function(v) {\n\t\t\t\t\tvar o = document.createElement('option');\n\t\t\t\t\to.value = v.vehicle_number;\n\t\t\t\t\to.textContent = v.vehicle_number + (v.vehicle_type ? ' (' + v.vehicle_type + ')' : '');\n\t\t\t\t\to.setAttribute('data-driver', v.driver_name || '');\n\t\t\t\t\to.setAttribute('data-phone', v.driver_phone1 || '');\n\t\t\t\t\tvehicleSelect.appendChild(o);\n\t\t\t\t});\n\t\t\t} catch(e) {}\n\t\t});\n\t\tdocument.getElementById('vehicle-select').addEventListener('change', function() {\n\t\t\tvar opt = this.options[this.selectedIndex];\n\t\t\tdocument.getElementById('driver-name-hidden').value = opt.getAttribute('data-driver') || '';\n\t\t\tdocument.getElementById('driver-phone-hidden').value = opt.getAttribute('data-phone') || '';\n\t\t});\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, ">Yes</option></select></div></div><div class=\"mt-6 flex justify-end\"><button type=\"submit\" class=\"bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700\">Next: Select Addresses →</button></div></form></div><script>\n\t\tdocument.getElementById('transporter-select').addEventListener('change', function() {\n\t\t\tvar opt = this.options[this.selectedIndex];\n\t\t\tdocument.getElementById('transporter-name-hidden').value = opt.text !== '-- None --' ? opt.text : '';\n\t\t\tvar vehicleSelect = document.getElementById('vehicle-select');\n\t\t\tvehicleSelect.innerHTML = '<option value=\"\">-- Select vehicle --</option>';\n\t\t\tdocument.getElementById('driver-name-hidden').value = '';\n\t\t\tdocument.getElementById('driver-phone-hidden').value = '';\n\t\t\tif (!opt.value) return;\n\t\t\ttry {\n\t\t\t\tvar vehicles = JSON.parse(opt.getAttribute('data-vehicles') || '[]');\n\t\t\t\tvehicles.forEach(function(v) {\n\t\t\t\t\tvar o = document.createElement('option');\n\t\t\t\t\to.value = v.vehicle_number;\n\t\t\t\t\to.textContent = v.vehicle_number + (v.vehicle_type ? ' (' + v.vehicle_type + ')' : '');\n\t\t\t\t\to.setAttribute('data-driver', v.driver_name || '');\n\t\t\t\t\to.setAttribute('data-phone', v.driver_phone1 || '');\n\t\t\t\t\tvehicleSelect.appendChild(o);\n\t\t\t\t});\n\t\t\t} catch(e) {}\n\t\t});\n\t\tdocument.getElementById('vehicle-select').addEventListener('change', function() {\n\t\t\tvar opt = this.options[this.selectedIndex];\n\t\t\tdocument.getElementById('driver-name-hidden').value = opt.getAttribute('data-driver') || '';\n\t\t\tdocument.getElementById('driver-phone-hidden').value = opt.getAttribute('data-phone') || '';\n\t\t});\n\t\t// Auto-populate vehicle dropdown and pre-select vehicle when editing\n\t\t(function() {\n\t\t\tvar transporterSelect = document.getElementById('transporter-select');\n\t\t\tvar prefillVehicle = document.getElementById('prefill-vehicle-number');\n\t\t\tif (transporterSelect.value && prefillVehicle && prefillVehicle.value) {\n\t\t\t\t// Trigger change to populate vehicles\n\t\t\t\ttransporterSelect.dispatchEvent(new Event('change'));\n\t\t\t\t// Select the prefilled vehicle\n\t\t\t\tvar vehicleSelect = document.getElementById('vehicle-select');\n\t\t\t\tvehicleSelect.value = prefillVehicle.value;\n\t\t\t\tif (vehicleSelect.value === prefillVehicle.value) {\n\t\t\t\t\tvehicleSelect.dispatchEvent(new Event('change'));\n\t\t\t\t}\n\t\t\t}\n\t\t})();\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

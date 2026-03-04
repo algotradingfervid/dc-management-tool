@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/narendhupati/dc-management-tool/components/partials"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
@@ -12,7 +13,7 @@ templ WizardStep3(
 	currentProject *models.Project,
 	allProjects []*models.Project,
 	products []*models.TemplateProductRow,
-	numSets int,
+	numLocations int,
 	challanDate string,
 	templateID string,
 	transporterName string,
@@ -32,15 +33,24 @@ templ WizardStep3(
 	prefillSerials map[int][]string,
 	prefillAssignments map[string][]string,
 	serialErrors map[int]string,
+	quantityHiddenFields []QuantityHiddenField,
+	productQuantityTotals map[int]int,
 ) {
 	<div class="max-w-4xl mx-auto">
-		<h1 class="text-2xl font-bold mb-6">Create New Shipment - Step 3: Serial Numbers</h1>
+		@partials.WizardSteps([]partials.WizardStep{
+			{Number: 1, Label: "Setup"},
+			{Number: 2, Label: "Addresses"},
+			{Number: 3, Label: "Quantities"},
+			{Number: 4, Label: "Serials"},
+			{Number: 5, Label: "Review"},
+		}, 4)
+		<h1 class="text-2xl font-bold mb-6">Create New Shipment - Step 4: Serial Numbers</h1>
 		<form
 			method="POST"
 			if editGroupID > 0 {
-				action={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/%d/edit/step4", currentProject.ID, editGroupID)) }
+				action={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/%d/edit/step5", currentProject.ID, editGroupID)) }
 			} else {
-				action={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/new/step4", currentProject.ID)) }
+				action={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/new/step5", currentProject.ID)) }
 			}
 		>
 			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
@@ -49,7 +59,7 @@ templ WizardStep3(
 			}
 			<!-- Carry forward all previous data -->
 			<input type="hidden" name="template_id" value={ templateID }/>
-			<input type="hidden" name="num_sets" value={ strconv.Itoa(numSets) }/>
+			<input type="hidden" name="num_locations" value={ strconv.Itoa(numLocations) }/>
 			<input type="hidden" name="challan_date" value={ challanDate }/>
 			<input type="hidden" name="transporter_name" value={ transporterName }/>
 			<input type="hidden" name="vehicle_number" value={ vehicleNumber }/>
@@ -64,9 +74,13 @@ templ WizardStep3(
 			for _, id := range shipToAddressIDs {
 				<input type="hidden" name="ship_to_address_ids" value={ id }/>
 			}
+			<!-- Carry forward quantity data from step 3 -->
+			for _, qf := range quantityHiddenFields {
+				<input type="hidden" name={ qf.Name } value={ qf.Value }/>
+			}
 			<div class="bg-white shadow rounded-lg p-6 space-y-6">
 				for _, p := range products {
-					{{ total := p.DefaultQuantity * numSets }}
+					{{ total := productExpectedTotal(productQuantityTotals, p.ID, p.DefaultQuantity, numLocations) }}
 					<div class="border rounded-lg p-4" data-product-id={ strconv.Itoa(p.ID) } data-expected={ strconv.Itoa(total) }>
 						<h3 class="font-medium text-lg">{ p.ItemName }</h3>
 						<p class="text-sm text-gray-500">
@@ -103,7 +117,16 @@ templ WizardStep3(
 				}
 			</div>
 			<div id="serial-errors" class="hidden mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"></div>
-			<div class="mt-6 flex justify-end">
+			<div class="mt-6 flex justify-between">
+				if editGroupID > 0 {
+					<button type="submit" formaction={ string(templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/%d/edit/back-to-step3", currentProject.ID, editGroupID))) } class="text-gray-600 hover:text-gray-800 px-4 py-2 border border-gray-300 rounded-md">
+						← Back
+					</button>
+				} else {
+					<button type="submit" formaction={ string(templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/new/back-to-step3", currentProject.ID))) } class="text-gray-600 hover:text-gray-800 px-4 py-2 border border-gray-300 rounded-md">
+						← Back
+					</button>
+				}
 				<button type="submit" id="step3-submit" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">
 					Next: Review →
 				</button>

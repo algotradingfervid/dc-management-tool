@@ -113,7 +113,7 @@ func step4JoinSerials(serials []string) string {
 //   - user, currentProject, allProjects: standard layout data
 //   - tmpl: the selected DC template (for display name)
 //   - products: template products with DefaultQuantity
-//   - numSets: number of official DC sets
+//   - numLocations: number of official DC locations
 //   - serialData: per-product serial/assignment data entered in step 3
 //   - shipToAddresses: the ship-to Address objects (resolved from IDs)
 //   - hiddenFields: all form fields to carry forward to the create action
@@ -125,7 +125,7 @@ func WizardStep4(
 	allProjects []*models.Project,
 	tmpl *models.DCTemplate,
 	products []*models.TemplateProductRow,
-	numSets int,
+	numLocations int,
 	serialData []Step4SerialProductData,
 	shipToAddresses []*models.Address,
 	hiddenFields []Step4HiddenField,
@@ -252,14 +252,14 @@ func WizardStep4(
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</p></div><div><p class=\"text-sm text-gray-500\">Number of Sets</p><p class=\"font-medium\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</p></div><div><p class=\"text-sm text-gray-500\">Number of Locations</p><p class=\"font-medium\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
-		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", numSets))
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", numLocations))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step4.templ`, Line: 160, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step4.templ`, Line: 160, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -462,9 +462,9 @@ func WizardStep4(
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var20 string
-			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", p.DefaultQuantity*numSets))
+			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", p.DefaultQuantity*numLocations))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step4.templ`, Line: 243, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step4.templ`, Line: 243, Col: 93}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -488,9 +488,9 @@ func WizardStep4(
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var22 string
-			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.2f", p.PerUnitPrice*float64(p.DefaultQuantity*numSets)))
+			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.2f", p.PerUnitPrice*float64(p.DefaultQuantity*numLocations)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step4.templ`, Line: 245, Col: 122}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step4.templ`, Line: 245, Col: 127}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {
@@ -593,9 +593,9 @@ func WizardStep4(
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var28 string
-		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", 1+numSets))
+		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", 1+numLocations))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step4.templ`, Line: 288, Col: 81}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step4.templ`, Line: 288, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {

@@ -68,14 +68,22 @@ func ShowOfficialDCDetail(c echo.Context) error {
 	lineItems := lineItemsToPointers(lineItemsVal)
 
 	// Get addresses
-	var shipToAddress *models.Address
+	var shipToAddress, billToAddress, billFromAddress, dispatchFromAddress *models.Address
 	if dc.ShipToAddressID > 0 {
 		shipToAddress, _ = database.GetAddress(dc.ShipToAddressID)
 	}
-	var billToAddress *models.Address
 	if dc.BillToAddressID != nil && *dc.BillToAddressID > 0 {
 		billToAddress, _ = database.GetAddress(*dc.BillToAddressID)
 	}
+	if dc.BillFromAddressID != nil && *dc.BillFromAddressID > 0 {
+		billFromAddress, _ = database.GetAddress(*dc.BillFromAddressID)
+	}
+	if dc.DispatchFromAddressID != nil && *dc.DispatchFromAddressID > 0 {
+		dispatchFromAddress, _ = database.GetAddress(*dc.DispatchFromAddressID)
+	}
+
+	// Fetch transit details from parent TDC in the same shipment group
+	var transitDetails *models.DCTransitDetails
 
 	// Get shipment group info if DC belongs to one
 	var shipmentGroup *models.ShipmentGroup
@@ -90,6 +98,16 @@ func ShowOfficialDCDetail(c echo.Context) error {
 				officialCount++
 				if sdc.ID == dc.ID {
 					dcPosition = officialCount
+				}
+			}
+			if sdc.DCType == "transit" && transitDetails == nil {
+				transitDetails, _ = database.GetTransitDetailsByDCID(sdc.ID)
+				// Fall back to TDC's addresses for ODCs created before address inheritance was added
+				if billFromAddress == nil && sdc.BillFromAddressID != nil && *sdc.BillFromAddressID > 0 {
+					billFromAddress, _ = database.GetAddress(*sdc.BillFromAddressID)
+				}
+				if dispatchFromAddress == nil && sdc.DispatchFromAddressID != nil && *sdc.DispatchFromAddressID > 0 {
+					dispatchFromAddress, _ = database.GetAddress(*sdc.DispatchFromAddressID)
 				}
 			}
 		}
@@ -128,6 +146,9 @@ func ShowOfficialDCDetail(c echo.Context) error {
 		lineItems,
 		shipToAddress,
 		billToAddress,
+		billFromAddress,
+		dispatchFromAddress,
+		transitDetails,
 		shipmentGroup,
 		siblingDCs,
 		dcPosition,

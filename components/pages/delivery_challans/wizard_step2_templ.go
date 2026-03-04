@@ -45,8 +45,8 @@ func step2AddressLabel(a *models.Address) string {
 	return a.DisplayName()
 }
 
-func step2NumSetsStr(group *models.ShipmentGroup) string {
-	return fmt.Sprintf("%d", group.NumSets)
+func step2NumLocationsStr(group *models.ShipmentGroup) string {
+	return fmt.Sprintf("%d", group.NumLocations)
 }
 
 func step2TemplateIDStr(group *models.ShipmentGroup) string {
@@ -57,7 +57,7 @@ func step2TemplateIDStr(group *models.ShipmentGroup) string {
 }
 
 // WizardStep2 renders the address-selection step of the shipment wizard.
-// group carries the carry-forward step-1 data (NumSets, TemplateID, TaxType, ReverseCharge).
+// group carries the carry-forward step-1 data (NumLocations, TemplateID, TaxType, ReverseCharge).
 // products is provided for reference only.
 // errors holds field-level validation errors.
 // Flat carry-forward string values are passed via the formData convenience fields
@@ -156,14 +156,14 @@ func WizardStep2(
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\"> <input type=\"hidden\" name=\"num_sets\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\"> <input type=\"hidden\" name=\"num_locations\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(step2NumSetsStr(group))
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(step2NumLocationsStr(group))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step2.templ`, Line: 90, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step2.templ`, Line: 90, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -503,7 +503,7 @@ func WizardStep2(
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for i := 1; i <= group.NumSets; i++ {
+		for i := 1; i <= group.NumLocations; i++ {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<div class=\"mb-4\"><label class=\"block text-sm font-medium text-gray-700 mb-1\">Ship To - Set ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

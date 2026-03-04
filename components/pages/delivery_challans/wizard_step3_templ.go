@@ -25,15 +25,15 @@ func step3ProductIDStr(p *models.TemplateProductRow) string {
 	return fmt.Sprintf("%d", p.ID)
 }
 
-func step3RequiredCount(p *models.TemplateProductRow, numSets int) string {
-	return fmt.Sprintf("%d", p.DefaultQuantity*numSets)
+func step3RequiredCount(p *models.TemplateProductRow, numLocations int) string {
+	return fmt.Sprintf("%d", p.DefaultQuantity*numLocations)
 }
 
 func step3QtyPerSet(p *models.TemplateProductRow) string {
 	return fmt.Sprintf("%d", p.DefaultQuantity)
 }
 
-func step3NumSetsStr(n int) string {
+func step3NumLocationsStr(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
@@ -95,7 +95,7 @@ func step3InitScript(
 // Props:
 //   - user, currentProject, allProjects: standard layout data
 //   - products: template products (with DefaultQuantity), one textarea per product
-//   - numSets: number of official DC sets being created
+//   - numLocations: number of official DC locations being created
 //   - shipToAddresses: the selected ship-to addresses (one per set) for JS assignment
 //   - shipToAddressIDs: IDs of selected ship-to addresses (carry-forward hidden fields)
 //   - csrfToken: CSRF token string
@@ -105,7 +105,7 @@ func WizardStep3(
 	currentProject *models.Project,
 	allProjects []*models.Project,
 	products []*models.TemplateProductRow,
-	numSets int,
+	numLocations int,
 	shipToAddresses []*models.Address,
 	shipToAddressIDs []int,
 	csrfToken string,
@@ -191,14 +191,14 @@ func WizardStep3(
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\"> <input type=\"hidden\" name=\"num_sets\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\"> <input type=\"hidden\" name=\"num_locations\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(step3NumSetsStr(numSets))
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(step3NumLocationsStr(numLocations))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step3.templ`, Line: 125, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step3.templ`, Line: 125, Col: 87}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -407,9 +407,9 @@ func WizardStep3(
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var20 string
-				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(step3RequiredCount(p, numSets))
+				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(step3RequiredCount(p, numLocations))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step3.templ`, Line: 148, Col: 63}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step3.templ`, Line: 148, Col: 68}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 				if templ_7745c5c3_Err != nil {
@@ -420,9 +420,9 @@ func WizardStep3(
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var21 string
-				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(step3RequiredCount(p, numSets))
+				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(step3RequiredCount(p, numLocations))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step3.templ`, Line: 152, Col: 45}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step3.templ`, Line: 152, Col: 50}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 				if templ_7745c5c3_Err != nil {
@@ -435,26 +435,26 @@ func WizardStep3(
 				var templ_7745c5c3_Var22 string
 				templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(step3QtyPerSet(p))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step3.templ`, Line: 152, Col: 83}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step3.templ`, Line: 152, Col: 88}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, " per set &times; ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, " per location &times; ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var23 string
-				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(step3NumSetsStr(numSets))
+				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(step3NumLocationsStr(numLocations))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step3.templ`, Line: 152, Col: 128}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step3.templ`, Line: 152, Col: 148}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, " sets), one per line</p><textarea id=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, " locations), one per line</p><textarea id=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -485,9 +485,9 @@ func WizardStep3(
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var26 string
-				templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(step3RequiredCount(p, numSets))
+				templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(step3RequiredCount(p, numLocations))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step3.templ`, Line: 160, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step3.templ`, Line: 160, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 				if templ_7745c5c3_Err != nil {

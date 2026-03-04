@@ -14,7 +14,7 @@ func CreateShipmentGroup(group *models.ShipmentGroup) (int, error) {
 	result, err := queries().CreateShipmentGroup(ctx(), db.CreateShipmentGroupParams{
 		ProjectID:     int64(group.ProjectID),
 		TemplateID:    nullInt64FromPtr(group.TemplateID),
-		NumSets:       int64(group.NumSets),
+		NumSets:       int64(group.NumLocations),
 		TaxType:       group.TaxType,
 		ReverseCharge: group.ReverseCharge,
 		Status:        group.Status,
@@ -36,7 +36,7 @@ func GetShipmentGroup(id int) (*models.ShipmentGroup, error) {
 	sg := &models.ShipmentGroup{
 		ID:              int(r.ID),
 		ProjectID:       int(r.ProjectID),
-		NumSets:         int(r.NumSets),
+		NumLocations:    int(r.NumSets),
 		TaxType:         r.TaxType,
 		ReverseCharge:   r.ReverseCharge,
 		Status:          r.Status,
@@ -132,7 +132,7 @@ func GetShipmentGroupsByProjectID(projectID int) ([]*models.ShipmentGroup, error
 		sg := &models.ShipmentGroup{
 			ID:              int(r.ID),
 			ProjectID:       int(r.ProjectID),
-			NumSets:         int(r.NumSets),
+			NumLocations:    int(r.NumSets),
 			TaxType:         r.TaxType,
 			ReverseCharge:   r.ReverseCharge,
 			Status:          r.Status,
@@ -180,12 +180,12 @@ func IssueAllDCsInGroup(groupID int, issuedBy int) (int, error) {
 
 // UpdateShipmentGroup updates mutable fields on an existing draft shipment group.
 // Only call this while the group is still in "draft" status.
-func UpdateShipmentGroup(groupID int, templateID *int, numSets int, taxType, reverseCharge string) error {
+func UpdateShipmentGroup(groupID int, templateID *int, numLocations int, taxType, reverseCharge string) error {
 	_, err := DB.ExecContext(ctx(),
 		`UPDATE shipment_groups
 		    SET template_id = ?, num_sets = ?, tax_type = ?, reverse_charge = ?, updated_at = CURRENT_TIMESTAMP
 		  WHERE id = ? AND status = 'draft'`,
-		nullInt64FromPtr(templateID), numSets, taxType, reverseCharge, groupID,
+		nullInt64FromPtr(templateID), numLocations, taxType, reverseCharge, groupID,
 	)
 	if err != nil {
 		return fmt.Errorf("UpdateShipmentGroup: %w", err)

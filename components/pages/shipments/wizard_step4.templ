@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/narendhupati/dc-management-tool/components/partials"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
@@ -13,7 +14,7 @@ templ WizardStep4(
 	allProjects []*models.Project,
 	tmpl *models.DCTemplate,
 	products []*models.TemplateProductRow,
-	numSets int,
+	numLocations int,
 	challanDate string,
 	transporterName string,
 	vehicleNumber string,
@@ -31,12 +32,20 @@ templ WizardStep4(
 	serialData []WizardSerialData,
 	csrfToken string,
 	editGroupID int,
+	quantityHiddenFields []QuantityHiddenField,
 ) {
 	<div class="max-w-4xl mx-auto">
+		@partials.WizardSteps([]partials.WizardStep{
+			{Number: 1, Label: "Setup"},
+			{Number: 2, Label: "Addresses"},
+			{Number: 3, Label: "Quantities"},
+			{Number: 4, Label: "Serials"},
+			{Number: 5, Label: "Review"},
+		}, 5)
 		if editGroupID > 0 {
-			<h1 class="text-2xl font-bold mb-6">Edit Shipment — Step 4: Review</h1>
+			<h1 class="text-2xl font-bold mb-6">Edit Shipment — Step 5: Review</h1>
 		} else {
-			<h1 class="text-2xl font-bold mb-6">Create New Shipment - Review &amp; Confirm</h1>
+			<h1 class="text-2xl font-bold mb-6">Create New Shipment - Step 5: Review &amp; Confirm</h1>
 		}
 		<div class="bg-white shadow rounded-lg p-6 mb-6">
 			<h2 class="text-lg font-medium mb-4">Shipment Summary</h2>
@@ -50,8 +59,8 @@ templ WizardStep4(
 					</dd>
 				</div>
 				<div>
-					<dt class="text-gray-500">Number of Sets</dt>
-					<dd class="font-medium">{ strconv.Itoa(numSets) }</dd>
+					<dt class="text-gray-500">Number of Locations</dt>
+					<dd class="font-medium">{ strconv.Itoa(numLocations) }</dd>
 				</div>
 				<div>
 					<dt class="text-gray-500">Challan Date</dt>
@@ -86,7 +95,7 @@ templ WizardStep4(
 						<tr>
 							<td class="py-2">{ p.ItemName }</td>
 							<td class="py-2">{ strconv.Itoa(p.DefaultQuantity) }</td>
-							<td class="py-2">{ strconv.Itoa(p.DefaultQuantity * numSets) }</td>
+							<td class="py-2">{ strconv.Itoa(p.DefaultQuantity * numLocations) }</td>
 						</tr>
 					}
 				</tbody>
@@ -114,7 +123,7 @@ templ WizardStep4(
 			}
 			<!-- All hidden data -->
 			<input type="hidden" name="template_id" value={ templateID }/>
-			<input type="hidden" name="num_sets" value={ strconv.Itoa(numSets) }/>
+			<input type="hidden" name="num_locations" value={ strconv.Itoa(numLocations) }/>
 			<input type="hidden" name="challan_date" value={ challanDate }/>
 			<input type="hidden" name="transporter_name" value={ transporterName }/>
 			<input type="hidden" name="vehicle_number" value={ vehicleNumber }/>
@@ -129,6 +138,10 @@ templ WizardStep4(
 			for _, id := range shipToAddressIDs {
 				<input type="hidden" name="ship_to_address_ids" value={ id }/>
 			}
+			<!-- Quantity data -->
+			for _, qf := range quantityHiddenFields {
+				<input type="hidden" name={ qf.Name } value={ qf.Value }/>
+			}
 			<!-- Serial data -->
 			for _, sd := range serialData {
 				<input type="hidden" name={ fmt.Sprintf("serials_%d", sd.ProductID) } value={ joinStrings(sd.AllSerials, "\n") }/>
@@ -137,9 +150,15 @@ templ WizardStep4(
 				}
 			}
 			<div class="mt-6 flex justify-between">
-				<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/new", currentProject.ID)) } class="text-gray-600 hover:text-gray-800 px-4 py-2">
-					← Start Over
-				</a>
+				if editGroupID > 0 {
+					<button type="submit" formaction={ string(templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/%d/edit/back-to-step4", currentProject.ID, editGroupID))) } class="text-gray-600 hover:text-gray-800 px-4 py-2 border border-gray-300 rounded-md">
+						← Back
+					</button>
+				} else {
+					<button type="submit" formaction={ string(templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/new/back-to-step4", currentProject.ID))) } class="text-gray-600 hover:text-gray-800 px-4 py-2 border border-gray-300 rounded-md">
+						← Back
+					</button>
+				}
 				if editGroupID > 0 {
 					<button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700">
 						Save Changes

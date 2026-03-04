@@ -53,8 +53,8 @@ templ GroupDetail(
 					}
 					<span class="text-sm text-gray-500">{ group.TemplateName }</span>
 					<span class="text-sm text-gray-500">
-						| { strconv.Itoa(group.NumSets) } set
-						if group.NumSets > 1 {
+						| { strconv.Itoa(group.NumLocations) } location
+						if group.NumLocations > 1 {
 							s
 						}
 					</span>
@@ -83,8 +83,8 @@ templ GroupDetail(
 					<dd class="font-medium text-gray-900 mt-0.5">{ group.TemplateName }</dd>
 				</div>
 				<div>
-					<dt class="text-gray-500">Number of Sets</dt>
-					<dd class="font-medium text-gray-900 mt-0.5">{ strconv.Itoa(group.NumSets) }</dd>
+					<dt class="text-gray-500">Number of Locations</dt>
+					<dd class="font-medium text-gray-900 mt-0.5">{ strconv.Itoa(group.NumLocations) }</dd>
 				</div>
 				<div>
 					<dt class="text-gray-500">Tax Type</dt>

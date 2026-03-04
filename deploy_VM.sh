@@ -13,7 +13,7 @@ GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
 echo "    Built: $(du -sh "$LOCAL_BINARY" | cut -f1) — $(file "$LOCAL_BINARY" | grep -o 'ELF.*stripped')"
 
 echo "==> Copying binary to ${REMOTE_HOST}..."
-scp "$LOCAL_BINARY" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/${BINARY_NAME}.new"
+rsync -avz --progress "$LOCAL_BINARY" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/${BINARY_NAME}.new"
 
 # nginx: client_max_body_size 100M is set in /etc/nginx/nginx.conf (one-time manual setup)
 

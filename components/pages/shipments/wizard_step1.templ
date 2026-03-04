@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/narendhupati/dc-management-tool/components/partials"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
@@ -20,6 +21,13 @@ templ WizardStep1(
 	prefill *ShipStep1Prefill,
 ) {
 	<div class="max-w-4xl mx-auto">
+		@partials.WizardSteps([]partials.WizardStep{
+			{Number: 1, Label: "Setup"},
+			{Number: 2, Label: "Addresses"},
+			{Number: 3, Label: "Quantities"},
+			{Number: 4, Label: "Serials"},
+			{Number: 5, Label: "Review"},
+		}, 1)
 		if editGroupID > 0 {
 			<h1 class="text-2xl font-bold mb-6">Edit Shipment — Step 1: Basic Details</h1>
 		} else {
@@ -52,8 +60,8 @@ templ WizardStep1(
 					</select>
 				</div>
 				<div>
-					<label class="block text-sm font-medium text-gray-700">Number of Sets</label>
-					<input type="number" name="num_sets" min="1" value={ prefillNumSets(prefill) } required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
+					<label class="block text-sm font-medium text-gray-700">Number of Locations</label>
+					<input type="number" name="num_locations" min="1" value={ prefillNumLocations(prefill) } required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
 				</div>
 				<div>
 					<label class="block text-sm font-medium text-gray-700">Challan Date</label>
@@ -64,10 +72,15 @@ templ WizardStep1(
 					<select name="transporter_id" id="transporter-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
 						<option value="">-- None --</option>
 						for _, t := range transporters {
-							<option value={ fmt.Sprintf("%d", t.ID) } data-vehicles={ vehiclesJSON(t.Vehicles) }>{ t.CompanyName }</option>
+							if prefill != nil && prefill.TransporterID == t.ID {
+								<option value={ fmt.Sprintf("%d", t.ID) } data-vehicles={ vehiclesJSON(t.Vehicles) } selected>{ t.CompanyName }</option>
+							} else {
+								<option value={ fmt.Sprintf("%d", t.ID) } data-vehicles={ vehiclesJSON(t.Vehicles) }>{ t.CompanyName }</option>
+							}
 						}
 					</select>
 					<input type="hidden" name="transporter_name" id="transporter-name-hidden" value={ prefillStr(prefill, func(p *ShipStep1Prefill) string { return p.TransporterName }) }/>
+					<input type="hidden" id="prefill-vehicle-number" value={ prefillStr(prefill, func(p *ShipStep1Prefill) string { return p.VehicleNumber }) }/>
 				</div>
 				<div>
 					<label class="block text-sm font-medium text-gray-700">Vehicle</label>
@@ -149,5 +162,20 @@ templ WizardStep1(
 			document.getElementById('driver-name-hidden').value = opt.getAttribute('data-driver') || '';
 			document.getElementById('driver-phone-hidden').value = opt.getAttribute('data-phone') || '';
 		});
+		// Auto-populate vehicle dropdown and pre-select vehicle when editing
+		(function() {
+			var transporterSelect = document.getElementById('transporter-select');
+			var prefillVehicle = document.getElementById('prefill-vehicle-number');
+			if (transporterSelect.value && prefillVehicle && prefillVehicle.value) {
+				// Trigger change to populate vehicles
+				transporterSelect.dispatchEvent(new Event('change'));
+				// Select the prefilled vehicle
+				var vehicleSelect = document.getElementById('vehicle-select');
+				vehicleSelect.value = prefillVehicle.value;
+				if (vehicleSelect.value === prefillVehicle.value) {
+					vehicleSelect.dispatchEvent(new Event('change'));
+				}
+			}
+		})();
 	</script>
 }

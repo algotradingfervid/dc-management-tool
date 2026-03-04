@@ -13,8 +13,9 @@ import (
 // All fields map directly to form inputs. Zero values mean "no pre-fill".
 type ShipStep1Prefill struct {
 	TemplateID      *int   // nil = no selection
-	NumSets         int
+	NumLocations    int
 	ChallanDate     string // "YYYY-MM-DD" or ""
+	TransporterID   int    // 0 = no pre-selection
 	TransporterName string
 	VehicleNumber   string
 	EwayBillNumber  string
@@ -31,12 +32,12 @@ func prefillStr(p *ShipStep1Prefill, fn func(*ShipStep1Prefill) string) string {
 	return fn(p)
 }
 
-// prefillNumSets returns p.NumSets as a string, or "" when p is nil or NumSets is 0.
-func prefillNumSets(p *ShipStep1Prefill) string {
-	if p == nil || p.NumSets == 0 {
+// prefillNumLocations returns p.NumLocations as a string, or "" when p is nil or NumLocations is 0.
+func prefillNumLocations(p *ShipStep1Prefill) string {
+	if p == nil || p.NumLocations == 0 {
 		return ""
 	}
-	return strconv.Itoa(p.NumSets)
+	return strconv.Itoa(p.NumLocations)
 }
 
 // preselectedIDsJSON serializes a slice of address IDs to a JSON array string
@@ -130,6 +131,44 @@ func shipToAddressesJSON(addresses []*models.Address) string { //nolint:unused
 // Go template "join" helper used in wizard_step4.
 func joinStrings(items []string, sep string) string {
 	return strings.Join(items, sep)
+}
+
+// QuantityAddress pairs an address ID with a display name for the quantity grid columns.
+type QuantityAddress struct {
+	ID   int
+	Name string
+}
+
+// QuantityHiddenField holds a name/value pair for carrying quantity data through form steps.
+type QuantityHiddenField struct {
+	Name  string
+	Value string
+}
+
+// qtyInputValue returns the value string for a quantity input field.
+// If prefillQuantities has a value for this product+address, use it.
+// Otherwise fall back to the product's default quantity.
+func qtyInputValue(prefillQuantities map[int]map[int]int, productID, addrID, defaultQty int) string {
+	if prefillQuantities != nil {
+		if qMap, ok := prefillQuantities[productID]; ok {
+			if qty, ok := qMap[addrID]; ok {
+				return strconv.Itoa(qty)
+			}
+		}
+	}
+	return strconv.Itoa(defaultQty)
+}
+
+// productExpectedTotal returns the total expected serial count for a product
+// by summing its quantities across all locations. Falls back to defaultQty * numLocations
+// if the map is nil or missing.
+func productExpectedTotal(quantities map[int]int, productID, defaultQty, numLocations int) int {
+	if quantities != nil {
+		if total, ok := quantities[productID]; ok {
+			return total
+		}
+	}
+	return defaultQty * numLocations
 }
 
 // WizardSerialData holds serial numbers for one product gathered in wizard step 3.

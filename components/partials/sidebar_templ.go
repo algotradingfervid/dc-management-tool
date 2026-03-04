@@ -585,7 +585,7 @@ func Sidebar(user *models.User, currentProject *models.Project, allProjects []*m
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var44 = []any{"nav-link", templ.KV("active", currentPath == "/projects/"+projectID(currentProject))}
+			var templ_7745c5c3_Var44 = []any{"nav-link", templ.KV("active", strings.HasPrefix(currentPath, "/projects/"+projectID(currentProject)+"/settings"))}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var44...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -595,9 +595,9 @@ func Sidebar(user *models.User, currentProject *models.Project, allProjects []*m
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var45 templ.SafeURL
-			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/projects/" + projectID(currentProject)))
+			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/projects/" + projectID(currentProject) + "/settings"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/partials/sidebar.templ`, Line: 208, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/partials/sidebar.templ`, Line: 208, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 			if templ_7745c5c3_Err != nil {

@@ -15,9 +15,11 @@ type Project struct {
 	PODate               *string   `json:"po_date"`
 	BillFromAddress      string    `json:"bill_from_address"`
 	DispatchFromAddress  string    `json:"dispatch_from_address"`
+	CompanyName          string    `json:"company_name"`
 	CompanyGSTIN         string    `json:"company_gstin" validate:"omitempty,len=15"`
 	CompanyEmail         string    `json:"company_email" validate:"omitempty,email"`
 	CompanyCIN           string    `json:"company_cin"`
+	CompanyPAN           string    `json:"company_pan"`
 	CompanySignaturePath  string    `json:"company_signature_path"`
 	CompanySealPath       string    `json:"company_seal_path"`
 	SignatoryName         string    `json:"signatory_name"`
@@ -26,6 +28,7 @@ type Project struct {
 	DCNumberFormat       string    `json:"dc_number_format"`
 	DCNumberSeparator    string    `json:"dc_number_separator"`
 	PurposeText          string    `json:"purpose_text"`
+	Notes                string    `json:"notes"`
 	SeqPadding           int       `json:"seq_padding"`
 	LastTransitDCNumber  int       `json:"last_transit_dc_number"`
 	LastOfficialDCNumber int       `json:"last_official_dc_number"`

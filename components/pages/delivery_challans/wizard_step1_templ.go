@@ -539,19 +539,19 @@ func WizardStep1(
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</select></div><!-- Number of Sets --><div><label for=\"num-sets-input\" class=\"block text-sm font-medium text-gray-700 mb-1\">Number of Sets</label> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</select></div><!-- Number of Locations --><div><label for=\"num-locations-input\" class=\"block text-sm font-medium text-gray-700 mb-1\">Number of Locations</label> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if errors["num_sets"] != "" {
+		if errors["num_locations"] != "" {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<p class=\"text-xs text-red-600 mb-1\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var31 string
-			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(errors["num_sets"])
+			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(errors["num_locations"])
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step1.templ`, Line: 207, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/wizard_step1.templ`, Line: 207, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 			if templ_7745c5c3_Err != nil {
@@ -562,13 +562,13 @@ func WizardStep1(
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<input type=\"number\" name=\"num_sets\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<input type=\"number\" name=\"num_locations\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(func() string {
-			if v, ok := formData["num_sets"]; ok && v != "" {
+			if v, ok := formData["num_locations"]; ok && v != "" {
 				return v
 			}
 			return "1"
@@ -580,7 +580,7 @@ func WizardStep1(
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "\" min=\"1\" id=\"num-sets-input\" class=\"w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500\"><p id=\"sets-info\" class=\"text-sm text-gray-500 mt-1\">This will create 1 Transit DC + 1 Official DC</p></div><!-- Challan Date --><div><label for=\"challan_date\" class=\"block text-sm font-medium text-gray-700 mb-1\">Challan Date</label> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "\" min=\"1\" id=\"num-locations-input\" class=\"w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500\"><p id=\"locations-info\" class=\"text-sm text-gray-500 mt-1\">This will create 1 Transit DC + 1 Official DC</p></div><!-- Challan Date --><div><label for=\"challan_date\" class=\"block text-sm font-medium text-gray-700 mb-1\">Challan Date</label> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -721,7 +721,7 @@ func WizardStep1(
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "\" class=\"btn btn-secondary\">Cancel</a> <button type=\"submit\" class=\"btn btn-primary\">Next: Addresses &#x2192;</button></div></form></div><script>\n\t\tdocument.getElementById('num-sets-input').addEventListener('input', function() {\n\t\t\tvar n = parseInt(this.value) || 1;\n\t\t\tdocument.getElementById('sets-info').textContent =\n\t\t\t\t'This will create 1 Transit DC + ' + n + ' Official DC' + (n > 1 ? 's' : '');\n\t\t});\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "\" class=\"btn btn-secondary\">Cancel</a> <button type=\"submit\" class=\"btn btn-primary\">Next: Addresses &#x2192;</button></div></form></div><script>\n\t\tdocument.getElementById('num-locations-input').addEventListener('input', function() {\n\t\t\tvar n = parseInt(this.value) || 1;\n\t\t\tdocument.getElementById('locations-info').textContent =\n\t\t\t\t'This will create 1 Transit DC + ' + n + ' Official DC' + (n > 1 ? 's' : '');\n\t\t});\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

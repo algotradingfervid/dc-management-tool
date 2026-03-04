@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/narendhupati/dc-management-tool/components/partials"
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
 
@@ -12,7 +13,7 @@ templ WizardStep2(
 	currentProject *models.Project,
 	allProjects []*models.Project,
 	tmpl *models.DCTemplate,
-	numSets int,
+	numLocations int,
 	challanDate string,
 	transitDCNumber string,
 	officialDCNumber string,
@@ -30,12 +31,22 @@ templ WizardStep2(
 	csrfToken string,
 	editGroupID int,
 	preselectedIDs []int,
+	preselectedBillFromID int,
+	preselectedDispatchFromID int,
+	preselectedBillToID int,
 ) {
 	<div class="max-w-4xl mx-auto">
+		@partials.WizardSteps([]partials.WizardStep{
+			{Number: 1, Label: "Setup"},
+			{Number: 2, Label: "Addresses"},
+			{Number: 3, Label: "Quantities"},
+			{Number: 4, Label: "Serials"},
+			{Number: 5, Label: "Review"},
+		}, 2)
 		<h1 class="text-2xl font-bold mb-6">Create New Shipment - Step 2: Select Addresses</h1>
 		<div class="bg-gray-50 rounded-lg p-4 mb-6">
 			<p class="text-sm text-gray-600">
-				Template: <strong>{ tmpl.Name }</strong> | Sets: <strong>{ strconv.Itoa(numSets) }</strong> | Date: <strong>{ challanDate }</strong>
+				Template: <strong>{ tmpl.Name }</strong> | Locations: <strong>{ strconv.Itoa(numLocations) }</strong> | Date: <strong>{ challanDate }</strong>
 			</p>
 			<p class="text-sm text-gray-600">
 				Next Transit DC: <strong>{ transitDCNumber }</strong> | Next Official DC: <strong>{ officialDCNumber }</strong>
@@ -55,7 +66,7 @@ templ WizardStep2(
 			}
 			<!-- Carry forward step 1 data -->
 			<input type="hidden" name="template_id" value={ templateID }/>
-			<input type="hidden" name="num_sets" value={ strconv.Itoa(numSets) }/>
+			<input type="hidden" name="num_locations" value={ strconv.Itoa(numLocations) }/>
 			<input type="hidden" name="challan_date" value={ challanDate }/>
 			<input type="hidden" name="transporter_name" value={ transporterName }/>
 			<input type="hidden" name="vehicle_number" value={ vehicleNumber }/>
@@ -69,7 +80,11 @@ templ WizardStep2(
 					<select name="bill_from_address_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
 						<option value="">Select...</option>
 						for _, a := range billFromAddresses {
-							<option value={ strconv.Itoa(a.ID) }>{ a.DisplayName() }</option>
+							if preselectedBillFromID == a.ID {
+								<option value={ strconv.Itoa(a.ID) } selected>{ a.DisplayName() }</option>
+							} else {
+								<option value={ strconv.Itoa(a.ID) }>{ a.DisplayName() }</option>
+							}
 						}
 					</select>
 				</div>
@@ -78,7 +93,11 @@ templ WizardStep2(
 					<select name="dispatch_from_address_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
 						<option value="">Select...</option>
 						for _, a := range dispatchFromAddresses {
-							<option value={ strconv.Itoa(a.ID) }>{ a.DisplayName() }</option>
+							if preselectedDispatchFromID == a.ID {
+								<option value={ strconv.Itoa(a.ID) } selected>{ a.DisplayName() }</option>
+							} else {
+								<option value={ strconv.Itoa(a.ID) }>{ a.DisplayName() }</option>
+							}
 						}
 					</select>
 				</div>
@@ -87,16 +106,20 @@ templ WizardStep2(
 					<select name="bill_to_address_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
 						<option value="">Select...</option>
 						for _, a := range billToAddresses {
-							<option value={ strconv.Itoa(a.ID) }>{ a.DisplayName() }</option>
+							if preselectedBillToID == a.ID {
+								<option value={ strconv.Itoa(a.ID) } selected>{ a.DisplayName() }</option>
+							} else {
+								<option value={ strconv.Itoa(a.ID) }>{ a.DisplayName() }</option>
+							}
 						}
 					</select>
 				</div>
 				<!-- Ship To Addresses - tag picker -->
 				<div>
 					<label class="block text-sm font-medium text-gray-700 mb-1">
-						Ship To Addresses (select { strconv.Itoa(numSets) })
+						Ship To Addresses (select { strconv.Itoa(numLocations) })
 					</label>
-					<div id="ship-to-picker" class="relative" data-addresses={ shipToAddressesJSON(shipToAddresses) } data-num-sets={ strconv.Itoa(numSets) } data-preselected={ preselectedIDsJSON(preselectedIDs) }>
+					<div id="ship-to-picker" class="relative" data-addresses={ shipToAddressesJSON(shipToAddresses) } data-num-locations={ strconv.Itoa(numLocations) } data-preselected={ preselectedIDsJSON(preselectedIDs) }>
 						<!-- Selected tags -->
 						<div
 							id="ship-to-tags"
@@ -116,7 +139,7 @@ templ WizardStep2(
 						<!-- Dropdown -->
 						<div id="ship-to-dropdown" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"></div>
 						<p class="text-xs text-gray-500 mt-1">
-							<span id="ship-to-count">0</span> / { strconv.Itoa(numSets) } selected
+							<span id="ship-to-count">0</span> / { strconv.Itoa(numLocations) } selected
 						</p>
 					</div>
 				</div>
@@ -128,7 +151,16 @@ templ WizardStep2(
 					</select>
 				</div>
 			</div>
-			<div class="mt-6 flex justify-end">
+			<div class="mt-6 flex justify-between">
+				if editGroupID > 0 {
+					<button type="submit" formaction={ string(templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/%d/edit/back-to-step1", currentProject.ID, editGroupID))) } class="text-gray-600 hover:text-gray-800 px-4 py-2 border border-gray-300 rounded-md">
+						← Back
+					</button>
+				} else {
+					<button type="submit" formaction={ string(templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/new/back-to-step1", currentProject.ID))) } class="text-gray-600 hover:text-gray-800 px-4 py-2 border border-gray-300 rounded-md">
+						← Back
+					</button>
+				}
 				<button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">
 					Next: Enter Serials →
 				</button>
@@ -139,7 +171,7 @@ templ WizardStep2(
 		(function() {
 			var picker = document.getElementById('ship-to-picker');
 			var allAddresses = JSON.parse(picker.dataset.addresses || '[]');
-			var numSets = parseInt(picker.dataset.numSets, 10) || 1;
+			var numLocations = parseInt(picker.dataset.numLocations, 10) || 1;
 			var searchInput = document.getElementById('ship-to-search');
 			var dropdown = document.getElementById('ship-to-dropdown');
 			var tagsContainer = document.getElementById('ship-to-tags');
@@ -191,10 +223,10 @@ templ WizardStep2(
 
 			function addAddress(addr) {
 				if (selected.some(function(s) { return s.id === addr.id; })) return;
-				if (selected.length >= numSets) {
+				if (selected.length >= numLocations) {
 					var p = countEl.parentElement;
 					p.classList.add('text-red-600');
-					p.textContent = 'Maximum ' + numSets + ' addresses allowed (matching number of sets)';
+					p.textContent = 'Maximum ' + numLocations + ' addresses allowed (matching number of locations)';
 					setTimeout(function() {
 						p.classList.remove('text-red-600');
 						render();

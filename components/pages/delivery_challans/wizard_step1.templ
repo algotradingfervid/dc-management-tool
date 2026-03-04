@@ -200,26 +200,26 @@ templ WizardStep1(
 						}
 					</select>
 				</div>
-				<!-- Number of Sets -->
+				<!-- Number of Locations -->
 				<div>
-					<label for="num-sets-input" class="block text-sm font-medium text-gray-700 mb-1">Number of Sets</label>
-					if errors["num_sets"] != "" {
-						<p class="text-xs text-red-600 mb-1">{ errors["num_sets"] }</p>
+					<label for="num-locations-input" class="block text-sm font-medium text-gray-700 mb-1">Number of Locations</label>
+					if errors["num_locations"] != "" {
+						<p class="text-xs text-red-600 mb-1">{ errors["num_locations"] }</p>
 					}
 					<input
 						type="number"
-						name="num_sets"
+						name="num_locations"
 						value={ func() string {
-							if v, ok := formData["num_sets"]; ok && v != "" {
+							if v, ok := formData["num_locations"]; ok && v != "" {
 								return v
 							}
 							return "1"
 						}() }
 						min="1"
-						id="num-sets-input"
+						id="num-locations-input"
 						class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500"
 					/>
-					<p id="sets-info" class="text-sm text-gray-500 mt-1">This will create 1 Transit DC + 1 Official DC</p>
+					<p id="locations-info" class="text-sm text-gray-500 mt-1">This will create 1 Transit DC + 1 Official DC</p>
 				</div>
 				<!-- Challan Date -->
 				<div>
@@ -354,9 +354,9 @@ templ WizardStep1(
 		</form>
 	</div>
 	<script>
-		document.getElementById('num-sets-input').addEventListener('input', function() {
+		document.getElementById('num-locations-input').addEventListener('input', function() {
 			var n = parseInt(this.value) || 1;
-			document.getElementById('sets-info').textContent =
+			document.getElementById('locations-info').textContent =
 				'This will create 1 Transit DC + ' + n + ' Official DC' + (n > 1 ? 's' : '');
 		});
 	</script>

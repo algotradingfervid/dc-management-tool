@@ -105,7 +105,7 @@ func step4JoinSerials(serials []string) string {
 //   - user, currentProject, allProjects: standard layout data
 //   - tmpl: the selected DC template (for display name)
 //   - products: template products with DefaultQuantity
-//   - numSets: number of official DC sets
+//   - numLocations: number of official DC locations
 //   - serialData: per-product serial/assignment data entered in step 3
 //   - shipToAddresses: the ship-to Address objects (resolved from IDs)
 //   - hiddenFields: all form fields to carry forward to the create action
@@ -117,7 +117,7 @@ templ WizardStep4(
 	allProjects []*models.Project,
 	tmpl *models.DCTemplate,
 	products []*models.TemplateProductRow,
-	numSets int,
+	numLocations int,
 	serialData []Step4SerialProductData,
 	shipToAddresses []*models.Address,
 	hiddenFields []Step4HiddenField,
@@ -156,8 +156,8 @@ templ WizardStep4(
 						</p>
 					</div>
 					<div>
-						<p class="text-sm text-gray-500">Number of Sets</p>
-						<p class="font-medium">{ fmt.Sprintf("%d", numSets) }</p>
+						<p class="text-sm text-gray-500">Number of Locations</p>
+						<p class="font-medium">{ fmt.Sprintf("%d", numLocations) }</p>
 					</div>
 					<div>
 						<p class="text-sm text-gray-500">Challan Date</p>
@@ -240,9 +240,9 @@ templ WizardStep4(
 								<tr>
 									<td class="px-4 py-2">{ p.ItemName }</td>
 									<td class="px-4 py-2">{ p.HSNCode }</td>
-									<td class="px-4 py-2 text-right">{ fmt.Sprintf("%d", p.DefaultQuantity*numSets) }</td>
+									<td class="px-4 py-2 text-right">{ fmt.Sprintf("%d", p.DefaultQuantity*numLocations) }</td>
 									<td class="px-4 py-2 text-right">&#x20B9;{ fmt.Sprintf("%.2f", p.PerUnitPrice) }</td>
-									<td class="px-4 py-2 text-right">&#x20B9;{ fmt.Sprintf("%.2f", p.PerUnitPrice*float64(p.DefaultQuantity*numSets)) }</td>
+									<td class="px-4 py-2 text-right">&#x20B9;{ fmt.Sprintf("%.2f", p.PerUnitPrice*float64(p.DefaultQuantity*numLocations)) }</td>
 								</tr>
 							}
 						</tbody>
@@ -285,7 +285,7 @@ templ WizardStep4(
 			<div class="card mb-6 bg-brand-50">
 				<div class="grid grid-cols-3 gap-4 text-center">
 					<div>
-						<p class="text-2xl font-bold text-brand-700">{ fmt.Sprintf("%d", 1+numSets) }</p>
+						<p class="text-2xl font-bold text-brand-700">{ fmt.Sprintf("%d", 1+numLocations) }</p>
 						<p class="text-sm text-gray-600">Total DCs</p>
 					</div>
 					<div>

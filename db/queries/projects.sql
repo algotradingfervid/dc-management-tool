@@ -14,11 +14,11 @@ SELECT
     p.tender_ref_number, p.tender_ref_details,
     p.po_reference, p.po_date,
     p.bill_from_address, p.dispatch_from_address,
-    p.company_gstin, p.company_email, p.company_cin,
+    p.company_name, p.company_gstin, p.company_email, p.company_cin, p.company_pan,
     p.company_signature_path, p.company_seal_path,
     p.signatory_name, p.signatory_designation, p.signatory_mobile,
     p.dc_number_format, p.dc_number_separator,
-    p.purpose_text, p.seq_padding,
+    p.purpose_text, p.notes, p.seq_padding,
     p.last_transit_dc_number, p.last_official_dc_number,
     p.created_by, p.created_at, p.updated_at,
     COUNT(DISTINCT CASE WHEN dc.dc_type = 'transit' THEN dc.id END) AS transit_dc_count,
@@ -38,11 +38,11 @@ SELECT
     p.tender_ref_number, p.tender_ref_details,
     p.po_reference, p.po_date,
     p.bill_from_address, p.dispatch_from_address,
-    p.company_gstin, p.company_email, p.company_cin,
+    p.company_name, p.company_gstin, p.company_email, p.company_cin, p.company_pan,
     p.company_signature_path, p.company_seal_path,
     p.signatory_name, p.signatory_designation, p.signatory_mobile,
     p.dc_number_format, p.dc_number_separator,
-    p.purpose_text, p.seq_padding,
+    p.purpose_text, p.notes, p.seq_padding,
     p.last_transit_dc_number, p.last_official_dc_number,
     p.created_by, p.created_at, p.updated_at,
     COUNT(DISTINCT CASE WHEN dc.dc_type = 'transit' THEN dc.id END) AS transit_dc_count,
@@ -60,12 +60,12 @@ GROUP BY p.id;
 INSERT INTO projects (
     name, description, dc_prefix, tender_ref_number, tender_ref_details,
     po_reference, po_date, bill_from_address, dispatch_from_address,
-    company_gstin, company_email, company_cin,
+    company_name, company_gstin, company_email, company_cin, company_pan,
     company_signature_path, company_seal_path,
     signatory_name, signatory_designation, signatory_mobile,
     dc_number_format, dc_number_separator,
-    purpose_text, seq_padding, created_by
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    purpose_text, notes, seq_padding, created_by
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateProject :exec
 UPDATE projects SET
@@ -73,11 +73,11 @@ UPDATE projects SET
     tender_ref_number = ?, tender_ref_details = ?,
     po_reference = ?, po_date = ?,
     bill_from_address = ?, dispatch_from_address = ?,
-    company_gstin = ?, company_email = ?, company_cin = ?,
+    company_name = ?, company_gstin = ?, company_email = ?, company_cin = ?, company_pan = ?,
     company_signature_path = ?, company_seal_path = ?,
     signatory_name = ?, signatory_designation = ?, signatory_mobile = ?,
     dc_number_format = ?, dc_number_separator = ?,
-    purpose_text = ?, seq_padding = ?,
+    purpose_text = ?, notes = ?, seq_padding = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ?;
 
@@ -88,8 +88,9 @@ WHERE id = ?;
 
 -- name: UpdateProjectSettingsCompany :exec
 UPDATE projects
-SET bill_from_address = ?, dispatch_from_address = ?, company_gstin = ?,
-    company_email = ?, company_cin = ?, company_signature_path = ?,
+SET bill_from_address = ?, dispatch_from_address = ?,
+    company_name = ?, company_gstin = ?, company_email = ?, company_cin = ?, company_pan = ?,
+    company_signature_path = ?,
     company_seal_path = ?, signatory_name = ?, signatory_designation = ?,
     signatory_mobile = ?, updated_at = CURRENT_TIMESTAMP
 WHERE id = ?;
@@ -97,7 +98,7 @@ WHERE id = ?;
 -- name: UpdateProjectSettingsDCConfig :exec
 UPDATE projects
 SET dc_number_format = ?, dc_number_separator = ?, purpose_text = ?,
-    seq_padding = ?, updated_at = CURRENT_TIMESTAMP
+    notes = ?, seq_padding = ?, updated_at = CURRENT_TIMESTAMP
 WHERE id = ?;
 
 -- name: UpdateProjectSettingsTender :exec

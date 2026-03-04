@@ -13,7 +13,7 @@ import (
 type ShipmentParams struct {
 	ProjectID             int
 	TemplateID            int
-	NumSets               int
+	NumLocations          int
 	ChallanDate           string
 	TaxType               string
 	ReverseCharge         string
@@ -24,7 +24,7 @@ type ShipmentParams struct {
 	BillFromAddressID     int
 	DispatchFromAddressID int
 	BillToAddressID       int
-	ShipToAddressIDs      []int // N addresses, one per set
+	ShipToAddressIDs      []int // N addresses, one per location
 	TransitShipToAddrID   int   // which one for transit DC
 	LineItems             []ShipmentLineItem
 	CreatedBy             int
@@ -33,11 +33,34 @@ type ShipmentParams struct {
 // ShipmentLineItem holds product info and serial assignments for a shipment.
 type ShipmentLineItem struct {
 	ProductID     int
-	QtyPerSet     int
+	QtyPerSet     int              // deprecated: use QtyByLocation instead
+	QtyByLocation map[int]int      // map[shipToAddressID] → quantity for that location
 	Rate          float64
 	TaxPercentage float64
 	AllSerials    []string
 	Assignments   map[int][]string // map[shipToAddressID][]serialNumbers
+}
+
+// TotalQty returns the sum of quantities across all locations.
+// Falls back to QtyPerSet * number of locations if QtyByLocation is empty.
+func (li ShipmentLineItem) TotalQty() int {
+	if len(li.QtyByLocation) > 0 {
+		total := 0
+		for _, qty := range li.QtyByLocation {
+			total += qty
+		}
+		return total
+	}
+	return li.QtyPerSet
+}
+
+// QtyForLocation returns the quantity for a specific ship-to address.
+// Falls back to QtyPerSet if QtyByLocation is empty.
+func (li ShipmentLineItem) QtyForLocation(shipToID int) int {
+	if len(li.QtyByLocation) > 0 {
+		return li.QtyByLocation[shipToID]
+	}
+	return li.QtyPerSet
 }
 
 // ShipmentResult holds the result of creating a shipment group.
@@ -49,14 +72,11 @@ type ShipmentResult struct {
 
 // CreateShipmentGroupDCs creates a shipment group with 1 transit DC + N official DCs in a transaction.
 func CreateShipmentGroupDCs(db *sql.DB, params ShipmentParams) (*ShipmentResult, error) {
-	if params.NumSets < 1 {
-		return nil, fmt.Errorf("num_sets must be at least 1")
+	if len(params.ShipToAddressIDs) == 0 {
+		return nil, fmt.Errorf("at least one ship-to address is required")
 	}
 	if params.ChallanDate == "" {
 		return nil, fmt.Errorf("challan date is required")
-	}
-	if len(params.ShipToAddressIDs) != params.NumSets {
-		return nil, fmt.Errorf("expected %d ship-to addresses, got %d", params.NumSets, len(params.ShipToAddressIDs))
 	}
 	if len(params.LineItems) == 0 {
 		return nil, fmt.Errorf("at least one line item is required")
@@ -104,7 +124,7 @@ func CreateShipmentGroupDCs(db *sql.DB, params ShipmentParams) (*ShipmentResult,
 	sgResult, err := tx.Exec(
 		`INSERT INTO shipment_groups (project_id, template_id, num_sets, tax_type, reverse_charge, status, created_by)
 		 VALUES (?, ?, ?, ?, ?, 'draft', ?)`,
-		params.ProjectID, params.TemplateID, params.NumSets, params.TaxType, params.ReverseCharge, params.CreatedBy,
+		params.ProjectID, params.TemplateID, params.NumLocations, params.TaxType, params.ReverseCharge, params.CreatedBy,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create shipment group: %w", err)
@@ -162,7 +182,7 @@ func CreateShipmentGroupDCs(db *sql.DB, params ShipmentParams) (*ShipmentResult,
 	_, err = tx.Exec(
 		`INSERT INTO dc_transit_details (dc_id, transporter_name, vehicle_number, eway_bill_number, notes)
 		 VALUES (?, ?, ?, ?, ?)`,
-		transitDC.ID, params.TransporterName, params.VehicleNumber, params.EwayBillNumber, params.DocketNumber,
+		transitDC.ID, params.TransporterName, params.VehicleNumber, params.EwayBillNumber, "",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert transit details: %w", err)
@@ -170,7 +190,7 @@ func CreateShipmentGroupDCs(db *sql.DB, params ShipmentParams) (*ShipmentResult,
 
 	// Insert transit DC line items (all products with total quantities and all serials)
 	for i, item := range params.LineItems {
-		totalQty := item.QtyPerSet * params.NumSets
+		totalQty := item.TotalQty()
 		taxableAmount := item.Rate * float64(totalQty)
 		taxAmount := taxableAmount * item.TaxPercentage / 100.0
 		totalAmount := taxableAmount + taxAmount
@@ -208,6 +228,18 @@ func CreateShipmentGroupDCs(db *sql.DB, params ShipmentParams) (*ShipmentResult,
 	var officialDCs []*models.DeliveryChallan
 
 	for _, shipToID := range params.ShipToAddressIDs {
+		// Check if this location has any quantity assigned
+		hasQty := false
+		for _, item := range params.LineItems {
+			if item.QtyForLocation(shipToID) > 0 {
+				hasQty = true
+				break
+			}
+		}
+		if !hasQty {
+			continue // Skip Official DC for this location — all products have zero qty
+		}
+
 		offSeq, err := getNextSequence(tx, params.ProjectID, DCTypeOfficial, fy)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get official sequence: %w", err)
@@ -215,24 +247,27 @@ func CreateShipmentGroupDCs(db *sql.DB, params ShipmentParams) (*ShipmentResult,
 		offDCNumber := formatNumber(dcNumberFormat, dcPrefix, fy, DCTypeOfficial, offSeq, seqPadding)
 
 		offDC := &models.DeliveryChallan{
-			ProjectID:       params.ProjectID,
-			DCNumber:        offDCNumber,
-			DCType:          "official",
-			Status:          "draft",
-			TemplateID:      &params.TemplateID,
-			BillToAddressID: billToPtr,
-			ShipToAddressID: shipToID,
-			ChallanDate:     &params.ChallanDate,
-			CreatedBy:       params.CreatedBy,
-			ShipmentGroupID: &shipmentGroupIDPtr,
+			ProjectID:             params.ProjectID,
+			DCNumber:              offDCNumber,
+			DCType:                "official",
+			Status:                "draft",
+			TemplateID:            &params.TemplateID,
+			BillToAddressID:       billToPtr,
+			ShipToAddressID:       shipToID,
+			ChallanDate:           &params.ChallanDate,
+			CreatedBy:             params.CreatedBy,
+			ShipmentGroupID:       &shipmentGroupIDPtr,
+			BillFromAddressID:     billFromPtr,
+			DispatchFromAddressID: dispatchFromPtr,
 		}
 
 		result, err := tx.Exec(
-			`INSERT INTO delivery_challans (project_id, dc_number, dc_type, status, template_id, bill_to_address_id, ship_to_address_id, challan_date, created_by, shipment_group_id)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO delivery_challans (project_id, dc_number, dc_type, status, template_id, bill_to_address_id, ship_to_address_id, challan_date, created_by, shipment_group_id, bill_from_address_id, dispatch_from_address_id)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			offDC.ProjectID, offDC.DCNumber, offDC.DCType, offDC.Status,
 			offDC.TemplateID, offDC.BillToAddressID, offDC.ShipToAddressID,
 			offDC.ChallanDate, offDC.CreatedBy, groupID,
+			offDC.BillFromAddressID, offDC.DispatchFromAddressID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to insert official DC: %w", err)
@@ -243,17 +278,17 @@ func CreateShipmentGroupDCs(db *sql.DB, params ShipmentParams) (*ShipmentResult,
 		}
 		offDC.ID = int(offDCID)
 
-		// Insert line items for this official DC (no pricing, no serials - serials tracked on transit DC only)
+		// Insert line items for this official DC (per-location qty, no pricing, no serials)
 		for lineOrder, item := range params.LineItems {
+			qtyForLocation := item.QtyForLocation(shipToID)
 			_, err := tx.Exec(
 				`INSERT INTO dc_line_items (dc_id, product_id, quantity, rate, tax_percentage, taxable_amount, tax_amount, total_amount, line_order)
 				 VALUES (?, ?, ?, 0, 0, 0, 0, 0, ?)`,
-				offDC.ID, item.ProductID, item.QtyPerSet, lineOrder+1,
+				offDC.ID, item.ProductID, qtyForLocation, lineOrder+1,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to insert official line item: %w", err)
 			}
-			_ = item.Assignments[shipToID] // assignments tracked but not inserted as serial_numbers (those are on transit DC)
 		}
 
 		officialDCs = append(officialDCs, offDC)
