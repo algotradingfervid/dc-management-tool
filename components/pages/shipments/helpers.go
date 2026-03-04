@@ -2,10 +2,80 @@ package shipments
 
 import (
 	"encoding/json"
+	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/narendhupati/dc-management-tool/internal/models"
 )
+
+// ShipStep1Prefill holds pre-populated values for the edit wizard's Step 1 form.
+// All fields map directly to form inputs. Zero values mean "no pre-fill".
+type ShipStep1Prefill struct {
+	TemplateID      *int   // nil = no selection
+	NumSets         int
+	ChallanDate     string // "YYYY-MM-DD" or ""
+	TransporterName string
+	VehicleNumber   string
+	EwayBillNumber  string
+	DocketNumber    string
+	TaxType         string // "igst" | "cgst_sgst" | ""
+	ReverseCharge   string // "Y" | "N" | ""
+}
+
+// prefillStr returns fn(p) if p is non-nil, or "" otherwise.
+func prefillStr(p *ShipStep1Prefill, fn func(*ShipStep1Prefill) string) string {
+	if p == nil {
+		return ""
+	}
+	return fn(p)
+}
+
+// prefillNumSets returns p.NumSets as a string, or "" when p is nil or NumSets is 0.
+func prefillNumSets(p *ShipStep1Prefill) string {
+	if p == nil || p.NumSets == 0 {
+		return ""
+	}
+	return strconv.Itoa(p.NumSets)
+}
+
+// preselectedIDsJSON serializes a slice of address IDs to a JSON array string
+// for embedding in a data-* attribute. Returns "[]" for nil input.
+func preselectedIDsJSON(ids []int) string {
+	if ids == nil {
+		return "[]"
+	}
+	b, _ := json.Marshal(ids)
+	return string(b)
+}
+
+// prefillAssignmentsForProduct returns newline-joined serials assigned to
+// a specific (product, shipTo) pair, or "" if the map is nil/missing.
+func prefillAssignmentsForProduct(m map[string][]string, productID, shipToID int) string {
+	if m == nil {
+		return ""
+	}
+	key := fmt.Sprintf("%d_%d", productID, shipToID)
+	return strings.Join(m[key], "\n")
+}
+
+// serialTextareaClass returns the appropriate Tailwind border class for a
+// serial textarea depending on whether that product has a server-side error.
+func serialTextareaClass(serialErrors map[int]string, productID int) string {
+	if serialErrors[productID] != "" {
+		return "mt-1 block w-full rounded-md border-red-500 shadow-sm font-mono text-sm"
+	}
+	return "mt-1 block w-full rounded-md border-gray-300 shadow-sm font-mono text-sm"
+}
+
+// prefillSerialsForProduct returns the newline-joined serial numbers for productID
+// from the prefill map, or "" if the map is nil or has no entry for that product.
+func prefillSerialsForProduct(m map[int][]string, productID int) string {
+	if m == nil {
+		return ""
+	}
+	return strings.Join(m[productID], "\n")
+}
 
 // vehiclesJSON serializes a slice of TransporterVehicle pointers to a JSON
 // string suitable for embedding in a data-* HTML attribute.

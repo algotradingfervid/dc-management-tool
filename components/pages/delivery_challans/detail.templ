@@ -40,12 +40,79 @@ func issuedAtFormatted(dc *models.DeliveryChallan) string {
 	return ""
 }
 
+// addressDataValue returns the value for a key in an address's Data map, or empty string if nil.
+func addressDataValue(addr *models.Address, key string) string {
+	if addr == nil || addr.Data == nil {
+		return ""
+	}
+	return addr.Data[key]
+}
+
+// fixedFieldValue returns the value of a fixed field from the Address struct.
+func fixedFieldValue(addr *models.Address, name string) string {
+	if addr == nil {
+		return ""
+	}
+	switch name {
+	case "District Name":
+		return addr.DistrictName
+	case "Mandal/ULB Name":
+		return addr.MandalName
+	case "Mandal Code":
+		return addr.MandalCode
+	}
+	return ""
+}
+
+// filteredAddressLines returns address values filtered by config print visibility
+// and sorted by print sort order. Handles both fixed and dynamic columns.
+func filteredAddressLines(addr *models.Address, config *models.AddressListConfig) []string {
+	if addr == nil {
+		return nil
+	}
+	if config == nil {
+		// No config — return all values
+		var lines []string
+		if addr.DistrictName != "" {
+			lines = append(lines, addr.DistrictName)
+		}
+		if addr.MandalName != "" {
+			lines = append(lines, addr.MandalName)
+		}
+		if addr.MandalCode != "" {
+			lines = append(lines, addr.MandalCode)
+		}
+		for _, v := range addr.Data {
+			if v != "" {
+				lines = append(lines, v)
+			}
+		}
+		return lines
+	}
+	printCols := config.PrintVisibleColumns()
+	var lines []string
+	for _, col := range printCols {
+		var v string
+		if fv := fixedFieldValue(addr, col.Name); fv != "" {
+			v = fv
+		} else {
+			v = addr.Data[col.Name]
+		}
+		if v != "" {
+			lines = append(lines, v)
+		}
+	}
+	return lines
+}
+
 // Detail renders the Delivery Challan detail page.
 templ Detail(
 	user *models.User,
 	currentProject *models.Project,
 	allProjects []*models.Project,
 	dc *models.DeliveryChallan,
+	billFromAddr *models.Address,
+	dispatchFromAddr *models.Address,
 	flashType string,
 	flashMessage string,
 	csrfToken string,
@@ -88,29 +155,26 @@ templ Detail(
 						x-data="{
 							showDelete: false,
 							showIssue: false,
+							pid: '',
+							did: '',
+							tok: '',
 							async doDelete() {
-								const pid = this.$el.dataset.projectId;
-								const did = this.$el.dataset.dcId;
-								const tok = this.$el.dataset.csrf;
-								const resp = await fetch('/projects/' + pid + '/dcs/' + did, {
+								const resp = await fetch('/projects/' + this.pid + '/dcs/' + this.did, {
 									method: 'DELETE',
-									headers: { 'X-CSRF-Token': tok }
+									headers: { 'X-CSRF-Token': this.tok }
 								});
 								const data = await resp.json().catch(() => ({}));
 								if (data.success) {
-									window.location.href = '/projects/' + pid + '/dcs-list';
+									window.location.href = '/projects/' + this.pid + '/dcs-list';
 								} else {
 									showToast('Error: ' + (data.error || 'Failed to delete DC'), 'error');
 									this.showDelete = false;
 								}
 							},
 							async doIssue() {
-								const pid = this.$el.dataset.projectId;
-								const did = this.$el.dataset.dcId;
-								const tok = this.$el.dataset.csrf;
-								const resp = await fetch('/projects/' + pid + '/dcs/' + did + '/issue', {
+								const resp = await fetch('/projects/' + this.pid + '/dcs/' + this.did + '/issue', {
 									method: 'POST',
-									headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': tok }
+									headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': this.tok }
 								});
 								const data = await resp.json().catch(() => ({}));
 								if (data.success) {
@@ -122,6 +186,7 @@ templ Detail(
 								this.showIssue = false;
 							}
 						}"
+						x-init="pid = $el.dataset.projectId; did = $el.dataset.dcId; tok = $el.dataset.csrf"
 						data-project-id={ fmt.Sprintf("%d", currentProject.ID) }
 						data-dc-id={ fmt.Sprintf("%d", dc.ID) }
 						data-csrf={ csrfToken }
@@ -272,6 +337,26 @@ templ Detail(
 					<dd class="text-gray-900 mt-0.5">{ fmt.Sprintf("%d item(s), %d unit(s)", dc.LineItemCount, dc.TotalQuantity) }</dd>
 				</div>
 			</dl>
+			<!-- Bill From / Dispatch From Addresses -->
+			if billFromAddr != nil || dispatchFromAddr != nil {
+				<div class="mt-5 pt-4 border-t border-gray-100">
+					<h3 class="text-sm font-semibold text-gray-700 mb-3">Addresses</h3>
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+						if billFromAddr != nil {
+							<div class="border border-gray-200 rounded-lg p-3">
+								<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Bill From</p>
+								<p class="text-xs text-gray-700">{ billFromAddr.DisplayName() }</p>
+							</div>
+						}
+						if dispatchFromAddr != nil {
+							<div class="border border-gray-200 rounded-lg p-3">
+								<p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Dispatch From</p>
+								<p class="text-xs text-gray-700">{ dispatchFromAddr.DisplayName() }</p>
+							</div>
+						}
+					</div>
+				</div>
+			}
 		</div>
 		<!-- CSRF Hidden Field -->
 		<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>

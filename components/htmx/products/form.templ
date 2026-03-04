@@ -53,6 +53,24 @@ templ ProductForm(p ProductFormProps) {
 		>
 			<input type="hidden" name="gorilla.csrf.Token" value={ p.CsrfToken }/>
 			<div>
+				<label for="product_code" class="block text-sm font-medium text-gray-700">Product Code</label>
+				<input
+					type="text"
+					name="product_code"
+					id="product_code"
+					value={ p.Product.ProductCode }
+					placeholder="e.g. PRD-001"
+					class={
+						"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm",
+						templ.KV("border-red-300", p.Errors["product_code"] != ""),
+					}
+				/>
+				<p class="mt-1 text-xs text-gray-400">Unique identifier for searching (optional)</p>
+				if p.Errors["product_code"] != "" {
+					<p class="mt-1 text-xs text-red-600">{ p.Errors["product_code"] }</p>
+				}
+			</div>
+			<div>
 				<label for="item_name" class="block text-sm font-medium text-gray-700">
 					Item Name <span class="text-red-500">*</span>
 				</label>

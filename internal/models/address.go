@@ -12,6 +12,7 @@ import (
 type Address struct {
 	ID           int               `json:"id"`
 	ConfigID     int               `json:"config_id"`
+	AddressCode  string            `json:"address_code"`  // unique identifier for searching
 	Data         map[string]string `json:"-"`
 	DataJSON     string            `json:"-"`             // raw JSON from DB
 	DistrictName string            `json:"district_name"` // fixed field for ship-to

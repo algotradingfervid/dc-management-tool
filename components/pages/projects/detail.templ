@@ -161,6 +161,22 @@ templ Detail(user *models.User, currentProject *models.Project, allProjects []*m
 										</dd>
 									</div>
 								}
+								if currentProject.SignatoryName != "" || currentProject.SignatoryDesignation != "" || currentProject.SignatoryMobile != "" {
+									<div>
+										<dt class="text-sm font-medium text-gray-600">Authorized Signatory</dt>
+										<dd class="text-sm text-gray-900 mt-0.5">
+											if currentProject.SignatoryName != "" {
+												<div>{ currentProject.SignatoryName }</div>
+											}
+											if currentProject.SignatoryDesignation != "" {
+												<div class="text-gray-500">{ currentProject.SignatoryDesignation }</div>
+											}
+											if currentProject.SignatoryMobile != "" {
+												<div class="text-gray-500">{ currentProject.SignatoryMobile }</div>
+											}
+										</dd>
+									</div>
+								}
 							</dl>
 						</div>
 					</div>

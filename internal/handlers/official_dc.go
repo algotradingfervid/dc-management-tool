@@ -176,17 +176,23 @@ func ShowOfficialDCPrintView(c echo.Context) error {
 	lineItems := lineItemsToPointers(lineItemsVal)
 
 	// Get addresses
-	var shipToAddress *models.Address
+	var shipToAddress, billToAddress, billFromAddress *models.Address
 	if dc.ShipToAddressID > 0 {
 		shipToAddress, _ = database.GetAddress(dc.ShipToAddressID)
 	}
-	var billToAddress *models.Address
 	if dc.BillToAddressID != nil && *dc.BillToAddressID > 0 {
 		billToAddress, _ = database.GetAddress(*dc.BillToAddressID)
+	}
+	if dc.BillFromAddressID != nil && *dc.BillFromAddressID > 0 {
+		billFromAddress, _ = database.GetAddress(*dc.BillFromAddressID)
 	}
 
 	// Get company settings
 	company, _ := database.GetCompanySettings()
+
+	// Get address configs for print filtering
+	shipToConfig, _ := database.GetOrCreateAddressConfig(projectID, "ship_to")
+	billToConfig, _ := database.GetOrCreateAddressConfig(projectID, "bill_to")
 
 	return components.RenderOK(c, deliverychallan.OfficialPrint(
 		project,
@@ -194,6 +200,9 @@ func ShowOfficialDCPrintView(c echo.Context) error {
 		lineItems,
 		shipToAddress,
 		billToAddress,
+		billFromAddress,
 		company,
+		shipToConfig,
+		billToConfig,
 	))
 }

@@ -75,6 +75,11 @@ func main() {
 	}
 	if !isSecure {
 		csrfOpts = append(csrfOpts, csrf.TrustedOrigins([]string{"localhost:" + cfg.ServerAddress[1:]}))
+	} else if cfg.AppDomain != "" {
+		// Behind a TLS-terminating reverse proxy the Go app receives plain HTTP,
+		// so gorilla/csrf would see scheme mismatch vs the browser's HTTPS Origin.
+		// Listing the domain as a trusted origin bypasses the scheme check.
+		csrfOpts = append(csrfOpts, csrf.TrustedOrigins([]string{cfg.AppDomain}))
 	}
 	csrfProtect := csrf.Protect([]byte(cfg.SessionSecret), csrfOpts...)
 
@@ -99,22 +104,24 @@ func main() {
 	csrfMiddleware := func(next echov4.HandlerFunc) echov4.HandlerFunc {
 		return func(c echov4.Context) error {
 			var handlerErr error
-			var innerHandler http.Handler = http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			innerHandler := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 				c.SetRequest(r)
 				handlerErr = next(c)
 			})
+			req := c.Request()
 			if !isSecure {
-				innerHandler = http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-					c.SetRequest(csrf.PlaintextHTTPRequest(r))
-					handlerErr = next(c)
-				})
+				// PlaintextHTTPRequest must be applied to the outer request before
+				// csrfProtect runs, so gorilla/csrf uses scheme "http" when comparing
+				// against the Origin header (it defaults to "https" otherwise).
+				req = csrf.PlaintextHTTPRequest(req)
 			}
-			csrfProtect(innerHandler).ServeHTTP(c.Response().Writer, c.Request())
+			csrfProtect(innerHandler).ServeHTTP(c.Response().Writer, req)
 			return handlerErr
 		}
 	}
 
 	// Global middleware: recover, logging, session, CSRF
+	e.Use(echomiddleware.BodyLimit("100M"))
 	e.Use(echomiddleware.Recover())
 	e.Use(appmiddleware.RequestLoggingMiddleware())
 	e.Use(sessionMiddleware)
@@ -241,6 +248,13 @@ func main() {
 		projectRoutes.GET("/shipments/:gid", handlers.ShowShipmentGroup)
 		projectRoutes.GET("/shipments", handlers.ListShipmentGroups)
 		projectRoutes.POST("/shipments/:gid/issue", handlers.IssueShipmentGroup)
+
+		// Edit Draft Shipment Wizard
+		projectRoutes.GET("/shipments/:gid/edit", handlers.ShowEditShipmentWizard)
+		projectRoutes.POST("/shipments/:gid/edit/step2", handlers.EditWizardStep2)
+		projectRoutes.POST("/shipments/:gid/edit/step3", handlers.EditWizardStep3)
+		projectRoutes.POST("/shipments/:gid/edit/step4", handlers.EditWizardStep4)
+		projectRoutes.POST("/shipments/:gid/edit", handlers.SaveShipmentEdit)
 
 		// Template product loading (used by shipment wizard)
 		projectRoutes.GET("/templates/:tid/products", handlers.LoadTemplateProducts)

@@ -77,6 +77,12 @@ func showTransitDCDetail(c echo.Context) error {
 		lineItems[i].SerialNumbers = serials
 	}
 
+	// Populate LineItemCount / TotalQuantity (not set by GetDeliveryChallanByID).
+	dc.LineItemCount = len(lineItems)
+	for _, li := range lineItems {
+		dc.TotalQuantity += li.Quantity
+	}
+
 	// Calculate totals
 	var totalTaxable, totalTax, grandTotal float64
 	for _, li := range lineItems {
@@ -142,8 +148,6 @@ func showTransitDCDetail(c echo.Context) error {
 	_ = roundOff
 	_ = shipToAddress
 	_ = billToAddress
-	_ = billFromAddress
-	_ = dispatchFromAddress
 	_ = shipmentGroup
 	_ = siblingDCs
 	_ = transitDetails
@@ -155,6 +159,8 @@ func showTransitDCDetail(c echo.Context) error {
 		project,
 		allProjects,
 		dc,
+		billFromAddress,
+		dispatchFromAddress,
 		flashType,
 		flashMessage,
 		csrf.Token(c.Request()),
@@ -212,7 +218,20 @@ func ShowTransitDCPrintView(c echo.Context) error {
 		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
 	}
 
-	return components.RenderOK(c, deliverychallan.TransitPrint(project, dc))
+	// Fetch Bill From and Dispatch From addresses selected during DC creation
+	var billFromAddress, dispatchFromAddress *models.Address
+	if dc.BillFromAddressID != nil && *dc.BillFromAddressID > 0 {
+		billFromAddress, _ = database.GetAddress(*dc.BillFromAddressID)
+	}
+	if dc.DispatchFromAddressID != nil && *dc.DispatchFromAddressID > 0 {
+		dispatchFromAddress, _ = database.GetAddress(*dc.DispatchFromAddressID)
+	}
+
+	// Get address configs for print filtering
+	billFromConfig, _ := database.GetOrCreateAddressConfig(projectID, "bill_from")
+	dispatchFromConfig, _ := database.GetOrCreateAddressConfig(projectID, "dispatch_from")
+
+	return components.RenderOK(c, deliverychallan.TransitPrint(project, dc, billFromAddress, dispatchFromAddress, billFromConfig, dispatchFromConfig))
 }
 
 // parseSerialNumbers splits newline-separated serial numbers, trimming whitespace and removing empty lines.

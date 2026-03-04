@@ -29,9 +29,10 @@ INSERT INTO projects (
     po_reference, po_date, bill_from_address, dispatch_from_address,
     company_gstin, company_email, company_cin,
     company_signature_path, company_seal_path,
+    signatory_name, signatory_designation, signatory_mobile,
     dc_number_format, dc_number_separator,
     purpose_text, seq_padding, created_by
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateProjectParams struct {
@@ -49,6 +50,9 @@ type CreateProjectParams struct {
 	CompanyCin           string
 	CompanySignaturePath sql.NullString
 	CompanySealPath      sql.NullString
+	SignatoryName        string
+	SignatoryDesignation string
+	SignatoryMobile      string
 	DcNumberFormat       string
 	DcNumberSeparator    string
 	PurposeText          string
@@ -72,6 +76,9 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (s
 		arg.CompanyCin,
 		arg.CompanySignaturePath,
 		arg.CompanySealPath,
+		arg.SignatoryName,
+		arg.SignatoryDesignation,
+		arg.SignatoryMobile,
 		arg.DcNumberFormat,
 		arg.DcNumberSeparator,
 		arg.PurposeText,
@@ -132,6 +139,7 @@ SELECT
     p.bill_from_address, p.dispatch_from_address,
     p.company_gstin, p.company_email, p.company_cin,
     p.company_signature_path, p.company_seal_path,
+    p.signatory_name, p.signatory_designation, p.signatory_mobile,
     p.dc_number_format, p.dc_number_separator,
     p.purpose_text, p.seq_padding,
     p.last_transit_dc_number, p.last_official_dc_number,
@@ -164,6 +172,9 @@ type GetAllProjectsRow struct {
 	CompanyCin           string
 	CompanySignaturePath sql.NullString
 	CompanySealPath      sql.NullString
+	SignatoryName        string
+	SignatoryDesignation string
+	SignatoryMobile      string
 	DcNumberFormat       string
 	DcNumberSeparator    string
 	PurposeText          string
@@ -204,6 +215,9 @@ func (q *Queries) GetAllProjects(ctx context.Context) ([]GetAllProjectsRow, erro
 			&i.CompanyCin,
 			&i.CompanySignaturePath,
 			&i.CompanySealPath,
+			&i.SignatoryName,
+			&i.SignatoryDesignation,
+			&i.SignatoryMobile,
 			&i.DcNumberFormat,
 			&i.DcNumberSeparator,
 			&i.PurposeText,
@@ -239,6 +253,7 @@ SELECT
     p.bill_from_address, p.dispatch_from_address,
     p.company_gstin, p.company_email, p.company_cin,
     p.company_signature_path, p.company_seal_path,
+    p.signatory_name, p.signatory_designation, p.signatory_mobile,
     p.dc_number_format, p.dc_number_separator,
     p.purpose_text, p.seq_padding,
     p.last_transit_dc_number, p.last_official_dc_number,
@@ -271,6 +286,9 @@ type GetProjectByIDRow struct {
 	CompanyCin           string
 	CompanySignaturePath sql.NullString
 	CompanySealPath      sql.NullString
+	SignatoryName        string
+	SignatoryDesignation string
+	SignatoryMobile      string
 	DcNumberFormat       string
 	DcNumberSeparator    string
 	PurposeText          string
@@ -305,6 +323,9 @@ func (q *Queries) GetProjectByID(ctx context.Context, id int64) (GetProjectByIDR
 		&i.CompanyCin,
 		&i.CompanySignaturePath,
 		&i.CompanySealPath,
+		&i.SignatoryName,
+		&i.SignatoryDesignation,
+		&i.SignatoryMobile,
 		&i.DcNumberFormat,
 		&i.DcNumberSeparator,
 		&i.PurposeText,
@@ -366,6 +387,7 @@ UPDATE projects SET
     bill_from_address = ?, dispatch_from_address = ?,
     company_gstin = ?, company_email = ?, company_cin = ?,
     company_signature_path = ?, company_seal_path = ?,
+    signatory_name = ?, signatory_designation = ?, signatory_mobile = ?,
     dc_number_format = ?, dc_number_separator = ?,
     purpose_text = ?, seq_padding = ?,
     updated_at = CURRENT_TIMESTAMP
@@ -387,6 +409,9 @@ type UpdateProjectParams struct {
 	CompanyCin           string
 	CompanySignaturePath sql.NullString
 	CompanySealPath      sql.NullString
+	SignatoryName        string
+	SignatoryDesignation string
+	SignatoryMobile      string
 	DcNumberFormat       string
 	DcNumberSeparator    string
 	PurposeText          string
@@ -410,6 +435,9 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) er
 		arg.CompanyCin,
 		arg.CompanySignaturePath,
 		arg.CompanySealPath,
+		arg.SignatoryName,
+		arg.SignatoryDesignation,
+		arg.SignatoryMobile,
 		arg.DcNumberFormat,
 		arg.DcNumberSeparator,
 		arg.PurposeText,
@@ -423,7 +451,8 @@ const UpdateProjectSettingsCompany = `-- name: UpdateProjectSettingsCompany :exe
 UPDATE projects
 SET bill_from_address = ?, dispatch_from_address = ?, company_gstin = ?,
     company_email = ?, company_cin = ?, company_signature_path = ?,
-    company_seal_path = ?, updated_at = CURRENT_TIMESTAMP
+    company_seal_path = ?, signatory_name = ?, signatory_designation = ?,
+    signatory_mobile = ?, updated_at = CURRENT_TIMESTAMP
 WHERE id = ?
 `
 
@@ -435,6 +464,9 @@ type UpdateProjectSettingsCompanyParams struct {
 	CompanyCin           string
 	CompanySignaturePath sql.NullString
 	CompanySealPath      sql.NullString
+	SignatoryName        string
+	SignatoryDesignation string
+	SignatoryMobile      string
 	ID                   int64
 }
 
@@ -447,6 +479,9 @@ func (q *Queries) UpdateProjectSettingsCompany(ctx context.Context, arg UpdatePr
 		arg.CompanyCin,
 		arg.CompanySignaturePath,
 		arg.CompanySealPath,
+		arg.SignatoryName,
+		arg.SignatoryDesignation,
+		arg.SignatoryMobile,
 		arg.ID,
 	)
 	return err

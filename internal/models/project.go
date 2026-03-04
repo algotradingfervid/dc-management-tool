@@ -18,8 +18,11 @@ type Project struct {
 	CompanyGSTIN         string    `json:"company_gstin" validate:"omitempty,len=15"`
 	CompanyEmail         string    `json:"company_email" validate:"omitempty,email"`
 	CompanyCIN           string    `json:"company_cin"`
-	CompanySignaturePath string    `json:"company_signature_path"`
-	CompanySealPath      string    `json:"company_seal_path"`
+	CompanySignaturePath  string    `json:"company_signature_path"`
+	CompanySealPath       string    `json:"company_seal_path"`
+	SignatoryName         string    `json:"signatory_name"`
+	SignatoryDesignation  string    `json:"signatory_designation"`
+	SignatoryMobile       string    `json:"signatory_mobile"`
 	DCNumberFormat       string    `json:"dc_number_format"`
 	DCNumberSeparator    string    `json:"dc_number_separator"`
 	PurposeText          string    `json:"purpose_text"`

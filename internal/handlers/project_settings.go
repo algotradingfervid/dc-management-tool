@@ -96,6 +96,9 @@ func UpdateProjectSettings(c echo.Context) error {
 		project.CompanyGSTIN = strings.ToUpper(strings.TrimSpace(c.FormValue("company_gstin")))
 		project.CompanyEmail = strings.TrimSpace(c.FormValue("company_email"))
 		project.CompanyCIN = strings.TrimSpace(c.FormValue("company_cin"))
+		project.SignatoryName = strings.TrimSpace(c.FormValue("signatory_name"))
+		project.SignatoryDesignation = strings.TrimSpace(c.FormValue("signatory_designation"))
+		project.SignatoryMobile = strings.TrimSpace(c.FormValue("signatory_mobile"))
 
 		if project.CompanyGSTIN != "" && len(project.CompanyGSTIN) != 15 {
 			errors["company_gstin"] = "GSTIN must be exactly 15 characters"

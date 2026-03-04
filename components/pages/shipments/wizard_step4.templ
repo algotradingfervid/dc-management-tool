@@ -30,9 +30,14 @@ templ WizardStep4(
 	shipToAddresses []*models.Address,
 	serialData []WizardSerialData,
 	csrfToken string,
+	editGroupID int,
 ) {
 	<div class="max-w-4xl mx-auto">
-		<h1 class="text-2xl font-bold mb-6">Create New Shipment - Review &amp; Confirm</h1>
+		if editGroupID > 0 {
+			<h1 class="text-2xl font-bold mb-6">Edit Shipment — Step 4: Review</h1>
+		} else {
+			<h1 class="text-2xl font-bold mb-6">Create New Shipment - Review &amp; Confirm</h1>
+		}
 		<div class="bg-white shadow rounded-lg p-6 mb-6">
 			<h2 class="text-lg font-medium mb-4">Shipment Summary</h2>
 			<dl class="grid grid-cols-2 gap-4 text-sm">
@@ -95,8 +100,18 @@ templ WizardStep4(
 				}
 			</ul>
 		</div>
-		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments", currentProject.ID)) }>
+		<form
+			method="POST"
+			if editGroupID > 0 {
+				action={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/%d/edit", currentProject.ID, editGroupID)) }
+			} else {
+				action={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments", currentProject.ID)) }
+			}
+		>
 			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			if editGroupID > 0 {
+				<input type="hidden" name="edit_group_id" value={ strconv.Itoa(editGroupID) }/>
+			}
 			<!-- All hidden data -->
 			<input type="hidden" name="template_id" value={ templateID }/>
 			<input type="hidden" name="num_sets" value={ strconv.Itoa(numSets) }/>
@@ -125,9 +140,15 @@ templ WizardStep4(
 				<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/new", currentProject.ID)) } class="text-gray-600 hover:text-gray-800 px-4 py-2">
 					← Start Over
 				</a>
-				<button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700">
-					Create Shipment
-				</button>
+				if editGroupID > 0 {
+					<button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700">
+						Save Changes
+					</button>
+				} else {
+					<button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700">
+						Create Shipment
+					</button>
+				}
 			</div>
 		</form>
 	</div>

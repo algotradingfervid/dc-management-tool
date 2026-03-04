@@ -52,10 +52,19 @@ func dataToJS(data map[string]string) string {
 	return string(b)
 }
 
+// jsStr serialises a Go string to a JSON string literal safe for inline JS.
+func jsStr(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
+}
+
 // colBadgeClass returns the Tailwind classes for a column badge based on
-// whether the column is required.
-func colBadgeClass(required bool) string {
-	if required {
+// whether the column is required and visible.
+func colBadgeClass(col models.ColumnDefinition) string {
+	if !col.IsVisibleInTable() && !col.IsVisibleInPrint() {
+		return "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-50 text-gray-400 line-through"
+	}
+	if col.Required {
 		return "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-brand-100 text-brand-800"
 	}
 	return "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700"
@@ -164,8 +173,8 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 			<div class="flex items-center justify-between mb-4">
 				<div>
 					<h2 class="text-lg font-semibold text-gray-900">Column Configuration</h2>
-					if tab == "ship_to" {
-						<p class="text-xs text-gray-500 mt-1">District Name, Mandal/ULB Name, and Mandal Code are fixed columns. Additional dynamic columns shown below.</p>
+					if config != nil && len(config.FixedColumns()) > 0 {
+						<p class="text-xs text-gray-500 mt-1">Fixed columns cannot be removed. Additional dynamic columns shown below.</p>
 					} else {
 						<p class="text-xs text-gray-500 mt-1">Configure the columns for this address type.</p>
 					}
@@ -179,31 +188,31 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 				</button>
 			</div>
 			<div class="flex flex-wrap gap-2">
-				if tab == "ship_to" {
-					<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-						District Name <span class="ml-1 text-blue-600">*</span>
-						<span class="ml-1 text-xs text-blue-500">(fixed)</span>
-					</span>
-					<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-						Mandal/ULB Name <span class="ml-1 text-blue-600">*</span>
-						<span class="ml-1 text-xs text-blue-500">(fixed)</span>
-					</span>
-					<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-						Mandal Code <span class="ml-1 text-blue-600">*</span>
-						<span class="ml-1 text-xs text-blue-500">(fixed)</span>
-					</span>
+				if config != nil {
+					for _, fcol := range config.FixedColumns() {
+						<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+							{ fcol.Name } <span class="ml-1 text-blue-600">*</span>
+							<span class="ml-1 text-xs text-blue-500">(fixed)</span>
+						</span>
+					}
 				}
 				if config != nil {
-					for _, col := range config.ColumnDefinitions {
-						<span class={ colBadgeClass(col.Required) }>
+					for _, col := range config.DynamicColumns() {
+						<span class={ colBadgeClass(col) }>
 							{ col.Name }
 							if col.Required {
 								<span class="ml-1">*</span>
 							}
+							if !col.IsVisibleInTable() {
+								<span class="ml-1 text-xs text-gray-400" title="Hidden from table">(no tbl)</span>
+							}
+							if !col.IsVisibleInPrint() {
+								<span class="ml-1 text-xs text-gray-400" title="Hidden from print">(no prt)</span>
+							}
 						</span>
 					}
 				}
-				if tab != "ship_to" && (config == nil || len(config.ColumnDefinitions) == 0) {
+				if len(config.FixedColumns()) == 0 && (config == nil || len(config.DynamicColumns()) == 0) {
 					<span class="text-sm text-gray-400 italic">No columns configured. Click Configure Columns to add.</span>
 				}
 			</div>
@@ -244,7 +253,7 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 					</svg>
 					Download CSV template
 				</a>
-				<p class="text-xs text-gray-500">Max 10MB, 10,000 rows.</p>
+				<p class="text-xs text-gray-500">Max 10MB, 100,000 rows.</p>
 			</div>
 		</div>
 		<!-- Search & Count & Delete All -->
@@ -272,18 +281,19 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 		</div>
 		<!-- Address Table -->
 		<div class="card overflow-x-auto">
-			if addressPage != nil && len(addressPage.Addresses) > 0 {
+			if addressPage != nil && len(addressPage.Addresses) > 0 && config != nil {
 				<table class="min-w-full divide-y divide-gray-200">
 					<thead class="bg-gray-50">
 						<tr>
 							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address Code</th>
 							if tab == "ship_to" {
 								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">District Name</th>
 								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mandal/ULB Name</th>
 								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mandal Code</th>
 							}
-							for key := range addressPage.Addresses[0].Data {
-								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{ key }</th>
+							for _, col := range config.DynamicTableVisibleColumns() {
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{ col.Name }</th>
 							}
 							<th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
 						</tr>
@@ -292,13 +302,20 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 						for idx, addr := range addressPage.Addresses {
 							<tr class="hover:bg-gray-50" id={ "address-row-" + intStr(addr.ID) }>
 								<td class="px-4 py-3 text-sm text-gray-500">{ addrRowNum(addressPage, idx) }</td>
+							<td class="px-4 py-3 text-sm text-gray-600">
+								if addr.AddressCode != "" {
+									<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700">{ addr.AddressCode }</span>
+								} else {
+									<span class="text-gray-400">-</span>
+								}
+							</td>
 								if tab == "ship_to" {
 									<td class="px-4 py-3 text-sm text-gray-900 font-medium">{ addr.DistrictName }</td>
 									<td class="px-4 py-3 text-sm text-gray-900">{ addr.MandalName }</td>
 									<td class="px-4 py-3 text-sm text-gray-900">{ addr.MandalCode }</td>
 								}
-								for _, val := range addr.Data {
-									<td class="px-4 py-3 text-sm text-gray-900">{ val }</td>
+								for _, col := range config.DynamicTableVisibleColumns() {
+									<td class="px-4 py-3 text-sm text-gray-900">{ mapGet(addr.Data, col.Name) }</td>
 								}
 								<td class="px-4 py-3 text-right text-sm">
 									<button
@@ -361,7 +378,7 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 	<!-- Column Configuration Slide-Over -->
 	<div id="config-slideover" class="hidden fixed inset-0 z-50">
 		<div class="absolute inset-0" onclick="closeConfigSlideOver()"></div>
-		<div class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl overflow-y-auto">
+		<div class="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl overflow-y-auto">
 			<div class="p-6">
 				<div class="flex items-center justify-between mb-6">
 					<h3 class="text-lg font-semibold text-gray-900">Configure Columns</h3>
@@ -371,40 +388,106 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 						</svg>
 					</button>
 				</div>
-				if tab == "ship_to" {
-					<div class="mb-6 p-3 bg-blue-50 rounded-lg">
-						<h4 class="text-sm font-semibold text-blue-800 mb-2">Fixed Columns (cannot be removed)</h4>
-						<ul class="text-sm text-blue-700 space-y-1">
-							<li>District Name (required)</li>
-							<li>Mandal/ULB Name (required)</li>
-							<li>Mandal Code (required)</li>
-						</ul>
+				if config != nil && len(config.FixedColumns()) > 0 {
+					<div class="mb-6">
+						<h4 class="text-sm font-semibold text-gray-700 mb-3">Fixed Columns (cannot be removed)</h4>
+						<!-- Fixed column header labels -->
+						<div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+							<span class="flex-1 min-w-0">Label</span>
+							<span class="shrink-0 text-center" style="width:24px">Req</span>
+							<span class="shrink-0 text-center" style="width:24px">Tbl</span>
+							<span class="shrink-0 text-center" style="width:44px">T#</span>
+							<span class="shrink-0 text-center" style="width:24px">Prt</span>
+							<span class="shrink-0 text-center" style="width:44px">P#</span>
+							<span class="shrink-0" style="width:20px"></span>
+						</div>
+						for _, fcol := range config.FixedColumns() {
+							<div class="flex items-center gap-2 column-row">
+								<span class="text-sm flex-1 min-w-0 text-gray-700 font-medium px-2 py-1.5 bg-blue-50 rounded border border-blue-100">{ fcol.Name }</span>
+								<input type="hidden" name="fixed_col_name[]" value={ fcol.Name }/>
+								<!-- Required: always true, disabled -->
+								<label class="flex items-center shrink-0 justify-center" style="width:24px" title="Required (always)">
+									<input type="checkbox" checked disabled class="rounded text-gray-400"/>
+								</label>
+								<!-- Show in Table -->
+								<label class="flex items-center shrink-0 justify-center" style="width:24px" title="Show in Table">
+									<input type="hidden" name="fixed_show_table[]" value={ boolStr(fcol.IsVisibleInTable()) }/>
+									if fcol.IsVisibleInTable() {
+										<input type="checkbox" checked onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'" class="rounded text-green-600 focus:ring-green-500"/>
+									} else {
+										<input type="checkbox" onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'" class="rounded text-green-600 focus:ring-green-500"/>
+									}
+								</label>
+								<!-- Table sort order -->
+								<input type="number" name="fixed_table_order[]" value={ intStr(fcol.TableSortOrder) } min="0" max="99" class="shrink-0 text-sm text-center border border-gray-300 rounded-lg py-1 px-1 focus:outline-none focus:border-brand-500" style="width:44px" title="Table sort order"/>
+								<!-- Show in Print -->
+								<label class="flex items-center shrink-0 justify-center" style="width:24px" title="Show in Print/PDF">
+									<input type="hidden" name="fixed_show_print[]" value={ boolStr(fcol.IsVisibleInPrint()) }/>
+									if fcol.IsVisibleInPrint() {
+										<input type="checkbox" checked onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'" class="rounded text-purple-600 focus:ring-purple-500"/>
+									} else {
+										<input type="checkbox" onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'" class="rounded text-purple-600 focus:ring-purple-500"/>
+									}
+								</label>
+								<!-- Print sort order -->
+								<input type="number" name="fixed_print_order[]" value={ intStr(fcol.PrintSortOrder) } min="0" max="99" class="shrink-0 text-sm text-center border border-gray-300 rounded-lg py-1 px-1 focus:outline-none focus:border-brand-500" style="width:44px" title="Print sort order"/>
+								<!-- No delete button for fixed columns -->
+								<span class="shrink-0" style="width:20px"></span>
+							</div>
+						}
 					</div>
 				}
 				<form method="POST" action={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses/config?tab=" + tab) } id="config-form">
 					<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
 					<h4 class="text-sm font-semibold text-gray-700 mb-3">
-						if tab == "ship_to" {
+						if config != nil && len(config.FixedColumns()) > 0 {
 							Additional Dynamic Columns
 						} else {
 							Columns
 						}
 					</h4>
+					<!-- Column header labels -->
+					<div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+						<span class="flex-1 min-w-0">Label</span>
+						<span class="shrink-0 text-center" style="width:24px">Req</span>
+						<span class="shrink-0 text-center" style="width:24px">Tbl</span>
+						<span class="shrink-0 text-center" style="width:44px">T#</span>
+						<span class="shrink-0 text-center" style="width:24px">Prt</span>
+						<span class="shrink-0 text-center" style="width:44px">P#</span>
+						<span class="shrink-0" style="width:20px"></span>
+					</div>
 					<div id="columns-container" class="space-y-3">
 						if config != nil {
-							for _, col := range config.ColumnDefinitions {
+							for _, col := range config.DynamicColumns() {
 								<div class="flex items-center gap-2 column-row">
-									<input type="text" name="col_name[]" value={ col.Name } placeholder="Column name" class="input text-sm flex-1" required/>
-									<label class="flex items-center">
+									<input type="text" name="col_name[]" value={ col.Name } placeholder="Column name" class="input text-sm flex-1 min-w-0" required/>
+									<label class="flex items-center shrink-0 justify-center" style="width:24px" title="Required">
 										<input type="hidden" name="col_required[]" value={ boolStr(col.Required) }/>
 										if col.Required {
 											<input type="checkbox" checked onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'" class="rounded text-brand-600 focus:ring-brand-500"/>
 										} else {
 											<input type="checkbox" onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'" class="rounded text-brand-600 focus:ring-brand-500"/>
 										}
-										<span class="ml-1 text-sm text-gray-600">Req</span>
 									</label>
-									<button type="button" onclick="this.closest('.column-row').remove()" class="text-red-500 hover:text-red-700">
+									<label class="flex items-center shrink-0 justify-center" style="width:24px" title="Show in Table">
+										<input type="hidden" name="col_show_table[]" value={ boolStr(col.IsVisibleInTable()) }/>
+										if col.IsVisibleInTable() {
+											<input type="checkbox" checked onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'" class="rounded text-green-600 focus:ring-green-500"/>
+										} else {
+											<input type="checkbox" onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'" class="rounded text-green-600 focus:ring-green-500"/>
+										}
+									</label>
+									<input type="number" name="col_table_order[]" value={ intStr(col.TableSortOrder) } min="0" max="99" class="shrink-0 text-sm text-center border border-gray-300 rounded-lg py-1 px-1 focus:outline-none focus:border-brand-500" style="width:44px" title="Table sort order (0 = default)"/>
+									<label class="flex items-center shrink-0 justify-center" style="width:24px" title="Show in Print/PDF">
+										<input type="hidden" name="col_show_print[]" value={ boolStr(col.IsVisibleInPrint()) }/>
+										if col.IsVisibleInPrint() {
+											<input type="checkbox" checked onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'" class="rounded text-purple-600 focus:ring-purple-500"/>
+										} else {
+											<input type="checkbox" onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'" class="rounded text-purple-600 focus:ring-purple-500"/>
+										}
+									</label>
+									<input type="number" name="col_print_order[]" value={ intStr(col.PrintSortOrder) } min="0" max="99" class="shrink-0 text-sm text-center border border-gray-300 rounded-lg py-1 px-1 focus:outline-none focus:border-brand-500" style="width:44px" title="Print sort order (0 = default)"/>
+									<button type="button" onclick="this.closest('.column-row').remove()" class="shrink-0 text-red-500 hover:text-red-700" style="width:20px">
 										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
 									</button>
 								</div>
@@ -427,6 +510,11 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 			<form method="POST" id="address-form" action={ templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/addresses/create?tab=" + tab) }>
 				<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
 				<div class="space-y-4">
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1">Address Code</label>
+						<input type="text" name="address_code" id="addr-field-address_code" placeholder="e.g. ADDR-001" class="input text-sm w-full"/>
+						<p class="mt-1 text-xs text-gray-400">Unique identifier for searching (optional)</p>
+					</div>
 					if tab == "ship_to" {
 						<!-- Fixed fields for ship-to -->
 						<div class="p-3 bg-blue-50 rounded-lg space-y-3">
@@ -445,10 +533,10 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 							</div>
 						</div>
 					}
-					<!-- Dynamic column fields -->
+					<!-- Dynamic column fields (excludes fixed columns rendered above) -->
 					<div id="dynamic-addr-fields">
 						if config != nil {
-							for _, col := range config.ColumnDefinitions {
+							for _, col := range config.DynamicColumns() {
 								<div>
 									<label class="block text-sm font-medium text-gray-700 mb-1">
 										{ col.Name }
@@ -511,12 +599,19 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 		var container = document.getElementById('columns-container');
 		var row = document.createElement('div');
 		row.className = 'flex items-center gap-2 column-row';
-		row.innerHTML = '<input type="text" name="col_name[]" placeholder="Column name" class="input text-sm flex-1" required>' +
-			'<label class="flex items-center">' +
+		row.innerHTML = '<input type="text" name="col_name[]" placeholder="Column name" class="input text-sm flex-1 min-w-0" required>' +
+			'<label class="flex items-center shrink-0 justify-center" style="width:24px" title="Required">' +
 			'<input type="hidden" name="col_required[]" value="false">' +
-			'<input type="checkbox" onchange="this.previousElementSibling.value = this.checked ? \'true\' : \'false\'" class="rounded text-brand-600 focus:ring-brand-500">' +
-			'<span class="ml-1 text-sm text-gray-600">Req</span></label>' +
-			'<button type="button" onclick="this.closest(\'.column-row\').remove()" class="text-red-500 hover:text-red-700">' +
+			'<input type="checkbox" onchange="this.previousElementSibling.value = this.checked ? \'true\' : \'false\'" class="rounded text-brand-600 focus:ring-brand-500"></label>' +
+			'<label class="flex items-center shrink-0 justify-center" style="width:24px" title="Show in Table">' +
+			'<input type="hidden" name="col_show_table[]" value="true">' +
+			'<input type="checkbox" checked onchange="this.previousElementSibling.value = this.checked ? \'true\' : \'false\'" class="rounded text-green-600 focus:ring-green-500"></label>' +
+			'<input type="number" name="col_table_order[]" value="0" min="0" max="99" style="width:44px" class="shrink-0 text-sm text-center border border-gray-300 rounded-lg py-1 px-1 focus:outline-none focus:border-brand-500" title="Table sort order (0 = default)">' +
+			'<label class="flex items-center shrink-0 justify-center" style="width:24px" title="Show in Print/PDF">' +
+			'<input type="hidden" name="col_show_print[]" value="true">' +
+			'<input type="checkbox" checked onchange="this.previousElementSibling.value = this.checked ? \'true\' : \'false\'" class="rounded text-purple-600 focus:ring-purple-500"></label>' +
+			'<input type="number" name="col_print_order[]" value="0" min="0" max="99" style="width:44px" class="shrink-0 text-sm text-center border border-gray-300 rounded-lg py-1 px-1 focus:outline-none focus:border-brand-500" title="Print sort order (0 = default)">' +
+			'<button type="button" onclick="this.closest(\'.column-row\').remove()" class="shrink-0 text-red-500 hover:text-red-700" style="width:20px">' +
 			'<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>';
 		container.appendChild(row);
 	}
@@ -524,12 +619,17 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 		fetch('/projects/' + projectID + '/addresses/' + id + '?tab=' + currentTab, {
 			headers: { 'Accept': 'application/json' }
 		}).then(function(resp) {
+			if (!resp.ok) {
+				return resp.text().then(function(t) { throw new Error('Server error ' + resp.status + ': ' + t); });
+			}
 			return resp.json();
 		}).then(function(data) {
 			document.getElementById('address-modal-title').textContent = 'Edit Address';
 			document.getElementById('address-submit-btn').textContent = 'Save Changes';
 			var form = document.getElementById('address-form');
 			form.action = '/projects/' + projectID + '/addresses/' + id + '?tab=' + currentTab;
+			var addrCodeField = document.getElementById('addr-field-address_code');
+			if (addrCodeField) addrCodeField.value = data.address_code || '';
 			var districtField = document.getElementById('addr-district-name');
 			if (districtField) districtField.value = data.district_name || '';
 			var mandalField = document.getElementById('addr-mandal-name');
@@ -551,8 +651,9 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 				}
 			}
 			document.getElementById('add-address-modal').classList.remove('hidden');
-		}).catch(function() {
-			showToast('Failed to load address data', 'error');
+		}).catch(function(err) {
+			console.error('Edit address failed:', err);
+			showToast('Failed to load address data: ' + err.message, 'error');
 		});
 	}
 	function closeAddressModal() {
@@ -562,6 +663,8 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 		var form = document.getElementById('address-form');
 		form.action = '/projects/' + projectID + '/addresses/create?tab=' + currentTab;
 		document.getElementById('dynamic-addr-fields').innerHTML = originalDynamicFields;
+		var addrCodeField = document.getElementById('addr-field-address_code');
+		if (addrCodeField) addrCodeField.value = '';
 		form.reset();
 	}
 	function deleteAddress(id) {
@@ -571,17 +674,20 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 				method: 'DELETE',
 				headers: { 'X-CSRF-Token': csrfTokenVal, 'Content-Type': 'application/json' }
 			}).then(function(resp) {
-				return resp.json();
-			}).then(function(data) {
-				if (data.success) {
+				return resp.json().then(function(data) { return { ok: resp.ok, data: data }; });
+			}).then(function(result) {
+				document.getElementById('delete-address-modal').classList.add('hidden');
+				if (result.ok && result.data.success) {
 					var row = document.getElementById('address-row-' + id);
 					if (row) row.remove();
-					document.getElementById('delete-address-modal').classList.add('hidden');
 					showToast('Address deleted successfully', 'success');
 				} else {
-					showToast(data.error || 'Failed to delete address', 'error');
+					showToast(result.data.error || 'Failed to delete address', 'error');
 				}
-			}).catch(function() { showToast('Failed to delete address', 'error'); });
+			}).catch(function(err) {
+				document.getElementById('delete-address-modal').classList.add('hidden');
+				showToast('Failed to delete address. Please try again.', 'error');
+			});
 		};
 	}
 	function deleteAllAddresses() {
@@ -589,14 +695,16 @@ templ Index(user *models.User, currentProject *models.Project, allProjects []*mo
 			method: 'DELETE',
 			headers: { 'X-CSRF-Token': csrfTokenVal, 'Content-Type': 'application/json' }
 		}).then(function(resp) {
-			return resp.json();
-		}).then(function(data) {
-			if (data.success) {
-				window.location.href = data.redirect;
+			return resp.json().then(function(data) { return { ok: resp.ok, data: data }; });
+		}).then(function(result) {
+			if (result.ok && result.data.success) {
+				window.location.href = result.data.redirect;
 			} else {
-				showToast(data.error || 'Failed to delete addresses', 'error');
+				showToast(result.data.error || 'Failed to delete addresses', 'error');
 			}
-		}).catch(function() { showToast('Failed to delete addresses', 'error'); });
+		}).catch(function(err) {
+			showToast('Failed to delete addresses. Please try again.', 'error');
+		});
 	}
 	document.addEventListener('keydown', function(e) {
 		if (e.key === 'Escape') {

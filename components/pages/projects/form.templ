@@ -207,6 +207,52 @@ templ formFields(project *models.Project, errors map[string]string) {
 			</div>
 		</div>
 	</div>
+	<!-- Authorized Signatory Details -->
+	<div class="card">
+		<h2 class="text-lg font-semibold text-gray-900 mb-4">Authorized Signatory</h2>
+		<p class="text-sm text-gray-500 mb-4">These details appear on the DC PDF under the company signature.</p>
+		<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+			<div>
+				<label for="signatory_name" class="block text-sm font-medium text-gray-700">Name</label>
+				<input
+					type="text"
+					name="signatory_name"
+					id="signatory_name"
+					if project != nil {
+						value={ project.SignatoryName }
+					}
+					placeholder="e.g., Raghu Sharma"
+					class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"
+				/>
+			</div>
+			<div>
+				<label for="signatory_designation" class="block text-sm font-medium text-gray-700">Designation</label>
+				<input
+					type="text"
+					name="signatory_designation"
+					id="signatory_designation"
+					if project != nil {
+						value={ project.SignatoryDesignation }
+					}
+					placeholder="e.g., Director"
+					class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"
+				/>
+			</div>
+			<div>
+				<label for="signatory_mobile" class="block text-sm font-medium text-gray-700">Mobile</label>
+				<input
+					type="text"
+					name="signatory_mobile"
+					id="signatory_mobile"
+					if project != nil {
+						value={ project.SignatoryMobile }
+					}
+					placeholder="e.g., +91 98765 43210"
+					class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"
+				/>
+			</div>
+		</div>
+	</div>
 	<!-- Company Signature -->
 	<div class="card">
 		<h2 class="text-lg font-semibold text-gray-900 mb-4">Company Signature</h2>

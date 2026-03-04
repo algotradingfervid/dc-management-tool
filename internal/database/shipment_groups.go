@@ -177,3 +177,18 @@ func IssueAllDCsInGroup(groupID int, issuedBy int) (int, error) {
 	count, _ := result.RowsAffected()
 	return int(count), nil
 }
+
+// UpdateShipmentGroup updates mutable fields on an existing draft shipment group.
+// Only call this while the group is still in "draft" status.
+func UpdateShipmentGroup(groupID int, templateID *int, numSets int, taxType, reverseCharge string) error {
+	_, err := DB.ExecContext(ctx(),
+		`UPDATE shipment_groups
+		    SET template_id = ?, num_sets = ?, tax_type = ?, reverse_charge = ?, updated_at = CURRENT_TIMESTAMP
+		  WHERE id = ? AND status = 'draft'`,
+		nullInt64FromPtr(templateID), numSets, taxType, reverseCharge, groupID,
+	)
+	if err != nil {
+		return fmt.Errorf("UpdateShipmentGroup: %w", err)
+	}
+	return nil
+}

@@ -14,7 +14,7 @@ import (
 	"github.com/narendhupati/dc-management-tool/internal/services"
 )
 
-// ExportDCPDF generates and serves a PDF for a DC by navigating to its print view with headless Chrome.
+// ExportDCPDF generates and serves a PDF for a DC using the native Go PDF builder.
 func ExportDCPDF(c echo.Context) error {
 	projectID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -45,29 +45,18 @@ func ExportDCPDF(c echo.Context) error {
 	return c.Blob(http.StatusOK, "application/pdf", pdfData)
 }
 
-// generatePDFForDC renders the print template to HTML and converts to PDF.
+// generatePDFForDC fetches DC data and generates a PDF using the native Go PDF builder.
 func generatePDFForDC(projectID, dcID int, dc *models.DeliveryChallan) ([]byte, error) {
-	// Build a full HTML page from the print template data
-	var htmlContent string
-	var err error
-
 	if dc.DCType == "official" {
-		htmlContent, err = renderOfficialPrintHTML(projectID, dcID, dc)
-	} else {
-		htmlContent, err = renderTransitPrintHTML(projectID, dcID, dc)
+		return buildOfficialPDF(projectID, dcID, dc)
 	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return services.GeneratePDFFromHTML(htmlContent)
+	return buildTransitPDF(projectID, dcID, dc)
 }
 
-func renderTransitPrintHTML(projectID, dcID int, dc *models.DeliveryChallan) (string, error) {
+func buildTransitPDF(projectID, dcID int, dc *models.DeliveryChallan) ([]byte, error) {
 	project, err := database.GetProjectByID(projectID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	transitDetails, _ := database.GetTransitDetailsByDCID(dcID)
@@ -96,18 +85,54 @@ func renderTransitPrintHTML(projectID, dcID int, dc *models.DeliveryChallan) (st
 	if dc.BillToAddressID != nil && *dc.BillToAddressID > 0 {
 		billToAddress, _ = database.GetAddress(*dc.BillToAddressID)
 	}
+
+	// Fetch Bill From and Dispatch From addresses selected during DC creation
+	var billFromAddress, dispatchFromAddress *models.Address
+	if dc.BillFromAddressID != nil && *dc.BillFromAddressID > 0 {
+		billFromAddress, _ = database.GetAddress(*dc.BillFromAddressID)
+	}
+	if dc.DispatchFromAddressID != nil && *dc.DispatchFromAddressID > 0 {
+		dispatchFromAddress, _ = database.GetAddress(*dc.DispatchFromAddressID)
+	}
+
 	company, _ := database.GetCompanySettings()
 	amountInWords := helpers.NumberToIndianWords(roundedTotal)
 
-	return buildTransitPrintHTML(project, dc, transitDetails, lineItems, company,
-		shipToAddress, billToAddress, totalTaxable, totalTax, grandTotal,
-		roundedTotal, roundOff, totalQty, halfTax, amountInWords), nil
+	// Fetch address configs for print column filtering
+	shipToConfig, _ := database.GetOrCreateAddressConfig(projectID, "ship_to")
+	billToConfig, _ := database.GetOrCreateAddressConfig(projectID, "bill_to")
+	billFromConfig, _ := database.GetOrCreateAddressConfig(projectID, "bill_from")
+	dispatchFromConfig, _ := database.GetOrCreateAddressConfig(projectID, "dispatch_from")
+
+	return services.GenerateTransitDCPDF(&services.TransitDCPDFData{
+		Project:            project,
+		DC:                 dc,
+		TransitDetails:     transitDetails,
+		LineItems:          lineItems,
+		Company:            company,
+		ShipToAddress:      shipToAddress,
+		BillToAddress:      billToAddress,
+		BillFromAddress:    billFromAddress,
+		DispatchFromAddress: dispatchFromAddress,
+		ShipToConfig:       shipToConfig,
+		BillToConfig:       billToConfig,
+		BillFromConfig:     billFromConfig,
+		DispatchFromConfig: dispatchFromConfig,
+		TotalTaxable:       totalTaxable,
+		TotalTax:           totalTax,
+		GrandTotal:         grandTotal,
+		RoundedTotal:       roundedTotal,
+		RoundOff:           roundOff,
+		HalfTax:            halfTax,
+		TotalQty:           totalQty,
+		AmountInWords:      amountInWords,
+	})
 }
 
-func renderOfficialPrintHTML(projectID, dcID int, dc *models.DeliveryChallan) (string, error) {
+func buildOfficialPDF(projectID, dcID int, dc *models.DeliveryChallan) ([]byte, error) {
 	project, err := database.GetProjectByID(projectID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	lineItems, _ := database.GetLineItemsByDCID(dcID)
@@ -121,17 +146,34 @@ func renderOfficialPrintHTML(projectID, dcID int, dc *models.DeliveryChallan) (s
 		totalQty += li.Quantity
 	}
 
-	var shipToAddress, billToAddress *models.Address
+	var shipToAddress, billToAddress, billFromAddress *models.Address
 	if dc.ShipToAddressID > 0 {
 		shipToAddress, _ = database.GetAddress(dc.ShipToAddressID)
 	}
 	if dc.BillToAddressID != nil && *dc.BillToAddressID > 0 {
 		billToAddress, _ = database.GetAddress(*dc.BillToAddressID)
 	}
+	if dc.BillFromAddressID != nil && *dc.BillFromAddressID > 0 {
+		billFromAddress, _ = database.GetAddress(*dc.BillFromAddressID)
+	}
 	company, _ := database.GetCompanySettings()
 
-	return buildOfficialPrintHTML(project, dc, lineItems, company,
-		shipToAddress, billToAddress, totalQty), nil
+	// Fetch address configs for print column filtering
+	shipToConfig, _ := database.GetOrCreateAddressConfig(projectID, "ship_to")
+	billToConfig, _ := database.GetOrCreateAddressConfig(projectID, "bill_to")
+
+	return services.GenerateOfficialDCPDF(&services.OfficialDCPDFData{
+		Project:         project,
+		DC:              dc,
+		LineItems:       lineItems,
+		Company:         company,
+		ShipToAddress:   shipToAddress,
+		BillToAddress:   billToAddress,
+		BillFromAddress: billFromAddress,
+		ShipToConfig:    shipToConfig,
+		BillToConfig:    billToConfig,
+		TotalQty:        totalQty,
+	})
 }
 
 // ExportDCExcel generates and serves an Excel file for a DC.
@@ -196,24 +238,26 @@ func ExportDCExcel(c echo.Context) error {
 			slog.Error("error writing official DC Excel response", slog.String("error", err.Error()), slog.Int("dcID", dcID))
 		}
 	} else {
+		transitDetails, _ := database.GetTransitDetailsByDCID(dcID)
 		totalTaxable, totalTax, grandTotal, roundedTotal, roundOff, cgst, sgst := services.CalcTransitTotals(lineItems)
 		amountInWords := helpers.NumberToIndianWords(roundedTotal)
 
 		excelFile, err := services.GenerateTransitDCExcel(&services.TransitDCExcelData{
-			DC:            dc,
-			LineItems:     lineItems,
-			Company:       company,
-			Project:       project,
-			ShipToAddress: shipToAddress,
-			BillToAddress: billToAddress,
-			TotalTaxable:  totalTaxable,
-			TotalTax:      totalTax,
-			GrandTotal:    grandTotal,
-			RoundedTotal:  roundedTotal,
-			RoundOff:      roundOff,
-			CGST:          cgst,
-			SGST:          sgst,
-			AmountInWords: amountInWords,
+			DC:             dc,
+			LineItems:      lineItems,
+			Company:        company,
+			Project:        project,
+			ShipToAddress:  shipToAddress,
+			BillToAddress:  billToAddress,
+			TransitDetails: transitDetails,
+			TotalTaxable:   totalTaxable,
+			TotalTax:       totalTax,
+			GrandTotal:     grandTotal,
+			RoundedTotal:   roundedTotal,
+			RoundOff:       roundOff,
+			CGST:           cgst,
+			SGST:           sgst,
+			AmountInWords:  amountInWords,
 		})
 		if err != nil {
 			slog.Error("error generating transit DC Excel", slog.String("error", err.Error()), slog.Int("dcID", dcID), slog.Int("projectID", projectID))

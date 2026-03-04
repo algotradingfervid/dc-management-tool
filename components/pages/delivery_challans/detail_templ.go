@@ -48,12 +48,79 @@ func issuedAtFormatted(dc *models.DeliveryChallan) string {
 	return ""
 }
 
+// addressDataValue returns the value for a key in an address's Data map, or empty string if nil.
+func addressDataValue(addr *models.Address, key string) string {
+	if addr == nil || addr.Data == nil {
+		return ""
+	}
+	return addr.Data[key]
+}
+
+// fixedFieldValue returns the value of a fixed field from the Address struct.
+func fixedFieldValue(addr *models.Address, name string) string {
+	if addr == nil {
+		return ""
+	}
+	switch name {
+	case "District Name":
+		return addr.DistrictName
+	case "Mandal/ULB Name":
+		return addr.MandalName
+	case "Mandal Code":
+		return addr.MandalCode
+	}
+	return ""
+}
+
+// filteredAddressLines returns address values filtered by config print visibility
+// and sorted by print sort order. Handles both fixed and dynamic columns.
+func filteredAddressLines(addr *models.Address, config *models.AddressListConfig) []string {
+	if addr == nil {
+		return nil
+	}
+	if config == nil {
+		// No config — return all values
+		var lines []string
+		if addr.DistrictName != "" {
+			lines = append(lines, addr.DistrictName)
+		}
+		if addr.MandalName != "" {
+			lines = append(lines, addr.MandalName)
+		}
+		if addr.MandalCode != "" {
+			lines = append(lines, addr.MandalCode)
+		}
+		for _, v := range addr.Data {
+			if v != "" {
+				lines = append(lines, v)
+			}
+		}
+		return lines
+	}
+	printCols := config.PrintVisibleColumns()
+	var lines []string
+	for _, col := range printCols {
+		var v string
+		if fv := fixedFieldValue(addr, col.Name); fv != "" {
+			v = fv
+		} else {
+			v = addr.Data[col.Name]
+		}
+		if v != "" {
+			lines = append(lines, v)
+		}
+	}
+	return lines
+}
+
 // Detail renders the Delivery Challan detail page.
 func Detail(
 	user *models.User,
 	currentProject *models.Project,
 	allProjects []*models.Project,
 	dc *models.DeliveryChallan,
+	billFromAddr *models.Address,
+	dispatchFromAddr *models.Address,
 	flashType string,
 	flashMessage string,
 	csrfToken string,
@@ -90,7 +157,7 @@ func Detail(
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(flashMessage)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 62, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 129, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -103,7 +170,7 @@ func Detail(
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(flashType)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 62, Col: 95}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 129, Col: 95}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -121,7 +188,7 @@ func Detail(
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(dc.DCNumber)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 67, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 134, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -161,7 +228,7 @@ func Detail(
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(dcChallanDate(dc))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 80, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 147, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -177,14 +244,14 @@ func Detail(
 			return templ_7745c5c3_Err
 		}
 		if dc.Status == "draft" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<!-- Alpine wrapper: holds Issue + Delete buttons and their modals --> <div x-data=\"{\n\t\t\t\t\t\t\tshowDelete: false,\n\t\t\t\t\t\t\tshowIssue: false,\n\t\t\t\t\t\t\tasync doDelete() {\n\t\t\t\t\t\t\t\tconst pid = this.$el.dataset.projectId;\n\t\t\t\t\t\t\t\tconst did = this.$el.dataset.dcId;\n\t\t\t\t\t\t\t\tconst tok = this.$el.dataset.csrf;\n\t\t\t\t\t\t\t\tconst resp = await fetch('/projects/' + pid + '/dcs/' + did, {\n\t\t\t\t\t\t\t\t\tmethod: 'DELETE',\n\t\t\t\t\t\t\t\t\theaders: { 'X-CSRF-Token': tok }\n\t\t\t\t\t\t\t\t});\n\t\t\t\t\t\t\t\tconst data = await resp.json().catch(() => ({}));\n\t\t\t\t\t\t\t\tif (data.success) {\n\t\t\t\t\t\t\t\t\twindow.location.href = '/projects/' + pid + '/dcs-list';\n\t\t\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\t\t\tshowToast('Error: ' + (data.error || 'Failed to delete DC'), 'error');\n\t\t\t\t\t\t\t\t\tthis.showDelete = false;\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t},\n\t\t\t\t\t\t\tasync doIssue() {\n\t\t\t\t\t\t\t\tconst pid = this.$el.dataset.projectId;\n\t\t\t\t\t\t\t\tconst did = this.$el.dataset.dcId;\n\t\t\t\t\t\t\t\tconst tok = this.$el.dataset.csrf;\n\t\t\t\t\t\t\t\tconst resp = await fetch('/projects/' + pid + '/dcs/' + did + '/issue', {\n\t\t\t\t\t\t\t\t\tmethod: 'POST',\n\t\t\t\t\t\t\t\t\theaders: { 'Content-Type': 'application/json', 'X-CSRF-Token': tok }\n\t\t\t\t\t\t\t\t});\n\t\t\t\t\t\t\t\tconst data = await resp.json().catch(() => ({}));\n\t\t\t\t\t\t\t\tif (data.success) {\n\t\t\t\t\t\t\t\t\tshowToast('DC issued successfully!', 'success');\n\t\t\t\t\t\t\t\t\tsetTimeout(() => location.reload(), 500);\n\t\t\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\t\t\tshowToast('Error: ' + (data.error || 'Failed to issue DC'), 'error');\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\tthis.showIssue = false;\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\" data-project-id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<!-- Alpine wrapper: holds Issue + Delete buttons and their modals --> <div x-data=\"{\n\t\t\t\t\t\t\tshowDelete: false,\n\t\t\t\t\t\t\tshowIssue: false,\n\t\t\t\t\t\t\tpid: '',\n\t\t\t\t\t\t\tdid: '',\n\t\t\t\t\t\t\ttok: '',\n\t\t\t\t\t\t\tasync doDelete() {\n\t\t\t\t\t\t\t\tconst resp = await fetch('/projects/' + this.pid + '/dcs/' + this.did, {\n\t\t\t\t\t\t\t\t\tmethod: 'DELETE',\n\t\t\t\t\t\t\t\t\theaders: { 'X-CSRF-Token': this.tok }\n\t\t\t\t\t\t\t\t});\n\t\t\t\t\t\t\t\tconst data = await resp.json().catch(() => ({}));\n\t\t\t\t\t\t\t\tif (data.success) {\n\t\t\t\t\t\t\t\t\twindow.location.href = '/projects/' + this.pid + '/dcs-list';\n\t\t\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\t\t\tshowToast('Error: ' + (data.error || 'Failed to delete DC'), 'error');\n\t\t\t\t\t\t\t\t\tthis.showDelete = false;\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t},\n\t\t\t\t\t\t\tasync doIssue() {\n\t\t\t\t\t\t\t\tconst resp = await fetch('/projects/' + this.pid + '/dcs/' + this.did + '/issue', {\n\t\t\t\t\t\t\t\t\tmethod: 'POST',\n\t\t\t\t\t\t\t\t\theaders: { 'Content-Type': 'application/json', 'X-CSRF-Token': this.tok }\n\t\t\t\t\t\t\t\t});\n\t\t\t\t\t\t\t\tconst data = await resp.json().catch(() => ({}));\n\t\t\t\t\t\t\t\tif (data.success) {\n\t\t\t\t\t\t\t\t\tshowToast('DC issued successfully!', 'success');\n\t\t\t\t\t\t\t\t\tsetTimeout(() => location.reload(), 500);\n\t\t\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\t\t\tshowToast('Error: ' + (data.error || 'Failed to issue DC'), 'error');\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\tthis.showIssue = false;\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\" x-init=\"pid = $el.dataset.projectId; did = $el.dataset.dcId; tok = $el.dataset.csrf\" data-project-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", currentProject.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 125, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 190, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -197,7 +264,7 @@ func Detail(
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", dc.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 126, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 191, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -210,7 +277,7 @@ func Detail(
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(csrfToken)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 127, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 192, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -228,7 +295,7 @@ func Detail(
 		var templ_7745c5c3_Var9 templ.SafeURL
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(projectDCURL(currentProject.ID, dc.ID, "/export/pdf")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 205, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 270, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -241,7 +308,7 @@ func Detail(
 		var templ_7745c5c3_Var10 templ.SafeURL
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(projectDCURL(currentProject.ID, dc.ID, "/export/excel")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 214, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 279, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -254,7 +321,7 @@ func Detail(
 		var templ_7745c5c3_Var11 templ.SafeURL
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(projectDCURL(currentProject.ID, dc.ID, "/print")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 223, Col: 75}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 288, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -272,7 +339,7 @@ func Detail(
 			var templ_7745c5c3_Var12 templ.SafeURL
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(projectURL(currentProject.ID, fmt.Sprintf("/shipments/%d", derefInt(dc.ShipmentGroupID)))))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 230, Col: 117}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 295, Col: 117}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -290,7 +357,7 @@ func Detail(
 			var templ_7745c5c3_Var13 templ.SafeURL
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(projectURL(currentProject.ID, "")))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 236, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 301, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -308,7 +375,7 @@ func Detail(
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(dc.DCNumber)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 248, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 313, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -321,7 +388,7 @@ func Detail(
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(dc.DCType)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 252, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 317, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -334,7 +401,7 @@ func Detail(
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(dc.Status)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 256, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 321, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -352,7 +419,7 @@ func Detail(
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(dcChallanDate(dc))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 261, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 326, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -371,7 +438,7 @@ func Detail(
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(dc.TemplateName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 267, Col: 56}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 332, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -389,49 +456,101 @@ func Detail(
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d item(s), %d unit(s)", dc.LineItemCount, dc.TotalQuantity))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 272, Col: 113}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 337, Col: 113}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</dd></div></dl></div><!-- CSRF Hidden Field --><input type=\"hidden\" name=\"gorilla.csrf.Token\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</dd></div></dl><!-- Bill From / Dispatch From Addresses -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var20 string
-		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(csrfToken)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 277, Col: 66}
+		if billFromAddr != nil || dispatchFromAddr != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<div class=\"mt-5 pt-4 border-t border-gray-100\"><h3 class=\"text-sm font-semibold text-gray-700 mb-3\">Addresses</h3><div class=\"grid grid-cols-1 sm:grid-cols-2 gap-4\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if billFromAddr != nil {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<div class=\"border border-gray-200 rounded-lg p-3\"><p class=\"text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1\">Bill From</p><p class=\"text-xs text-gray-700\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var20 string
+				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(billFromAddr.DisplayName())
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 348, Col: 69}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</p></div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			if dispatchFromAddr != nil {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<div class=\"border border-gray-200 rounded-lg p-3\"><p class=\"text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1\">Dispatch From</p><p class=\"text-xs text-gray-700\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var21 string
+				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(dispatchFromAddr.DisplayName())
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 354, Col: 73}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</p></div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</div></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</div><!-- CSRF Hidden Field --><input type=\"hidden\" name=\"gorilla.csrf.Token\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\"> ")
+		var templ_7745c5c3_Var22 string
+		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(csrfToken)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 362, Col: 66}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "\"> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if dc.IssuedAt != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<div class=\"text-xs text-gray-400 text-center mt-4\">Issued on ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<div class=\"text-xs text-gray-400 text-center mt-4\">Issued on ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var21 string
-			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(issuedAtFormatted(dc))
+			var templ_7745c5c3_Var23 string
+			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(issuedAtFormatted(dc))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 280, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/delivery_challans/detail.templ`, Line: 365, Col: 37}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -28,6 +28,8 @@ templ WizardStep2(
 	billToAddresses []*models.Address,
 	shipToAddresses []*models.Address,
 	csrfToken string,
+	editGroupID int,
+	preselectedIDs []int,
 ) {
 	<div class="max-w-4xl mx-auto">
 		<h1 class="text-2xl font-bold mb-6">Create New Shipment - Step 2: Select Addresses</h1>
@@ -39,8 +41,18 @@ templ WizardStep2(
 				Next Transit DC: <strong>{ transitDCNumber }</strong> | Next Official DC: <strong>{ officialDCNumber }</strong>
 			</p>
 		</div>
-		<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/new/step3", currentProject.ID)) }>
+		<form
+			method="POST"
+			if editGroupID > 0 {
+				action={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/%d/edit/step3", currentProject.ID, editGroupID)) }
+			} else {
+				action={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/new/step3", currentProject.ID)) }
+			}
+		>
 			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			if editGroupID > 0 {
+				<input type="hidden" name="edit_group_id" value={ strconv.Itoa(editGroupID) }/>
+			}
 			<!-- Carry forward step 1 data -->
 			<input type="hidden" name="template_id" value={ templateID }/>
 			<input type="hidden" name="num_sets" value={ strconv.Itoa(numSets) }/>
@@ -84,7 +96,7 @@ templ WizardStep2(
 					<label class="block text-sm font-medium text-gray-700 mb-1">
 						Ship To Addresses (select { strconv.Itoa(numSets) })
 					</label>
-					<div id="ship-to-picker" class="relative" data-addresses={ shipToAddressesJSON(shipToAddresses) } data-num-sets={ strconv.Itoa(numSets) }>
+					<div id="ship-to-picker" class="relative" data-addresses={ shipToAddressesJSON(shipToAddresses) } data-num-sets={ strconv.Itoa(numSets) } data-preselected={ preselectedIDsJSON(preselectedIDs) }>
 						<!-- Selected tags -->
 						<div
 							id="ship-to-tags"
@@ -244,6 +256,11 @@ templ WizardStep2(
 			});
 
 			render();
+			var preselected = JSON.parse(picker.dataset.preselected || '[]') || [];
+			preselected.forEach(function(id) {
+				var addr = allAddresses.find(function(a) { return a.id === id; });
+				if (addr) addAddress(addr);
+			});
 		})();
 	</script>
 }

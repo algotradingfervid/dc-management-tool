@@ -10,6 +10,7 @@ type Config struct {
 	DatabasePath  string
 	SessionSecret string
 	UploadPath    string
+	AppDomain     string // e.g. "erp.optimussoftwares.com" — used for CSRF trusted origins behind a reverse proxy
 }
 
 func Load() *Config {
@@ -19,6 +20,7 @@ func Load() *Config {
 		DatabasePath:  getEnv("DATABASE_PATH", "./data/dc_management.db"),
 		SessionSecret: getEnv("SESSION_SECRET", "dev-secret-change-in-production"),
 		UploadPath:    getEnv("UPLOAD_PATH", "./static/uploads"),
+		AppDomain:     getEnv("APP_DOMAIN", ""),
 	}
 }
 

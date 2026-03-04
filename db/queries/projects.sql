@@ -16,6 +16,7 @@ SELECT
     p.bill_from_address, p.dispatch_from_address,
     p.company_gstin, p.company_email, p.company_cin,
     p.company_signature_path, p.company_seal_path,
+    p.signatory_name, p.signatory_designation, p.signatory_mobile,
     p.dc_number_format, p.dc_number_separator,
     p.purpose_text, p.seq_padding,
     p.last_transit_dc_number, p.last_official_dc_number,
@@ -39,6 +40,7 @@ SELECT
     p.bill_from_address, p.dispatch_from_address,
     p.company_gstin, p.company_email, p.company_cin,
     p.company_signature_path, p.company_seal_path,
+    p.signatory_name, p.signatory_designation, p.signatory_mobile,
     p.dc_number_format, p.dc_number_separator,
     p.purpose_text, p.seq_padding,
     p.last_transit_dc_number, p.last_official_dc_number,
@@ -60,9 +62,10 @@ INSERT INTO projects (
     po_reference, po_date, bill_from_address, dispatch_from_address,
     company_gstin, company_email, company_cin,
     company_signature_path, company_seal_path,
+    signatory_name, signatory_designation, signatory_mobile,
     dc_number_format, dc_number_separator,
     purpose_text, seq_padding, created_by
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateProject :exec
 UPDATE projects SET
@@ -72,6 +75,7 @@ UPDATE projects SET
     bill_from_address = ?, dispatch_from_address = ?,
     company_gstin = ?, company_email = ?, company_cin = ?,
     company_signature_path = ?, company_seal_path = ?,
+    signatory_name = ?, signatory_designation = ?, signatory_mobile = ?,
     dc_number_format = ?, dc_number_separator = ?,
     purpose_text = ?, seq_padding = ?,
     updated_at = CURRENT_TIMESTAMP
@@ -86,7 +90,8 @@ WHERE id = ?;
 UPDATE projects
 SET bill_from_address = ?, dispatch_from_address = ?, company_gstin = ?,
     company_email = ?, company_cin = ?, company_signature_path = ?,
-    company_seal_path = ?, updated_at = CURRENT_TIMESTAMP
+    company_seal_path = ?, signatory_name = ?, signatory_designation = ?,
+    signatory_mobile = ?, updated_at = CURRENT_TIMESTAMP
 WHERE id = ?;
 
 -- name: UpdateProjectSettingsDCConfig :exec

@@ -1,26 +1,26 @@
 -- name: GetProductsByProjectID :many
 SELECT id, project_id, item_name, item_description, hsn_code, uom,
-       brand_model, per_unit_price, gst_percentage, created_at, updated_at
+       brand_model, per_unit_price, gst_percentage, product_code, created_at, updated_at
 FROM products
 WHERE project_id = ?
 ORDER BY item_name ASC;
 
 -- name: GetProductByID :one
 SELECT id, project_id, item_name, item_description, hsn_code, uom,
-       brand_model, per_unit_price, gst_percentage, created_at, updated_at
+       brand_model, per_unit_price, gst_percentage, product_code, created_at, updated_at
 FROM products
 WHERE id = ?;
 
 -- name: CreateProduct :execresult
 INSERT INTO products (
     project_id, item_name, item_description, hsn_code, uom,
-    brand_model, per_unit_price, gst_percentage
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+    brand_model, per_unit_price, gst_percentage, product_code
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateProduct :exec
 UPDATE products SET
     item_name = ?, item_description = ?, hsn_code = ?, uom = ?,
-    brand_model = ?, per_unit_price = ?, gst_percentage = ?,
+    brand_model = ?, per_unit_price = ?, gst_percentage = ?, product_code = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ? AND project_id = ?;
 
@@ -36,29 +36,35 @@ SELECT COUNT(*) FROM products WHERE project_id = ? AND item_name = ?;
 -- name: CheckProductNameUniqueExcludeID :one
 SELECT COUNT(*) FROM products WHERE project_id = ? AND item_name = ? AND id != ?;
 
+-- name: CheckProductCodeUnique :one
+SELECT COUNT(*) FROM products WHERE product_code = ?;
+
+-- name: CheckProductCodeUniqueExcludeID :one
+SELECT COUNT(*) FROM products WHERE product_code = ? AND id != ?;
+
 -- name: GetProductCount :one
 SELECT COUNT(*) FROM products WHERE project_id = ?;
 
 -- name: SearchProductsCount :one
 SELECT COUNT(*) FROM products
 WHERE project_id = ?
-  AND (item_name LIKE ? OR hsn_code LIKE ? OR brand_model LIKE ? OR item_description LIKE ?);
+  AND (item_name LIKE ? OR hsn_code LIKE ? OR brand_model LIKE ? OR item_description LIKE ? OR product_code LIKE ?);
 
 -- name: SearchProductsCountNoFilter :one
 SELECT COUNT(*) FROM products WHERE project_id = ?;
 
 -- name: SearchProducts :many
 SELECT id, project_id, item_name, item_description, hsn_code, uom,
-       brand_model, per_unit_price, gst_percentage, created_at, updated_at
+       brand_model, per_unit_price, gst_percentage, product_code, created_at, updated_at
 FROM products
 WHERE project_id = ?
-  AND (item_name LIKE ? OR hsn_code LIKE ? OR brand_model LIKE ? OR item_description LIKE ?)
+  AND (item_name LIKE ? OR hsn_code LIKE ? OR brand_model LIKE ? OR item_description LIKE ? OR product_code LIKE ?)
 ORDER BY item_name ASC
 LIMIT ? OFFSET ?;
 
 -- name: SearchProductsNoFilter :many
 SELECT id, project_id, item_name, item_description, hsn_code, uom,
-       brand_model, per_unit_price, gst_percentage, created_at, updated_at
+       brand_model, per_unit_price, gst_percentage, product_code, created_at, updated_at
 FROM products
 WHERE project_id = ?
 ORDER BY item_name ASC

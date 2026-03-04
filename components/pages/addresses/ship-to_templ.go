@@ -209,7 +209,7 @@ func ShipTo(user *models.User, currentProject *models.Project, allProjects []*mo
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\"><div class=\"flex-1\"><label class=\"block text-sm font-medium text-gray-700 mb-1\">CSV or Excel File</label> <input type=\"file\" name=\"file\" accept=\".csv,.xlsx,.xls\" class=\"block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100\" required></div><div><label class=\"block text-sm font-medium text-gray-700 mb-1\">Mode</label><div class=\"flex items-center gap-4\"><label class=\"flex items-center\"><input type=\"radio\" name=\"mode\" value=\"replace\" checked class=\"text-brand-600 focus:ring-brand-500\"> <span class=\"ml-2 text-sm text-gray-700\">Replace</span></label> <label class=\"flex items-center\"><input type=\"radio\" name=\"mode\" value=\"append\" class=\"text-brand-600 focus:ring-brand-500\"> <span class=\"ml-2 text-sm text-gray-700\">Append</span></label></div></div><button type=\"submit\" class=\"btn btn-primary text-sm\"><svg class=\"w-4 h-4 mr-1\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12\"></path></svg> Upload</button></form><p class=\"text-xs text-gray-500 mt-2\">File must have column headers matching the configuration above. Max 10MB, 10,000 rows.</p></div><!-- Search & Count --><div class=\"flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4\"><form method=\"GET\" action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\"><div class=\"flex-1\"><label class=\"block text-sm font-medium text-gray-700 mb-1\">CSV or Excel File</label> <input type=\"file\" name=\"file\" accept=\".csv,.xlsx,.xls\" class=\"block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100\" required></div><div><label class=\"block text-sm font-medium text-gray-700 mb-1\">Mode</label><div class=\"flex items-center gap-4\"><label class=\"flex items-center\"><input type=\"radio\" name=\"mode\" value=\"replace\" checked class=\"text-brand-600 focus:ring-brand-500\"> <span class=\"ml-2 text-sm text-gray-700\">Replace</span></label> <label class=\"flex items-center\"><input type=\"radio\" name=\"mode\" value=\"append\" class=\"text-brand-600 focus:ring-brand-500\"> <span class=\"ml-2 text-sm text-gray-700\">Append</span></label></div></div><button type=\"submit\" class=\"btn btn-primary text-sm\"><svg class=\"w-4 h-4 mr-1\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12\"></path></svg> Upload</button></form><p class=\"text-xs text-gray-500 mt-2\">File must have column headers matching the configuration above. Max 10MB, 100,000 rows.</p></div><!-- Search & Count --><div class=\"flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4\"><form method=\"GET\" action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -286,7 +286,7 @@ func ShipTo(user *models.User, currentProject *models.Project, allProjects []*mo
 			return templ_7745c5c3_Err
 		}
 		if addressPage != nil && len(addressPage.Addresses) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<table class=\"min-w-full divide-y divide-gray-200\"><thead class=\"bg-gray-50\"><tr><th class=\"px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider\">#</th>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<table class=\"min-w-full divide-y divide-gray-200\"><thead class=\"bg-gray-50\"><tr><th class=\"px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider\">#</th><th class=\"px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider\">Address Code</th>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -298,7 +298,7 @@ func ShipTo(user *models.User, currentProject *models.Project, allProjects []*mo
 				var templ_7745c5c3_Var17 string
 				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(key)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 144, Col: 104}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 145, Col: 104}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 				if templ_7745c5c3_Err != nil {
@@ -321,7 +321,7 @@ func ShipTo(user *models.User, currentProject *models.Project, allProjects []*mo
 				var templ_7745c5c3_Var18 string
 				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs("address-row-" + intStr(addr.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 151, Col: 73}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 152, Col: 73}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 				if templ_7745c5c3_Err != nil {
@@ -334,53 +334,81 @@ func ShipTo(user *models.User, currentProject *models.Project, allProjects []*mo
 				var templ_7745c5c3_Var19 string
 				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(addrRowNum(addressPage, idx))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 152, Col: 82}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 153, Col: 82}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</td>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</td><td class=\"px-4 py-3 text-sm text-gray-600\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				for _, val := range addr.Data {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<td class=\"px-4 py-3 text-sm text-gray-900\">")
+				if addr.AddressCode != "" {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<span class=\"inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var20 string
-					templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(val)
+					templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(addr.AddressCode)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 154, Col: 58}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 156, Col: 135}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</td>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</span>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				} else {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<span class=\"text-gray-400\">-</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<td class=\"px-4 py-3 text-right text-sm\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</td>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_Buffer, templ.ComponentScript{Call: "editAddress(" + intStr(addr.ID) + ", " + dataToJS(addr.Data) + ")"})
+				for _, val := range addr.Data {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<td class=\"px-4 py-3 text-sm text-gray-900\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var21 string
+					templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(val)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 162, Col: 58}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</td>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<td class=\"px-4 py-3 text-right text-sm\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<button onclick=\"")
+				templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_Buffer, templ.ComponentScript{Call: "editAddress(" + intStr(addr.ID) + ", " + dataToJS(addr.Data) + ", " + jsStr(addr.AddressCode) + ")"})
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var21 templ.ComponentScript = templ.ComponentScript{Call: "editAddress(" + intStr(addr.ID) + ", " + dataToJS(addr.Data) + ")"}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21.Call)
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<button onclick=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" class=\"text-brand-600 hover:text-brand-800 mr-2\" title=\"Edit\"><svg class=\"w-4 h-4 inline\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z\"></path></svg></button> ")
+				var templ_7745c5c3_Var22 templ.ComponentScript = templ.ComponentScript{Call: "editAddress(" + intStr(addr.ID) + ", " + dataToJS(addr.Data) + ", " + jsStr(addr.AddressCode) + ")"}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var22.Call)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" class=\"text-brand-600 hover:text-brand-800 mr-2\" title=\"Edit\"><svg class=\"w-4 h-4 inline\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z\"></path></svg></button> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -388,194 +416,194 @@ func ShipTo(user *models.User, currentProject *models.Project, allProjects []*mo
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<button onclick=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<button onclick=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var22 templ.ComponentScript = templ.ComponentScript{Call: "deleteAddress(" + intStr(addr.ID) + ")"}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var22.Call)
+				var templ_7745c5c3_Var23 templ.ComponentScript = templ.ComponentScript{Call: "deleteAddress(" + intStr(addr.ID) + ")"}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var23.Call)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "\" class=\"text-red-600 hover:text-red-800\" title=\"Delete\"><svg class=\"w-4 h-4 inline\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16\"></path></svg></button></td></tr>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" class=\"text-red-600 hover:text-red-800\" title=\"Delete\"><svg class=\"w-4 h-4 inline\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16\"></path></svg></button></td></tr>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</tbody></table><!-- Pagination --> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</tbody></table><!-- Pagination --> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if addressPage.TotalPages > 1 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<div class=\"flex items-center justify-between px-4 py-3 border-t border-gray-200\"><div class=\"text-sm text-gray-700\">Page ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var23 string
-				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(intStr(addressPage.CurrentPage))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 184, Col: 45}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, " of ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<div class=\"flex items-center justify-between px-4 py-3 border-t border-gray-200\"><div class=\"text-sm text-gray-700\">Page ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var24 string
-				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(intStr(addressPage.TotalPages))
+				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(intStr(addressPage.CurrentPage))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 184, Col: 83}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 192, Col: 45}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</div><div class=\"flex gap-1\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, " of ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var25 string
+				templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(intStr(addressPage.TotalPages))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 192, Col: 83}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</div><div class=\"flex gap-1\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if addressPage.CurrentPage > 1 {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<a href=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var25 templ.SafeURL
-					templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/ship-to?page=" + intStr(addressPage.CurrentPage-1) + "&view=table&search=" + search))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 189, Col: 162}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\" class=\"btn btn-secondary text-sm\">&laquo; Prev</a> ")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-				if addressPage.CurrentPage < addressPage.TotalPages {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<a href=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<a href=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var26 templ.SafeURL
-					templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/ship-to?page=" + intStr(addressPage.CurrentPage+1) + "&view=table&search=" + search))
+					templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/ship-to?page=" + intStr(addressPage.CurrentPage-1) + "&view=table&search=" + search))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 195, Col: 162}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 197, Col: 162}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "\" class=\"btn btn-secondary text-sm\">Next &raquo;</a>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" class=\"btn btn-secondary text-sm\">&laquo; Prev</a> ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "</div></div>")
+				if addressPage.CurrentPage < addressPage.TotalPages {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<a href=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var27 templ.SafeURL
+					templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/ship-to?page=" + intStr(addressPage.CurrentPage+1) + "&view=table&search=" + search))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 203, Col: 162}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "\" class=\"btn btn-secondary text-sm\">Next &raquo;</a>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<div class=\"text-center py-12\"><svg class=\"mx-auto h-12 w-12 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z\"></path> <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M15 11a3 3 0 11-6 0 3 3 0 016 0z\"></path></svg><h3 class=\"mt-2 text-sm font-medium text-gray-900\">No addresses yet</h3><p class=\"mt-1 text-sm text-gray-500\">Upload a CSV/Excel file or add addresses manually.</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<div class=\"text-center py-12\"><svg class=\"mx-auto h-12 w-12 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z\"></path> <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M15 11a3 3 0 11-6 0 3 3 0 016 0z\"></path></svg><h3 class=\"mt-2 text-sm font-medium text-gray-900\">No addresses yet</h3><p class=\"mt-1 text-sm text-gray-500\">Upload a CSV/Excel file or add addresses manually.</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "</div><!-- GRID/CARD VIEW (hidden by default; toggled client-side via view param) --><div id=\"grid-view-section\" class=\"hidden\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "</div><!-- GRID/CARD VIEW (hidden by default; toggled client-side via view param) --><div id=\"grid-view-section\" class=\"hidden\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if addressPage != nil && len(addressPage.Addresses) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<div class=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<div class=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, addr := range addressPage.Addresses {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<div class=\"bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4\" id=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var27 string
-				templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs("address-card-" + intStr(addr.ID))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 218, Col: 148}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<div class=\"bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4\" id=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var28 string
-				templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(addr.DistrictName)
+				templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs("address-card-" + intStr(addr.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 219, Col: 26}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 226, Col: 148}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<hr class=\"my-2 border-gray-100\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var29 string
+				templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(addr.DistrictName)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 227, Col: 26}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<hr class=\"my-2 border-gray-100\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				for key, val := range addr.Data {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<div class=\"flex justify-between text-xs py-0.5\"><span class=\"text-gray-500\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var29 string
-					templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(key)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 223, Col: 42}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, ":</span> <span class=\"text-gray-900 font-medium\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "<div class=\"flex justify-between text-xs py-0.5\"><span class=\"text-gray-500\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var30 string
-					templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(val)
+					templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(key)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 224, Col: 54}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 231, Col: 42}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "</span></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, ":</span> <span class=\"text-gray-900 font-medium\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var31 string
+					templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(val)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 232, Col: 54}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "</span></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<div class=\"flex justify-end gap-2 mt-3 pt-2 border-t border-gray-100\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "<div class=\"flex justify-end gap-2 mt-3 pt-2 border-t border-gray-100\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_Buffer, templ.ComponentScript{Call: "editAddress(" + intStr(addr.ID) + ", " + dataToJS(addr.Data) + ")"})
+				templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_Buffer, templ.ComponentScript{Call: "editAddress(" + intStr(addr.ID) + ", " + dataToJS(addr.Data) + ", " + jsStr(addr.AddressCode) + ")"})
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "<button onclick=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "<button onclick=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var31 templ.ComponentScript = templ.ComponentScript{Call: "editAddress(" + intStr(addr.ID) + ", " + dataToJS(addr.Data) + ")"}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31.Call)
+				var templ_7745c5c3_Var32 templ.ComponentScript = templ.ComponentScript{Call: "editAddress(" + intStr(addr.ID) + ", " + dataToJS(addr.Data) + ", " + jsStr(addr.AddressCode) + ")"}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32.Call)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "\" class=\"text-xs text-brand-600 hover:text-brand-800 font-medium\">Edit</button> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "\" class=\"text-xs text-brand-600 hover:text-brand-800 font-medium\">Edit</button> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -583,240 +611,240 @@ func ShipTo(user *models.User, currentProject *models.Project, allProjects []*mo
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "<button onclick=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "<button onclick=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var32 templ.ComponentScript = templ.ComponentScript{Call: "deleteAddress(" + intStr(addr.ID) + ")"}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32.Call)
+				var templ_7745c5c3_Var33 templ.ComponentScript = templ.ComponentScript{Call: "deleteAddress(" + intStr(addr.ID) + ")"}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var33.Call)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\" class=\"text-xs text-red-600 hover:text-red-800 font-medium\">Delete</button></div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "\" class=\"text-xs text-red-600 hover:text-red-800 font-medium\">Delete</button></div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "</div><!-- Grid Pagination --> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "</div><!-- Grid Pagination --> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if addressPage.TotalPages > 1 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "<div class=\"flex items-center justify-between mt-4\"><div class=\"text-sm text-gray-700\">Page ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var33 string
-				templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(intStr(addressPage.CurrentPage))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 244, Col: 45}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, " of ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<div class=\"flex items-center justify-between mt-4\"><div class=\"text-sm text-gray-700\">Page ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var34 string
-				templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(intStr(addressPage.TotalPages))
+				templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(intStr(addressPage.CurrentPage))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 244, Col: 83}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 252, Col: 45}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</div><div class=\"flex gap-1\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, " of ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var35 string
+				templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(intStr(addressPage.TotalPages))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 252, Col: 83}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "</div><div class=\"flex gap-1\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if addressPage.CurrentPage > 1 {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "<a href=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var35 templ.SafeURL
-					templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/ship-to?page=" + intStr(addressPage.CurrentPage-1) + "&view=grid&search=" + search))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 249, Col: 161}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "\" class=\"btn btn-secondary text-sm\">&laquo; Prev</a> ")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-				if addressPage.CurrentPage < addressPage.TotalPages {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "<a href=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "<a href=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var36 templ.SafeURL
-					templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/ship-to?page=" + intStr(addressPage.CurrentPage+1) + "&view=grid&search=" + search))
+					templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/ship-to?page=" + intStr(addressPage.CurrentPage-1) + "&view=grid&search=" + search))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 255, Col: 161}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 257, Col: 161}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "\" class=\"btn btn-secondary text-sm\">Next &raquo;</a>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "\" class=\"btn btn-secondary text-sm\">&laquo; Prev</a> ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "</div></div>")
+				if addressPage.CurrentPage < addressPage.TotalPages {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "<a href=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var37 templ.SafeURL
+					templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/ship-to?page=" + intStr(addressPage.CurrentPage+1) + "&view=grid&search=" + search))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 263, Col: 161}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "\" class=\"btn btn-secondary text-sm\">Next &raquo;</a>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "</div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "</div></div><!-- Column Configuration Modal --><div id=\"config-modal\" class=\"hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center\"><div class=\"bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6 max-h-[90vh] overflow-y-auto\"><h3 class=\"text-lg font-semibold text-gray-900 mb-4\">Configure Columns</h3><form method=\"POST\" action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "</div></div><!-- Column Configuration Modal --><div id=\"config-modal\" class=\"hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center\"><div class=\"bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6 max-h-[90vh] overflow-y-auto\"><h3 class=\"text-lg font-semibold text-gray-900 mb-4\">Configure Columns</h3><form method=\"POST\" action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var37 templ.SafeURL
-		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/ship-to/config"))
+		var templ_7745c5c3_Var38 templ.SafeURL
+		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/ship-to/config"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 269, Col: 110}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "\" id=\"config-form\"><input type=\"hidden\" name=\"gorilla.csrf.Token\" value=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var38 string
-		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(csrfToken)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 270, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 277, Col: 110}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "\"><div id=\"columns-container\" class=\"space-y-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "\" id=\"config-form\"><input type=\"hidden\" name=\"gorilla.csrf.Token\" value=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var39 string
+		templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(csrfToken)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 278, Col: 68}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "\"><div id=\"columns-container\" class=\"space-y-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if addressPage != nil {
 			for _, addr := range addressPage.Addresses {
 				for key := range addr.Data {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "<div class=\"flex items-center gap-2 column-row\"><input type=\"text\" name=\"col_name[]\" value=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "<div class=\"flex items-center gap-2 column-row\"><input type=\"text\" name=\"col_name[]\" value=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var39 string
-					templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(key)
+					var templ_7745c5c3_Var40 string
+					templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(key)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 276, Col: 57}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 284, Col: 57}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "\" placeholder=\"Column name\" class=\"input text-sm flex-1\" required> <label class=\"flex items-center\"><input type=\"hidden\" name=\"col_required[]\" value=\"false\"> <input type=\"checkbox\" onchange=\"this.previousElementSibling.value = this.checked ? 'true' : 'false'\" class=\"rounded text-brand-600 focus:ring-brand-500\"> <span class=\"ml-1 text-sm text-gray-600\">Req</span></label> <button type=\"button\" onclick=\"this.closest('.column-row').remove()\" class=\"text-red-500 hover:text-red-700\"><svg class=\"w-5 h-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path></svg></button></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "\" placeholder=\"Column name\" class=\"input text-sm flex-1\" required> <label class=\"flex items-center\"><input type=\"hidden\" name=\"col_required[]\" value=\"false\"> <input type=\"checkbox\" onchange=\"this.previousElementSibling.value = this.checked ? 'true' : 'false'\" class=\"rounded text-brand-600 focus:ring-brand-500\"> <span class=\"ml-1 text-sm text-gray-600\">Req</span></label> <button type=\"button\" onclick=\"this.closest('.column-row').remove()\" class=\"text-red-500 hover:text-red-700\"><svg class=\"w-5 h-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path></svg></button></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, " break")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, " break")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "</div><button type=\"button\" onclick=\"addColumnRow()\" class=\"mt-3 text-sm text-brand-600 hover:text-brand-800 font-medium\">+ Add Column</button><div class=\"flex justify-end gap-3 mt-6\"><button type=\"button\" onclick=\"document.getElementById('config-modal').classList.add('hidden')\" class=\"btn btn-secondary\">Cancel</button> <button type=\"submit\" class=\"btn btn-primary\">Save Configuration</button></div></form></div></div><!-- Add/Edit Address Modal --><div id=\"add-address-modal\" class=\"hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center\"><div class=\"bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6 max-h-[90vh] overflow-y-auto\"><h3 class=\"text-lg font-semibold text-gray-900 mb-4\" id=\"address-modal-title\">Add Address</h3><form method=\"POST\" id=\"address-form\" action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "</div><button type=\"button\" onclick=\"addColumnRow()\" class=\"mt-3 text-sm text-brand-600 hover:text-brand-800 font-medium\">+ Add Column</button><div class=\"flex justify-end gap-3 mt-6\"><button type=\"button\" onclick=\"document.getElementById('config-modal').classList.add('hidden')\" class=\"btn btn-secondary\">Cancel</button> <button type=\"submit\" class=\"btn btn-primary\">Save Configuration</button></div></form></div></div><!-- Add/Edit Address Modal --><div id=\"add-address-modal\" class=\"hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center\"><div class=\"bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6 max-h-[90vh] overflow-y-auto\"><h3 class=\"text-lg font-semibold text-gray-900 mb-4\" id=\"address-modal-title\">Add Address</h3><form method=\"POST\" id=\"address-form\" action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var40 templ.SafeURL
-		templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/ship-to/addresses"))
+		var templ_7745c5c3_Var41 templ.SafeURL
+		templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/projects/" + projectIDStr(currentProject) + "/ship-to/addresses"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 305, Col: 131}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "\"><input type=\"hidden\" name=\"gorilla.csrf.Token\" value=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var41 string
-		templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(csrfToken)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 306, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 313, Col: 131}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "\"><div class=\"space-y-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "\"><input type=\"hidden\" name=\"gorilla.csrf.Token\" value=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var42 string
+		templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(csrfToken)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 314, Col: 68}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "\"><div class=\"space-y-4\"><div><label class=\"block text-sm font-medium text-gray-700 mb-1\">Address Code</label> <input type=\"text\" name=\"address_code\" id=\"addr-field-address_code\" placeholder=\"e.g. ADDR-001\" class=\"input text-sm w-full\"><p class=\"mt-1 text-xs text-gray-400\">Unique identifier for searching (optional)</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if addressPage != nil {
 			for _, addr := range addressPage.Addresses {
 				for key := range addr.Data {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "<div><label class=\"block text-sm font-medium text-gray-700 mb-1\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var42 string
-					templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(key)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 312, Col: 74}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "</label> <input type=\"text\" name=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "<div><label class=\"block text-sm font-medium text-gray-700 mb-1\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var43 string
-					templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs("field_" + sanitizeField(key))
+					templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(key)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 313, Col: 64}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 325, Col: 74}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "\" id=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "</label> <input type=\"text\" name=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var44 string
-					templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs("addr-field-" + sanitizeField(key))
+					templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs("field_" + sanitizeField(key))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 313, Col: 106}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 326, Col: 64}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "\" class=\"input text-sm w-full\"></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "\" id=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var45 string
+					templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs("addr-field-" + sanitizeField(key))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/addresses/ship-to.templ`, Line: 326, Col: 106}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "\" class=\"input text-sm w-full\"></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, " break")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, " break")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "</div><div class=\"flex justify-end gap-3 mt-6\"><button type=\"button\" onclick=\"closeAddressModal()\" class=\"btn btn-secondary\">Cancel</button> <button type=\"submit\" class=\"btn btn-primary\" id=\"address-submit-btn\">Add Address</button></div></form></div></div><!-- Delete Confirmation Modal --><div id=\"delete-address-modal\" class=\"hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center\"><div class=\"bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6\"><h3 class=\"text-lg font-semibold text-gray-900 mb-2\">Delete Address</h3><p class=\"text-sm text-gray-600 mb-4\">Are you sure you want to delete this address? This action cannot be undone.</p><div class=\"flex justify-end gap-3\"><button onclick=\"document.getElementById('delete-address-modal').classList.add('hidden')\" class=\"btn btn-secondary\">Cancel</button> <button id=\"confirm-delete-addr-btn\" class=\"btn btn-danger\">Delete</button></div></div></div><script>\n\tvar _sp = document.getElementById('ship-to-page');\n\tvar _projectID = _sp.dataset.projectId;\n\tvar _csrfToken = _sp.dataset.csrfToken;\n\tfunction addColumnRow() {\n\t\tvar container = document.getElementById('columns-container');\n\t\tvar row = document.createElement('div');\n\t\trow.className = 'flex items-center gap-2 column-row';\n\t\trow.innerHTML = '<input type=\"text\" name=\"col_name[]\" placeholder=\"Column name\" class=\"input text-sm flex-1\" required>' +\n\t\t\t'<label class=\"flex items-center\">' +\n\t\t\t'<input type=\"hidden\" name=\"col_required[]\" value=\"false\">' +\n\t\t\t'<input type=\"checkbox\" onchange=\"this.previousElementSibling.value = this.checked ? \\'true\\' : \\'false\\'\" class=\"rounded text-brand-600 focus:ring-brand-500\">' +\n\t\t\t'<span class=\"ml-1 text-sm text-gray-600\">Req</span></label>' +\n\t\t\t'<button type=\"button\" onclick=\"this.closest(\\'.column-row\\').remove()\" class=\"text-red-500 hover:text-red-700\">' +\n\t\t\t'<svg class=\"w-5 h-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"/></svg></button>';\n\t\tcontainer.appendChild(row);\n\t}\n\n\tfunction editAddress(id, data) {\n\t\tdocument.getElementById('address-modal-title').textContent = 'Edit Address';\n\t\tdocument.getElementById('address-submit-btn').textContent = 'Save Changes';\n\t\tvar form = document.getElementById('address-form');\n\t\tform.action = '/projects/' + _projectID + '/ship-to/addresses/' + id;\n\n\t\tfor (var key in data) {\n\t\t\tif (Object.prototype.hasOwnProperty.call(data, key)) {\n\t\t\t\tvar fieldId = 'addr-field-' + key.toLowerCase().replace(/ /g, '_').replace(/\\//g, '_');\n\t\t\t\tvar field = document.getElementById(fieldId);\n\t\t\t\tif (field && data[key] !== undefined) {\n\t\t\t\t\tfield.value = data[key];\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t\tdocument.getElementById('add-address-modal').classList.remove('hidden');\n\t}\n\n\tfunction closeAddressModal() {\n\t\tdocument.getElementById('add-address-modal').classList.add('hidden');\n\t\tdocument.getElementById('address-modal-title').textContent = 'Add Address';\n\t\tdocument.getElementById('address-submit-btn').textContent = 'Add Address';\n\t\tvar form = document.getElementById('address-form');\n\t\tform.action = '/projects/' + _projectID + '/ship-to/addresses';\n\t\tform.reset();\n\t}\n\n\tfunction deleteAddress(id) {\n\t\tdocument.getElementById('delete-address-modal').classList.remove('hidden');\n\t\tdocument.getElementById('confirm-delete-addr-btn').onclick = function() {\n\t\t\tfetch('/projects/' + _projectID + '/ship-to/addresses/' + id, {\n\t\t\t\tmethod: 'DELETE',\n\t\t\t\theaders: {\n\t\t\t\t\t'X-CSRF-Token': _csrfToken,\n\t\t\t\t\t'Content-Type': 'application/json'\n\t\t\t\t}\n\t\t\t}).then(function(resp) {\n\t\t\t\treturn resp.json();\n\t\t\t}).then(function(data) {\n\t\t\t\tif (data.success) {\n\t\t\t\t\tvar row = document.getElementById('address-row-' + id);\n\t\t\t\t\tif (row) row.remove();\n\t\t\t\t\tvar card = document.getElementById('address-card-' + id);\n\t\t\t\t\tif (card) card.remove();\n\t\t\t\t\tdocument.getElementById('delete-address-modal').classList.add('hidden');\n\t\t\t\t\tshowToast('Address deleted successfully', 'success');\n\t\t\t\t} else {\n\t\t\t\t\tshowToast(data.error || 'Failed to delete address', 'error');\n\t\t\t\t}\n\t\t\t}).catch(function() { showToast('Failed to delete address', 'error'); });\n\t\t};\n\t}\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "</div><div class=\"flex justify-end gap-3 mt-6\"><button type=\"button\" onclick=\"closeAddressModal()\" class=\"btn btn-secondary\">Cancel</button> <button type=\"submit\" class=\"btn btn-primary\" id=\"address-submit-btn\">Add Address</button></div></form></div></div><!-- Delete Confirmation Modal --><div id=\"delete-address-modal\" class=\"hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center\"><div class=\"bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6\"><h3 class=\"text-lg font-semibold text-gray-900 mb-2\">Delete Address</h3><p class=\"text-sm text-gray-600 mb-4\">Are you sure you want to delete this address? This action cannot be undone.</p><div class=\"flex justify-end gap-3\"><button onclick=\"document.getElementById('delete-address-modal').classList.add('hidden')\" class=\"btn btn-secondary\">Cancel</button> <button id=\"confirm-delete-addr-btn\" class=\"btn btn-danger\">Delete</button></div></div></div><script>\n\tvar _sp = document.getElementById('ship-to-page');\n\tvar _projectID = _sp.dataset.projectId;\n\tvar _csrfToken = _sp.dataset.csrfToken;\n\tfunction addColumnRow() {\n\t\tvar container = document.getElementById('columns-container');\n\t\tvar row = document.createElement('div');\n\t\trow.className = 'flex items-center gap-2 column-row';\n\t\trow.innerHTML = '<input type=\"text\" name=\"col_name[]\" placeholder=\"Column name\" class=\"input text-sm flex-1\" required>' +\n\t\t\t'<label class=\"flex items-center\">' +\n\t\t\t'<input type=\"hidden\" name=\"col_required[]\" value=\"false\">' +\n\t\t\t'<input type=\"checkbox\" onchange=\"this.previousElementSibling.value = this.checked ? \\'true\\' : \\'false\\'\" class=\"rounded text-brand-600 focus:ring-brand-500\">' +\n\t\t\t'<span class=\"ml-1 text-sm text-gray-600\">Req</span></label>' +\n\t\t\t'<button type=\"button\" onclick=\"this.closest(\\'.column-row\\').remove()\" class=\"text-red-500 hover:text-red-700\">' +\n\t\t\t'<svg class=\"w-5 h-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"/></svg></button>';\n\t\tcontainer.appendChild(row);\n\t}\n\n\tfunction editAddress(id, data, addressCode) {\n\t\tdocument.getElementById('address-modal-title').textContent = 'Edit Address';\n\t\tdocument.getElementById('address-submit-btn').textContent = 'Save Changes';\n\t\tvar form = document.getElementById('address-form');\n\t\tform.action = '/projects/' + _projectID + '/ship-to/addresses/' + id;\n\n\t\tvar codeField = document.getElementById('addr-field-address_code');\n\t\tif (codeField) codeField.value = addressCode || '';\n\n\t\tfor (var key in data) {\n\t\t\tif (Object.prototype.hasOwnProperty.call(data, key)) {\n\t\t\t\tvar fieldId = 'addr-field-' + key.toLowerCase().replace(/ /g, '_').replace(/\\//g, '_');\n\t\t\t\tvar field = document.getElementById(fieldId);\n\t\t\t\tif (field && data[key] !== undefined) {\n\t\t\t\t\tfield.value = data[key];\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t\tdocument.getElementById('add-address-modal').classList.remove('hidden');\n\t}\n\n\tfunction closeAddressModal() {\n\t\tdocument.getElementById('add-address-modal').classList.add('hidden');\n\t\tdocument.getElementById('address-modal-title').textContent = 'Add Address';\n\t\tdocument.getElementById('address-submit-btn').textContent = 'Add Address';\n\t\tvar form = document.getElementById('address-form');\n\t\tform.action = '/projects/' + _projectID + '/ship-to/addresses';\n\t\tform.reset();\n\t}\n\n\tfunction deleteAddress(id) {\n\t\tdocument.getElementById('delete-address-modal').classList.remove('hidden');\n\t\tdocument.getElementById('confirm-delete-addr-btn').onclick = function() {\n\t\t\tfetch('/projects/' + _projectID + '/ship-to/addresses/' + id, {\n\t\t\t\tmethod: 'DELETE',\n\t\t\t\theaders: {\n\t\t\t\t\t'X-CSRF-Token': _csrfToken,\n\t\t\t\t\t'Content-Type': 'application/json'\n\t\t\t\t}\n\t\t\t}).then(function(resp) {\n\t\t\t\treturn resp.json().then(function(data) { return { ok: resp.ok, data: data }; });\n\t\t\t}).then(function(result) {\n\t\t\t\tdocument.getElementById('delete-address-modal').classList.add('hidden');\n\t\t\t\tif (result.ok && result.data.success) {\n\t\t\t\t\tvar row = document.getElementById('address-row-' + id);\n\t\t\t\t\tif (row) row.remove();\n\t\t\t\t\tvar card = document.getElementById('address-card-' + id);\n\t\t\t\t\tif (card) card.remove();\n\t\t\t\t\tshowToast('Address deleted successfully', 'success');\n\t\t\t\t} else {\n\t\t\t\t\tshowToast(result.data.error || 'Failed to delete address', 'error');\n\t\t\t\t}\n\t\t\t}).catch(function() {\n\t\t\t\tdocument.getElementById('delete-address-modal').classList.add('hidden');\n\t\t\t\tshowToast('Failed to delete address. Please try again.', 'error');\n\t\t\t});\n\t\t};\n\t}\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

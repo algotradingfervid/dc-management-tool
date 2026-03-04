@@ -21,6 +21,7 @@ func productFromRow(p db.Product) *models.Product {
 		BrandModel:      p.BrandModel,
 		PerUnitPrice:    p.PerUnitPrice.Float64,
 		GSTPercentage:   p.GstPercentage.Float64,
+		ProductCode:     p.ProductCode.String,
 		CreatedAt:       p.CreatedAt.Time,
 		UpdatedAt:       p.UpdatedAt.Time,
 	}
@@ -35,7 +36,13 @@ func GetProductsByProjectID(projectID int) ([]*models.Product, error) {
 
 	products := make([]*models.Product, 0, len(rows))
 	for _, row := range rows {
-		products = append(products, productFromRow(row))
+		products = append(products, productFromRow(db.Product{
+			ID: row.ID, ProjectID: row.ProjectID, ItemName: row.ItemName,
+			ItemDescription: row.ItemDescription, HsnCode: row.HsnCode, Uom: row.Uom,
+			BrandModel: row.BrandModel, PerUnitPrice: row.PerUnitPrice,
+			GstPercentage: row.GstPercentage, CreatedAt: row.CreatedAt,
+			UpdatedAt: row.UpdatedAt, ProductCode: row.ProductCode,
+		}))
 	}
 	return products, nil
 }
@@ -49,7 +56,13 @@ func GetProductByID(id int) (*models.Product, error) {
 	if err != nil {
 		return nil, err
 	}
-	return productFromRow(row), nil
+	return productFromRow(db.Product{
+		ID: row.ID, ProjectID: row.ProjectID, ItemName: row.ItemName,
+		ItemDescription: row.ItemDescription, HsnCode: row.HsnCode, Uom: row.Uom,
+		BrandModel: row.BrandModel, PerUnitPrice: row.PerUnitPrice,
+		GstPercentage: row.GstPercentage, CreatedAt: row.CreatedAt,
+		UpdatedAt: row.UpdatedAt, ProductCode: row.ProductCode,
+	}), nil
 }
 
 func CreateProductRecord(p *models.Product) error {
@@ -183,7 +196,6 @@ func SearchProducts(projectID int, search string, sortBy string, sortDir string,
 	ctx := context.Background()
 
 	var total int64
-	var rows []db.Product
 	var err error
 
 	if search != "" {
@@ -221,10 +233,11 @@ func SearchProducts(projectID int, search string, sortBy string, sortDir string,
 	// For non-default sort orders, fall back to hand-written SQL since sqlc
 	// uses fixed ORDER BY item_name ASC. Only use sqlc for the default sort.
 	if sortBy == "item_name" && sortDir == "asc" {
+		var products []*models.Product
 		if search != "" {
 			like := "%" + search + "%"
 			likeNull := sql.NullString{String: like, Valid: true}
-			rows, err = q.SearchProducts(ctx, db.SearchProductsParams{
+			sRows, sErr := q.SearchProducts(ctx, db.SearchProductsParams{
 				ProjectID:       int64(projectID),
 				ItemName:        like,
 				HsnCode:         likeNull,
@@ -233,16 +246,47 @@ func SearchProducts(projectID int, search string, sortBy string, sortDir string,
 				Limit:           int64(perPage),
 				Offset:          int64(offset),
 			})
+			if sErr != nil {
+				return nil, sErr
+			}
+			for _, r := range sRows {
+				products = append(products, productFromRow(db.Product{
+					ID: r.ID, ProjectID: r.ProjectID, ItemName: r.ItemName,
+					ItemDescription: r.ItemDescription, HsnCode: r.HsnCode, Uom: r.Uom,
+					BrandModel: r.BrandModel, PerUnitPrice: r.PerUnitPrice,
+					GstPercentage: r.GstPercentage, CreatedAt: r.CreatedAt,
+					UpdatedAt: r.UpdatedAt, ProductCode: r.ProductCode,
+				}))
+			}
 		} else {
-			rows, err = q.SearchProductsNoFilter(ctx, db.SearchProductsNoFilterParams{
+			nfRows, nfErr := q.SearchProductsNoFilter(ctx, db.SearchProductsNoFilterParams{
 				ProjectID: int64(projectID),
 				Limit:     int64(perPage),
 				Offset:    int64(offset),
 			})
+			if nfErr != nil {
+				return nil, nfErr
+			}
+			for _, r := range nfRows {
+				products = append(products, productFromRow(db.Product{
+					ID: r.ID, ProjectID: r.ProjectID, ItemName: r.ItemName,
+					ItemDescription: r.ItemDescription, HsnCode: r.HsnCode, Uom: r.Uom,
+					BrandModel: r.BrandModel, PerUnitPrice: r.PerUnitPrice,
+					GstPercentage: r.GstPercentage, CreatedAt: r.CreatedAt,
+					UpdatedAt: r.UpdatedAt, ProductCode: r.ProductCode,
+				}))
+			}
 		}
-		if err != nil {
-			return nil, err
-		}
+		return &models.ProductPage{
+			Products:    products,
+			CurrentPage: page,
+			PerPage:     perPage,
+			TotalCount:  int(total),
+			TotalPages:  totalPages,
+			Search:      search,
+			SortBy:      sortBy,
+			SortDir:     sortDir,
+		}, nil
 	} else {
 		// Dynamic ORDER BY — keep hand-written SQL
 		var queryArgs []interface{}
@@ -305,21 +349,6 @@ func SearchProducts(projectID int, search string, sortBy string, sortDir string,
 		}, nil
 	}
 
-	products := make([]*models.Product, 0, len(rows))
-	for _, row := range rows {
-		products = append(products, productFromRow(row))
-	}
-
-	return &models.ProductPage{
-		Products:    products,
-		CurrentPage: page,
-		PerPage:     perPage,
-		TotalCount:  int(total),
-		TotalPages:  totalPages,
-		Search:      search,
-		SortBy:      sortBy,
-		SortDir:     sortDir,
-	}, nil
 }
 
 // BulkDeleteProducts deletes multiple products by IDs, checking usage first.
@@ -350,4 +379,25 @@ func BulkDeleteProducts(ids []int, projectID int) (int, []string) {
 		deleted++
 	}
 	return deleted, errors
+}
+
+// CheckProductCodeUnique checks if a product code is unique. If excludeID > 0, excludes that product from the check.
+func CheckProductCodeUnique(productCode string, excludeID int) (bool, error) {
+	ctx := context.Background()
+	q := db.New(DB)
+	if excludeID > 0 {
+		count, err := q.CheckProductCodeUniqueExcludeID(ctx, db.CheckProductCodeUniqueExcludeIDParams{
+			ProductCode: sql.NullString{String: productCode, Valid: productCode != ""},
+			ID:          int64(excludeID),
+		})
+		if err != nil {
+			return false, err
+		}
+		return count == 0, nil
+	}
+	count, err := q.CheckProductCodeUnique(ctx, sql.NullString{String: productCode, Valid: productCode != ""})
+	if err != nil {
+		return false, err
+	}
+	return count == 0, nil
 }
