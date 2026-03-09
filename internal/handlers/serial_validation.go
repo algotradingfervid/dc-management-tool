@@ -127,6 +127,13 @@ func IssueDCHandler(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "DC is already issued"})
 	}
 
+	// Transit and Official DCs must be issued together via the shipment group
+	if dc.DCType == "transit" || dc.DCType == "official" {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"error": "Transit and Official DCs must be issued together via the shipment group's Issue All DCs",
+		})
+	}
+
 	// Validate DC has line items with serial numbers
 	lineItems, err := database.GetLineItemsByDCID(dcID)
 	if err != nil || len(lineItems) == 0 {
@@ -181,6 +188,13 @@ func DeleteDCHandler(c echo.Context) error {
 
 	if dc.Status != "draft" {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Only draft DCs can be deleted"})
+	}
+
+	// Transit and Official DCs must be deleted via the shipment group
+	if dc.DCType == "transit" || dc.DCType == "official" {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"error": "Transit and Official DCs must be deleted via the shipment group",
+		})
 	}
 
 	if err := database.DeleteDC(dcID); err != nil {

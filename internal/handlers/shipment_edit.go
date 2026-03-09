@@ -224,6 +224,7 @@ func EditWizardStep2(c echo.Context) error {
 	}
 	if shipToConfig != nil {
 		shipToAddresses, _ = database.GetAllAddressesByConfigID(shipToConfig.ID)
+		shipToAddresses = filterLockedShipToAddresses(projectID, shipToAddresses)
 	}
 
 	// Load preselected address IDs from the group's existing DCs.
@@ -365,6 +366,7 @@ func EditWizardStep3(c echo.Context) error {
 		}
 		if shipToConfig != nil {
 			shipToAddresses, _ = database.GetAllAddressesByConfigID(shipToConfig.ID)
+			shipToAddresses = filterLockedShipToAddresses(projectID, shipToAddresses)
 		}
 
 		tmplForRerender, _ := database.GetTemplateByID(templateID)

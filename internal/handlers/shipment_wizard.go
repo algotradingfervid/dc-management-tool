@@ -142,6 +142,7 @@ func ShipmentWizardStep2(c echo.Context) error {
 	}
 	if shipToConfig != nil {
 		shipToAddresses, _ = database.GetAllAddressesByConfigID(shipToConfig.ID)
+		shipToAddresses = filterLockedShipToAddresses(projectID, shipToAddresses)
 	}
 
 	allProjects, _ := database.GetAccessibleProjects(user)
@@ -244,6 +245,7 @@ func ShipmentWizardQuantityStep(c echo.Context) error {
 		}
 		if shipToConfig != nil {
 			shipToAddresses, _ = database.GetAllAddressesByConfigID(shipToConfig.ID)
+			shipToAddresses = filterLockedShipToAddresses(projectID, shipToAddresses)
 		}
 
 		tmpl, _ := database.GetTemplateByID(templateID)
@@ -982,6 +984,58 @@ func IssueShipmentGroup(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Shipment group is already issued"})
 	}
 
+	// Validate serial numbers on transit DCs before issuing the group
+	groupDCs, err := database.GetDCsByShipmentGroup(groupID)
+	if err != nil {
+		slog.Error("Error fetching DCs in group", slog.String("error", err.Error()), slog.Int("groupID", groupID))
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "Failed to fetch DCs in group"})
+	}
+	for _, dc := range groupDCs {
+		if dc.DCType != "transit" {
+			continue
+		}
+		lineItems, liErr := database.GetLineItemsByDCID(dc.ID)
+		if liErr != nil || len(lineItems) == 0 {
+			return c.JSON(http.StatusBadRequest, map[string]interface{}{
+				"error": fmt.Sprintf("Transit DC %s must have at least one line item", dc.DCNumber),
+			})
+		}
+		for _, li := range lineItems { //nolint:gocritic
+			serials, _ := database.GetSerialNumbersByLineItemID(li.ID)
+			if len(serials) == 0 {
+				return c.JSON(http.StatusBadRequest, map[string]interface{}{
+					"error": fmt.Sprintf("Transit DC %s: all line items must have serial numbers before issuing", dc.DCNumber),
+				})
+			}
+			if len(serials) != li.Quantity {
+				return c.JSON(http.StatusBadRequest, map[string]interface{}{
+					"error": fmt.Sprintf("Transit DC %s: serial number count must match quantity for all line items", dc.DCNumber),
+				})
+			}
+		}
+	}
+
+	// Validate no ship-to address conflicts with other issued groups BEFORE issuing
+	groupShipToIDs, _ := database.GetShipToAddressIDsByGroup(groupID)
+	if len(groupShipToIDs) > 0 {
+		issuedIDs, _ := database.GetIssuedShipToAddressIDs(projectID)
+		issuedSet := make(map[int]bool, len(issuedIDs))
+		for _, id := range issuedIDs {
+			issuedSet[id] = true
+		}
+		var conflicts []int
+		for _, id := range groupShipToIDs {
+			if issuedSet[id] {
+				conflicts = append(conflicts, id)
+			}
+		}
+		if len(conflicts) > 0 {
+			return c.JSON(http.StatusBadRequest, map[string]interface{}{
+				"error": fmt.Sprintf("Cannot issue: %d ship-to address(es) already used in other issued groups", len(conflicts)),
+			})
+		}
+	}
+
 	count, err := database.IssueAllDCsInGroup(groupID, user.ID)
 	if err != nil {
 		slog.Error("Error issuing DCs in group", slog.String("error", err.Error()), slog.Int("groupID", groupID))
@@ -998,5 +1052,57 @@ func IssueShipmentGroup(c echo.Context) error {
 		"success":  true,
 		"message":  fmt.Sprintf("Successfully issued %d DCs", count),
 		"redirect": fmt.Sprintf("/projects/%d/shipments/%d", projectID, groupID),
+	})
+}
+
+// filterLockedShipToAddresses removes ship-to addresses that are used in issued shipment groups.
+func filterLockedShipToAddresses(projectID int, addresses []*models.Address) []*models.Address {
+	lockedIDs, _ := database.GetIssuedShipToAddressIDs(projectID)
+	if len(lockedIDs) == 0 {
+		return addresses
+	}
+	lockedSet := make(map[int]bool, len(lockedIDs))
+	for _, id := range lockedIDs {
+		lockedSet[id] = true
+	}
+	filtered := make([]*models.Address, 0, len(addresses))
+	for _, a := range addresses {
+		if !lockedSet[a.ID] {
+			filtered = append(filtered, a)
+		}
+	}
+	return filtered
+}
+
+// DeleteShipmentGroupHandler handles DELETE /projects/:id/shipments/:gid.
+func DeleteShipmentGroupHandler(c echo.Context) error {
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid project ID"})
+	}
+
+	groupID, err := strconv.Atoi(c.Param("gid"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid group ID"})
+	}
+
+	group, err := database.GetShipmentGroup(groupID)
+	if err != nil || group.ProjectID != projectID {
+		return c.JSON(http.StatusNotFound, map[string]interface{}{"error": "Shipment group not found"})
+	}
+
+	if group.Status != "draft" {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Only draft shipment groups can be deleted"})
+	}
+
+	if err := database.DeleteShipmentGroup(groupID); err != nil {
+		slog.Error("Error deleting shipment group", slog.String("error", err.Error()), slog.Int("groupID", groupID))
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "Failed to delete shipment group"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"success":  true,
+		"message":  "Shipment group and all associated DCs deleted successfully",
+		"redirect": fmt.Sprintf("/projects/%d/shipments", projectID),
 	})
 }

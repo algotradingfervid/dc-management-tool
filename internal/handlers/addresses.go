@@ -727,6 +727,11 @@ func SearchAddressSelector(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "Failed to search addresses"})
 	}
 
+	// Filter out ship-to addresses already used in issued shipment groups
+	if addressType == "ship_to" {
+		addresses = filterLockedShipToAddresses(projectID, addresses)
+	}
+
 	return components.RenderOK(c, htmx.AddressSelectorResults(htmx.AddressSelectorResultsProps{
 		Addresses:   addresses,
 		AddressType: addressType,

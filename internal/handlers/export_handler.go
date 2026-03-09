@@ -591,3 +591,56 @@ func buildTransferExcel(c echo.Context, projectID int, dc *models.DeliveryChalla
 	}
 	return nil
 }
+
+// ExportShipmentGroupPDF generates a merged PDF of all DCs in a shipment group.
+func ExportShipmentGroupPDF(c echo.Context) error {
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid project ID"})
+	}
+
+	groupID, err := strconv.Atoi(c.Param("gid"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "Invalid group ID"})
+	}
+
+	group, err := database.GetShipmentGroup(groupID)
+	if err != nil || group.ProjectID != projectID {
+		return c.JSON(http.StatusNotFound, map[string]interface{}{"error": "Shipment group not found"})
+	}
+
+	// Fetch DCs ordered: transit first (dc_type DESC), then by id
+	groupDCs, err := database.GetDCsByShipmentGroup(groupID)
+	if err != nil || len(groupDCs) == 0 {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "No DCs found in group"})
+	}
+
+	var pdfBytes [][]byte
+	for _, dcSummary := range groupDCs {
+		// Re-fetch full DC (with address IDs) needed by generatePDFForDC
+		dc, fetchErr := database.GetDeliveryChallanByID(dcSummary.ID)
+		if fetchErr != nil {
+			slog.Error("error fetching DC for group PDF", slog.String("error", fetchErr.Error()), slog.Int("dcID", dcSummary.ID))
+			return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "Failed to load DC data"})
+		}
+
+		pdfData, genErr := generatePDFForDC(projectID, dc.ID, dc)
+		if genErr != nil {
+			slog.Error("error generating PDF for DC in group", slog.String("error", genErr.Error()), slog.Int("dcID", dc.ID))
+			return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": fmt.Sprintf("Failed to generate PDF for DC %s", dc.DCNumber)})
+		}
+		pdfBytes = append(pdfBytes, pdfData)
+	}
+
+	mergedPDF, err := services.MergePDFs(pdfBytes)
+	if err != nil {
+		slog.Error("error merging PDFs for group", slog.String("error", err.Error()), slog.Int("groupID", groupID))
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "Failed to merge PDFs"})
+	}
+
+	filename := services.SanitizeDCFilename(group.TransitDCNumber) + ".pdf"
+
+	c.Response().Header().Set("Content-Type", "application/pdf")
+	c.Response().Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	return c.Blob(http.StatusOK, "application/pdf", mergedPDF)
+}

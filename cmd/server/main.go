@@ -253,6 +253,8 @@ func main() {
 		projectRoutes.GET("/shipments/:gid", handlers.ShowShipmentGroup)
 		projectRoutes.GET("/shipments", handlers.ListShipmentGroups)
 		projectRoutes.POST("/shipments/:gid/issue", handlers.IssueShipmentGroup)
+		projectRoutes.GET("/shipments/:gid/export/pdf", handlers.ExportShipmentGroupPDF)
+		projectRoutes.DELETE("/shipments/:gid", handlers.DeleteShipmentGroupHandler)
 
 		// Edit Draft Shipment Wizard
 		projectRoutes.GET("/shipments/:gid/edit", handlers.ShowEditShipmentWizard)

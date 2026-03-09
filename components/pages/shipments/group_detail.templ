@@ -63,6 +63,70 @@ templ GroupDetail(
 			<div class="flex items-center gap-2">
 				<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments", currentProject.ID)) } class="btn btn-secondary text-sm">Back to Shipments</a>
 				if group.Status == "draft" {
+					<div
+						x-data="{
+							showDelete: false,
+							pid: '',
+							gid: '',
+							tok: '',
+							init() {
+								this.pid = this.$el.dataset.projectId;
+								this.gid = this.$el.dataset.groupId;
+								this.tok = this.$el.dataset.csrf;
+							},
+							async doDelete() {
+								const resp = await fetch('/projects/' + this.pid + '/shipments/' + this.gid, {
+									method: 'DELETE',
+									headers: { 'X-CSRF-Token': this.tok }
+								});
+								const data = await resp.json().catch(() => ({}));
+								if (data.success) {
+									window.location.href = '/projects/' + this.pid + '/shipments';
+								} else {
+									showToast('Error: ' + (data.error || 'Failed to delete group'), 'error');
+									this.showDelete = false;
+								}
+							}
+						}"
+						data-project-id={ fmt.Sprintf("%d", currentProject.ID) }
+						data-group-id={ fmt.Sprintf("%d", group.ID) }
+						data-csrf={ csrfToken }
+					>
+						<button
+							type="button"
+							@click="showDelete = true"
+							class="btn bg-red-600 hover:bg-red-700 text-white text-sm px-4 py-2 rounded-lg font-medium"
+						>
+							Delete Group
+						</button>
+						<div
+							x-show="showDelete"
+							x-cloak
+							class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+							@click.self="showDelete = false"
+						>
+							<div class="bg-white rounded-xl p-6 max-w-md mx-4 shadow-xl" @click.stop>
+								<h3 class="text-lg font-bold text-gray-900 mb-3">Delete Shipment Group</h3>
+								<p class="text-sm text-gray-600 mb-6">This will permanently delete all DCs in this group, including their line items and serial numbers. This cannot be undone.</p>
+								<div class="flex justify-end gap-3">
+									<button
+										type="button"
+										@click="showDelete = false"
+										class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm font-medium"
+									>
+										Cancel
+									</button>
+									<button
+										type="button"
+										@click="doDelete()"
+										class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
+									>
+										Confirm Delete
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
 					<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/%d/edit", currentProject.ID, group.ID)) } class="btn btn-secondary text-sm">Edit Draft</a>
 					<button
 						type="button"
@@ -71,6 +135,17 @@ templ GroupDetail(
 					>
 						Issue All DCs
 					</button>
+				}
+				if group.Status == "issued" {
+					<a
+						href={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/%d/export/pdf", currentProject.ID, group.ID)) }
+						class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm px-4 py-2 rounded-lg font-medium"
+					>
+						<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+						</svg>
+						Download All DCs (PDF)
+					</a>
 				}
 			</div>
 		</div>
@@ -167,7 +242,15 @@ script issueAllDCsScript(projectID int, groupID int, csrfToken string) {
 		.then(function(r) { return r.json(); })
 		.then(function(data) {
 			if (data.success) {
-				window.location.reload();
+				// Auto-download the merged PDF
+				var link = document.createElement('a');
+				link.href = '/projects/' + projectID + '/shipments/' + groupID + '/export/pdf';
+				link.download = '';
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+				// Reload after short delay to show issued status
+				setTimeout(function() { window.location.reload(); }, 500);
 			} else {
 				showToast(data.error || 'Failed to issue DCs', 'error');
 			}

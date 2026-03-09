@@ -192,3 +192,99 @@ func UpdateShipmentGroup(groupID int, templateID *int, numLocations int, taxType
 	}
 	return nil
 }
+
+// DeleteShipmentGroup deletes a shipment group and all its DCs, line items, and serial numbers.
+func DeleteShipmentGroup(groupID int) error {
+	tx, err := DB.Begin()
+	if err != nil {
+		return fmt.Errorf("DeleteShipmentGroup: begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// 1. Delete serial numbers for all DCs in the group
+	if _, err := tx.ExecContext(ctx(),
+		`DELETE FROM serial_numbers WHERE line_item_id IN (
+			SELECT li.id FROM dc_line_items li
+			INNER JOIN delivery_challans dc ON li.dc_id = dc.id
+			WHERE dc.shipment_group_id = ?
+		)`, groupID); err != nil {
+		return fmt.Errorf("DeleteShipmentGroup: delete serials: %w", err)
+	}
+
+	// 2. Delete line items for all DCs in the group
+	if _, err := tx.ExecContext(ctx(),
+		`DELETE FROM dc_line_items WHERE dc_id IN (
+			SELECT id FROM delivery_challans WHERE shipment_group_id = ?
+		)`, groupID); err != nil {
+		return fmt.Errorf("DeleteShipmentGroup: delete line items: %w", err)
+	}
+
+	// 3. Delete transit details for all DCs in the group
+	if _, err := tx.ExecContext(ctx(),
+		`DELETE FROM dc_transit_details WHERE dc_id IN (
+			SELECT id FROM delivery_challans WHERE shipment_group_id = ?
+		)`, groupID); err != nil {
+		return fmt.Errorf("DeleteShipmentGroup: delete transit details: %w", err)
+	}
+
+	// 4. Delete all delivery challans in the group
+	if _, err := tx.ExecContext(ctx(),
+		`DELETE FROM delivery_challans WHERE shipment_group_id = ?`, groupID); err != nil {
+		return fmt.Errorf("DeleteShipmentGroup: delete DCs: %w", err)
+	}
+
+	// 5. Delete the shipment group itself
+	if _, err := tx.ExecContext(ctx(),
+		`DELETE FROM shipment_groups WHERE id = ?`, groupID); err != nil {
+		return fmt.Errorf("DeleteShipmentGroup: delete group: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+// GetIssuedShipToAddressIDs returns ship-to address IDs used in issued shipment groups for a project.
+func GetIssuedShipToAddressIDs(projectID int) ([]int, error) {
+	rows, err := DB.QueryContext(ctx(),
+		`SELECT DISTINCT dc.ship_to_address_id
+		 FROM delivery_challans dc
+		 INNER JOIN shipment_groups sg ON dc.shipment_group_id = sg.id
+		 WHERE sg.project_id = ? AND sg.status = 'issued'
+		   AND dc.dc_type = 'official' AND dc.ship_to_address_id IS NOT NULL`,
+		projectID)
+	if err != nil {
+		return nil, fmt.Errorf("GetIssuedShipToAddressIDs: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []int
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// GetShipToAddressIDsByGroup returns ship-to address IDs for official DCs in a shipment group.
+func GetShipToAddressIDsByGroup(groupID int) ([]int, error) {
+	rows, err := DB.QueryContext(ctx(),
+		`SELECT ship_to_address_id FROM delivery_challans
+		 WHERE shipment_group_id = ? AND dc_type = 'official' AND ship_to_address_id IS NOT NULL`,
+		groupID)
+	if err != nil {
+		return nil, fmt.Errorf("GetShipToAddressIDsByGroup: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []int
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
