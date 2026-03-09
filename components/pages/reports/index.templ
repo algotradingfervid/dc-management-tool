@@ -61,6 +61,20 @@ templ Index(
 					</div>
 				</div>
 			</a>
+			<!-- Transfer DC Report -->
+			<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/reports/transfer", currentProject.ID)) } class="card hover:shadow-md transition-shadow group">
+				<div class="flex items-start gap-4">
+					<div class="p-3 rounded-lg bg-violet-50 text-violet-600 group-hover:bg-violet-100">
+						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+						</svg>
+					</div>
+					<div>
+						<h3 class="font-semibold text-gray-900">Transfer DC Report</h3>
+						<p class="text-sm text-gray-500 mt-1">View Transfer DCs with split progress and child group details.</p>
+					</div>
+				</div>
+			</a>
 			<!-- Serial Number Report -->
 			<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/reports/serial", currentProject.ID)) } class="card hover:shadow-md transition-shadow group">
 				<div class="flex items-start gap-4">

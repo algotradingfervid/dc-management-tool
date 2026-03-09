@@ -133,6 +133,7 @@ templ Sidebar(user *models.User, currentProject *models.Project, allProjects []*
 								"nav-section-header",
 								templ.KV("section-active expanded", hasPrefix(currentPath, "/projects/"+projectID(currentProject)+"/dcs") ||
 									hasPrefix(currentPath, "/projects/"+projectID(currentProject)+"/shipments") ||
+									hasPrefix(currentPath, "/projects/"+projectID(currentProject)+"/transfer-dcs") ||
 									hasPrefix(currentPath, "/projects/"+projectID(currentProject)+"/serial-search")),
 							}
 							@click="open = !open"
@@ -152,6 +153,7 @@ templ Sidebar(user *models.User, currentProject *models.Project, allProjects []*
 								"nav-submenu",
 								templ.KV("open", hasPrefix(currentPath, "/projects/"+projectID(currentProject)+"/dcs") ||
 									hasPrefix(currentPath, "/projects/"+projectID(currentProject)+"/shipments") ||
+									hasPrefix(currentPath, "/projects/"+projectID(currentProject)+"/transfer-dcs") ||
 									hasPrefix(currentPath, "/projects/"+projectID(currentProject)+"/serial-search")),
 							}
 							:class="{ 'open': open }"
@@ -164,6 +166,14 @@ templ Sidebar(user *models.User, currentProject *models.Project, allProjects []*
 								href={ templ.SafeURL("/projects/" + projectID(currentProject) + "/shipments") }
 								class={ "nav-link", templ.KV("active", currentPath == "/projects/"+projectID(currentProject)+"/shipments") }
 							>Shipment Groups</a>
+							<a
+								href={ templ.SafeURL("/projects/" + projectID(currentProject) + "/transfer-dcs") }
+								class={ "nav-link", templ.KV("active", currentPath == "/projects/"+projectID(currentProject)+"/transfer-dcs") }
+							>Split Shipments</a>
+							<a
+								href={ templ.SafeURL("/projects/" + projectID(currentProject) + "/transfer-dcs/new") }
+								class={ "nav-link", templ.KV("active", hasPrefix(currentPath, "/projects/"+projectID(currentProject)+"/transfer-dcs/new")) }
+							>New Split Shipment</a>
 							<a
 								href={ templ.SafeURL("/projects/" + projectID(currentProject) + "/dcs-list") }
 								class={ "nav-link", templ.KV("active", hasPrefix(currentPath, "/projects/"+projectID(currentProject)+"/dcs-list")) }

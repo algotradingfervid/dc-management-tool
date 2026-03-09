@@ -4,12 +4,20 @@ import (
 	"time"
 )
 
-// DeliveryChallan represents a delivery challan (transit or official).
+// DC status constants.
+const (
+	DCStatusDraft     = "draft"
+	DCStatusIssued    = "issued"
+	DCStatusSplitting = "splitting"
+	DCStatusSplit     = "split"
+)
+
+// DeliveryChallan represents a delivery challan (transit, official, or transfer).
 type DeliveryChallan struct {
 	ID              int        `json:"id"`
 	ProjectID       int        `json:"project_id" validate:"required,gt=0"`
 	DCNumber        string     `json:"dc_number"`
-	DCType          string     `json:"dc_type" validate:"required,oneof=transit official"` // "transit" or "official"
+	DCType          string     `json:"dc_type" validate:"required,oneof=transit official transfer"` // "transit", "official", or "transfer"
 	Status          string     `json:"status"`                                             // "draft" or "issued"
 	TemplateID      *int       `json:"template_id"`
 	BillToAddressID *int       `json:"bill_to_address_id"`
@@ -28,6 +36,9 @@ type DeliveryChallan struct {
 	ShipmentGroupID       *int `json:"shipment_group_id"`
 	BillFromAddressID     *int `json:"bill_from_address_id"`
 	DispatchFromAddressID *int `json:"dispatch_from_address_id"`
+
+	// Transfer DC reference
+	TransferDCID *int `json:"transfer_dc_id"`
 
 	// Computed/joined fields
 	ProjectName   string `json:"project_name"`

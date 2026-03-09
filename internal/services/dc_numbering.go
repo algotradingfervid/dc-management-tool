@@ -13,22 +13,25 @@ import (
 const (
 	DCTypeTransit  = "transit"
 	DCTypeOfficial = "official"
+	DCTypeTransfer = "transfer"
 )
 
 // dcTypeCode maps DC type to its code in the DC number.
 var dcTypeCode = map[string]string{
 	DCTypeTransit:  "TDC",
 	DCTypeOfficial: "ODC",
+	DCTypeTransfer: "STDC",
 }
 
 // dcCodeToType maps DC number code back to DC type.
 var dcCodeToType = map[string]string{
-	"TDC": DCTypeTransit,
-	"ODC": DCTypeOfficial,
+	"TDC":  DCTypeTransit,
+	"ODC":  DCTypeOfficial,
+	"STDC": DCTypeTransfer,
 }
 
 // dcNumberPattern validates the DC number format: PREFIX-TDC-2526-001
-var dcNumberPattern = regexp.MustCompile(`^[A-Za-z0-9/]+-(TDC|ODC)-\d{4}-\d{3,}$`)
+var dcNumberPattern = regexp.MustCompile(`^[A-Za-z0-9/]+-(TDC|ODC|STDC)-\d{4}-\d{3,}$`)
 
 // DCNumberParts represents the parsed components of a DC number.
 type DCNumberParts struct {
@@ -90,8 +93,8 @@ func PreviewDCNumber(format, prefix, projectCode string, padding int) string {
 
 // PeekNextDCNumber returns what the next DC number would be WITHOUT incrementing the sequence.
 func PeekNextDCNumber(db *sql.DB, projectID int, dcType string) (string, error) {
-	if dcType != DCTypeTransit && dcType != DCTypeOfficial {
-		return "", fmt.Errorf("invalid DC type: %s (must be 'transit' or 'official')", dcType)
+	if _, ok := dcTypeCode[dcType]; !ok {
+		return "", fmt.Errorf("invalid DC type: %s", dcType)
 	}
 
 	var dcPrefix, dcNumberFormat string
@@ -136,8 +139,8 @@ func GenerateDCNumber(db *sql.DB, projectID int, dcType string) (string, error) 
 
 // GenerateDCNumberForDate generates a DC number using a specific date for FY calculation.
 func GenerateDCNumberForDate(db *sql.DB, projectID int, dcType string, date time.Time) (string, error) {
-	if dcType != DCTypeTransit && dcType != DCTypeOfficial {
-		return "", fmt.Errorf("invalid DC type: %s (must be 'transit' or 'official')", dcType)
+	if _, ok := dcTypeCode[dcType]; !ok {
+		return "", fmt.Errorf("invalid DC type: %s", dcType)
 	}
 
 	tx, err := db.Begin()

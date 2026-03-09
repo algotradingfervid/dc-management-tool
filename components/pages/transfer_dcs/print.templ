@@ -1,0 +1,326 @@
+package transfer_dcs
+
+import (
+	"fmt"
+	"strings"
+	"github.com/narendhupati/dc-management-tool/internal/models"
+	"github.com/narendhupati/dc-management-tool/internal/services"
+)
+
+type PrintData struct {
+	Project             *models.Project
+	DC                  *models.DeliveryChallan
+	TransferDC          *models.TransferDC
+	LineItems           []models.DCLineItem
+	HubAddress          *models.Address
+	BillFromAddress     *models.Address
+	DispatchFromAddress *models.Address
+	BillToAddress       *models.Address
+	Destinations        []services.TransferDCPDFDestination
+	Products            []services.TransferDCPDFProduct
+	TotalTaxable        float64
+	TotalTax            float64
+	GrandTotal          float64
+	RoundedTotal        float64
+	HalfTax             float64
+	TotalQty            int
+	AmountInWords       string
+	BillFromConfig      *models.AddressListConfig
+	DispatchFromConfig  *models.AddressListConfig
+	BillToConfig        *models.AddressListConfig
+}
+
+templ TransferPrint(data PrintData) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>
+				if data.DC != nil {
+					{ data.DC.DCNumber }
+				}
+				- Transfer DC Print
+			</title>
+			<style>
+				@media print {
+					body { margin: 0; padding: 10mm; font-family: Arial, sans-serif; font-size: 10px; }
+					.no-print { display: none !important; }
+					table { border-collapse: collapse; width: 100%; }
+					th, td { border: 1px solid #000; padding: 3px 5px; }
+					th { background-color: #f0f0f0; font-weight: bold; }
+					.header { text-align: center; margin-bottom: 10px; }
+					.title { font-size: 14px; font-weight: bold; text-align: center; margin: 8px 0; }
+					.section { margin: 8px 0; }
+					.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+					.box { border: 1px solid #000; padding: 5px; }
+					.box-label { font-size: 8px; font-weight: bold; text-transform: uppercase; color: #666; }
+					.sig-block { display: inline-block; width: 48%; vertical-align: top; margin-top: 20px; }
+					.amount-words { border: 1px solid #000; padding: 4px; margin: 6px 0; }
+				}
+				@media screen {
+					body { margin: 20px auto; max-width: 800px; padding: 20px; font-family: Arial, sans-serif; font-size: 12px; }
+					.no-print { margin-bottom: 20px; }
+					table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+					th, td { border: 1px solid #ccc; padding: 4px 6px; }
+					th { background-color: #f8f9fa; font-weight: bold; }
+					.header { text-align: center; margin-bottom: 10px; }
+					.title { font-size: 16px; font-weight: bold; text-align: center; margin: 10px 0; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 6px; }
+					.section { margin: 10px 0; }
+					.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+					.box { border: 1px solid #ccc; padding: 8px; border-radius: 4px; }
+					.box-label { font-size: 9px; font-weight: bold; text-transform: uppercase; color: #666; }
+					.sig-block { display: inline-block; width: 48%; vertical-align: top; margin-top: 30px; }
+					.amount-words { border: 1px solid #ccc; padding: 6px; margin: 8px 0; background: #f8f9fa; }
+				}
+				.text-right { text-align: right; }
+				.text-center { text-align: center; }
+				.bold { font-weight: bold; }
+				.total-row { background-color: #f0f0f0; font-weight: bold; }
+			</style>
+		</head>
+		<body>
+			<div class="no-print">
+				<button onclick="window.print()" style="padding: 8px 16px; cursor: pointer; background: #4472C4; color: white; border: none; border-radius: 4px;">
+					Print / Save as PDF
+				</button>
+				<button onclick="window.history.back()" style="padding: 8px 16px; cursor: pointer; margin-left: 8px;">
+					Back
+				</button>
+			</div>
+			<!-- Company Header -->
+			<div class="header">
+				if data.Project != nil && data.Project.CompanyName != "" {
+					<div style="font-size: 18px; font-weight: bold;">{ strings.ToUpper(data.Project.CompanyName) }</div>
+				}
+				if data.Project != nil && data.Project.BillFromAddress != "" {
+					<div style="font-size: 10px;">{ data.Project.BillFromAddress }</div>
+				}
+				if data.Project != nil {
+					<div style="font-size: 10px; font-weight: bold;">
+						if data.Project.CompanyGSTIN != "" {
+							GSTIN: { data.Project.CompanyGSTIN }
+						}
+						if data.Project.CompanyCIN != "" {
+							&nbsp;&nbsp;CIN: { data.Project.CompanyCIN }
+						}
+						if data.Project.CompanyPAN != "" {
+							&nbsp;&nbsp;PAN: { data.Project.CompanyPAN }
+						}
+					</div>
+				}
+			</div>
+			<div class="title">SPLIT TRANSFER DELIVERY CHALLAN</div>
+			<!-- DC Details -->
+			<div class="grid-2">
+				<div class="box">
+					<div><span class="bold">DC No:</span> { safeStr(data.DC, func(dc *models.DeliveryChallan) string { return dc.DCNumber }) }</div>
+					if data.DC != nil && data.DC.ChallanDate != nil {
+						<div><span class="bold">Date:</span> { *data.DC.ChallanDate }</div>
+					}
+					if data.TransferDC != nil {
+						if data.TransferDC.TransporterName != "" {
+							<div><span class="bold">Transporter:</span> { data.TransferDC.TransporterName }</div>
+						}
+						if data.TransferDC.VehicleNumber != "" {
+							<div><span class="bold">Vehicle:</span> { data.TransferDC.VehicleNumber }</div>
+						}
+						if data.TransferDC.EwayBillNumber != "" {
+							<div><span class="bold">E-Way Bill:</span> { data.TransferDC.EwayBillNumber }</div>
+						}
+						if data.TransferDC.DocketNumber != "" {
+							<div><span class="bold">Docket:</span> { data.TransferDC.DocketNumber }</div>
+						}
+					}
+				</div>
+				<div class="box">
+					if data.Project != nil {
+						if data.Project.POReference != "" {
+							<div><span class="bold">PO Number:</span> { data.Project.POReference }</div>
+						}
+						if data.Project.PODate != nil {
+							<div><span class="bold">PO Date:</span> { *data.Project.PODate }</div>
+						}
+						<div><span class="bold">Project:</span> { data.Project.Name }</div>
+					}
+				</div>
+			</div>
+			<!-- Hub Location -->
+			if data.TransferDC != nil && data.TransferDC.HubAddressName != "" {
+				<div class="section" style="border: 1px solid #ccc; padding: 5px;">
+					<span class="bold">Hub Location:</span> { data.TransferDC.HubAddressName }
+				</div>
+			}
+			<!-- Addresses -->
+			<div class="grid-2 section">
+				<div class="box">
+					<div class="box-label">Bill From</div>
+					@printAddressLines(data.BillFromAddress)
+				</div>
+				<div class="box">
+					<div class="box-label">Bill To</div>
+					@printAddressLines(data.BillToAddress)
+				</div>
+			</div>
+			<div class="grid-2 section">
+				<div class="box">
+					<div class="box-label">Dispatch From</div>
+					@printAddressLines(data.DispatchFromAddress)
+				</div>
+				<div class="box">
+					<div class="box-label">Hub Location</div>
+					@printAddressLines(data.HubAddress)
+				</div>
+			</div>
+			<!-- Line Items Table -->
+			<div class="section">
+				<table>
+					<thead>
+						<tr>
+							<th>S.No</th>
+							<th>Description</th>
+							<th>HSN</th>
+							<th>UoM</th>
+							<th>Qty</th>
+							<th>Rate</th>
+							<th>Taxable</th>
+							<th>GST %</th>
+							<th>GST</th>
+							<th>Total</th>
+						</tr>
+					</thead>
+					<tbody>
+						for i, li := range data.LineItems {
+							<tr>
+								<td class="text-center">{ fmt.Sprintf("%d", i+1) }</td>
+								<td>
+									{ li.ItemName }
+									if li.ItemDescription != "" {
+										<br/>
+										<small>{ li.ItemDescription }</small>
+									}
+								</td>
+								<td class="text-center">{ li.HSNCode }</td>
+								<td class="text-center">{ li.UoM }</td>
+								<td class="text-center">{ fmt.Sprintf("%d", li.Quantity) }</td>
+								<td class="text-right">{ fmt.Sprintf("%.2f", li.Rate) }</td>
+								<td class="text-right">{ fmt.Sprintf("%.2f", li.TaxableAmount) }</td>
+								<td class="text-center">{ fmt.Sprintf("%.0f%%", li.TaxPercentage) }</td>
+								<td class="text-right">{ fmt.Sprintf("%.2f", li.TaxAmount) }</td>
+								<td class="text-right">{ fmt.Sprintf("%.2f", li.TotalAmount) }</td>
+							</tr>
+						}
+						<tr class="total-row">
+							<td></td>
+							<td></td>
+							<td></td>
+							<td class="bold">Total</td>
+							<td class="text-center bold">{ fmt.Sprintf("%d", data.TotalQty) }</td>
+							<td></td>
+							<td class="text-right bold">{ fmt.Sprintf("%.2f", data.TotalTaxable) }</td>
+							<td></td>
+							<td class="text-right bold">{ fmt.Sprintf("%.2f", data.TotalTax) }</td>
+							<td class="text-right bold">{ fmt.Sprintf("%.2f", data.GrandTotal) }</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<!-- Tax Summary -->
+			<div style="text-align: right; margin: 8px 0;">
+				<table style="width: auto; margin-left: auto;">
+					<tr><td class="bold">Taxable Value:</td><td class="text-right">{ fmt.Sprintf("%.2f", data.TotalTaxable) }</td></tr>
+					<tr><td class="bold">CGST:</td><td class="text-right">{ fmt.Sprintf("%.2f", data.HalfTax) }</td></tr>
+					<tr><td class="bold">SGST:</td><td class="text-right">{ fmt.Sprintf("%.2f", data.HalfTax) }</td></tr>
+					<tr class="bold"><td>Invoice Value:</td><td class="text-right">{ fmt.Sprintf("%.2f", data.RoundedTotal) }</td></tr>
+				</table>
+			</div>
+			<!-- Amount in Words -->
+			<div class="amount-words">
+				<span class="bold">Amount in Words:</span> { data.AmountInWords }
+			</div>
+			<!-- Destination Breakdown -->
+			if len(data.Destinations) > 0 && len(data.Products) > 0 {
+				<div class="section">
+					<div class="bold" style="margin-bottom: 4px;">DESTINATION BREAKDOWN</div>
+					<table>
+						<thead>
+							<tr>
+								<th>#</th>
+								<th>Destination</th>
+								for _, p := range data.Products {
+									<th>{ p.Name }</th>
+								}
+							</tr>
+						</thead>
+						<tbody>
+							for i, dest := range data.Destinations {
+								<tr>
+									<td class="text-center">{ fmt.Sprintf("%d", i+1) }</td>
+									<td>{ dest.Name }</td>
+									for _, p := range data.Products {
+										<td class="text-center">{ fmt.Sprintf("%d", dest.Quantities[p.ID]) }</td>
+									}
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			}
+			<!-- Serial Numbers -->
+			for _, li := range data.LineItems {
+				if len(li.SerialNumbers) > 0 {
+					<div class="section">
+						<span class="bold">{ li.ItemName }:</span> { strings.Join(li.SerialNumbers, ", ") }
+					</div>
+				}
+			}
+			<!-- Signatures -->
+			<div style="margin-top: 30px;">
+				<div class="sig-block">
+					<div class="bold">Receiver's Signature</div>
+					<br/>
+					<br/>
+					<br/>
+					<div>Name: _________________________</div>
+				</div>
+				<div class="sig-block" style="text-align: right;">
+					<div class="bold">Authorized Signatory</div>
+					<br/>
+					<br/>
+					<br/>
+					if data.Project != nil && data.Project.SignatoryName != "" {
+						<div>{ data.Project.SignatoryName }</div>
+					}
+					if data.Project != nil && data.Project.SignatoryDesignation != "" {
+						<div>{ data.Project.SignatoryDesignation }</div>
+					}
+				</div>
+			</div>
+		</body>
+	</html>
+}
+
+func safeStr(dc *models.DeliveryChallan, fn func(*models.DeliveryChallan) string) string {
+	if dc == nil {
+		return ""
+	}
+	return fn(dc)
+}
+
+templ printAddressLines(addr *models.Address) {
+	if addr != nil {
+		if addr.DistrictName != "" {
+			<div class="bold">{ addr.DistrictName }</div>
+		}
+		if addr.MandalName != "" {
+			<div>{ addr.MandalName }</div>
+		}
+		for _, v := range addr.Data {
+			if v != "" {
+				<div>{ v }</div>
+			}
+		}
+	} else {
+		<div style="color: #999;">Not specified</div>
+	}
+}

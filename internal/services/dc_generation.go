@@ -305,6 +305,202 @@ func CreateShipmentGroupDCs(db *sql.DB, params ShipmentParams) (*ShipmentResult,
 	}, nil
 }
 
+// TransferDCParams holds all parameters needed to create a Transfer DC.
+type TransferDCParams struct {
+	ProjectID             int
+	TemplateID            int
+	HubAddressID          int    // The hub/transit location (the DC's ship_to_address_id)
+	BillFromAddressID     int
+	DispatchFromAddressID int
+	BillToAddressID       int
+	ShipToAddressIDs      []int  // All final destinations
+	ChallanDate           string
+	TaxType               string // "cgst_sgst" or "igst"
+	ReverseCharge         string // "Y" or "N"
+	TransporterName       string
+	VehicleNumber         string
+	EwayBillNumber        string
+	DocketNumber          string
+	Notes                 string
+	LineItems             []TransferDCLineItem
+	CreatedBy             int
+}
+
+// TransferDCLineItem holds product info for a Transfer DC line item.
+type TransferDCLineItem struct {
+	ProductID        int
+	QtyByDestination map[int]int // map[shipToAddressID] → qty
+	Rate             float64
+	TaxPercentage    float64
+	AllSerials       []string // Bulk serials (NOT per-destination)
+}
+
+// TotalQty returns the sum of quantities across all destinations.
+func (li TransferDCLineItem) TotalQty() int {
+	total := 0
+	for _, qty := range li.QtyByDestination {
+		total += qty
+	}
+	return total
+}
+
+// CreateTransferDC creates a Transfer DC with all related records in a transaction.
+// Returns the transfer_dcs.id on success.
+func CreateTransferDC(db *sql.DB, params TransferDCParams) (int, error) {
+	// --- Validate inputs ---
+	if len(params.ShipToAddressIDs) == 0 {
+		return 0, fmt.Errorf("at least one ship-to address is required")
+	}
+	if params.ChallanDate == "" {
+		return 0, fmt.Errorf("challan date is required")
+	}
+	if len(params.LineItems) == 0 {
+		return 0, fmt.Errorf("at least one line item is required")
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Parse DC date for financial year
+	dcDate, err := time.Parse("2006-01-02", params.ChallanDate)
+	if err != nil {
+		dcDate = time.Now()
+	}
+
+	// Get project settings
+	var dcPrefix, dcNumberFormat string
+	var seqPadding int
+	err = tx.QueryRow("SELECT dc_prefix, dc_number_format, seq_padding FROM projects WHERE id = ?", params.ProjectID).
+		Scan(&dcPrefix, &dcNumberFormat, &seqPadding)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get project settings: %w", err)
+	}
+	if dcPrefix == "" {
+		return 0, fmt.Errorf("project has no DC prefix set")
+	}
+
+	fy := GetFinancialYear(dcDate)
+
+	// Generate STDC number
+	transferSeq, err := getNextSequence(tx, params.ProjectID, DCTypeTransfer, fy)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get transfer sequence: %w", err)
+	}
+	transferDCNumber := formatNumber(dcNumberFormat, dcPrefix, fy, DCTypeTransfer, transferSeq, seqPadding)
+
+	// --- Insert delivery_challans record ---
+	billToPtr := &params.BillToAddressID
+	billFromPtr := &params.BillFromAddressID
+	dispatchFromPtr := &params.DispatchFromAddressID
+
+	dcResult, err := tx.Exec(
+		`INSERT INTO delivery_challans (project_id, dc_number, dc_type, status, template_id, bill_to_address_id, ship_to_address_id, challan_date, created_by, bill_from_address_id, dispatch_from_address_id)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		params.ProjectID, transferDCNumber, "transfer", "draft",
+		params.TemplateID, billToPtr, params.HubAddressID,
+		params.ChallanDate, params.CreatedBy,
+		billFromPtr, dispatchFromPtr,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert transfer DC: %w", err)
+	}
+	dcID, err := dcResult.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get transfer DC ID: %w", err)
+	}
+
+	// --- Insert dc_line_items with TOTAL quantities ---
+	for i, item := range params.LineItems {
+		totalQty := item.TotalQty()
+		taxableAmount := item.Rate * float64(totalQty)
+		taxAmount := taxableAmount * item.TaxPercentage / 100.0
+		totalAmount := taxableAmount + taxAmount
+
+		liResult, err := tx.Exec(
+			`INSERT INTO dc_line_items (dc_id, product_id, quantity, rate, tax_percentage, taxable_amount, tax_amount, total_amount, line_order)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			dcID, item.ProductID, totalQty, item.Rate, item.TaxPercentage,
+			math.Round(taxableAmount*100)/100,
+			math.Round(taxAmount*100)/100,
+			math.Round(totalAmount*100)/100,
+			i+1,
+		)
+		if err != nil {
+			return 0, fmt.Errorf("failed to insert transfer line item: %w", err)
+		}
+		liID, err := liResult.LastInsertId()
+		if err != nil {
+			return 0, fmt.Errorf("failed to get line item ID: %w", err)
+		}
+
+		// Insert serial numbers for this product
+		for _, sn := range item.AllSerials {
+			_, err = tx.Exec(
+				`INSERT INTO serial_numbers (project_id, line_item_id, serial_number, product_id) VALUES (?, ?, ?, ?)`,
+				params.ProjectID, int(liID), sn, item.ProductID,
+			)
+			if err != nil {
+				return 0, fmt.Errorf("failed to insert serial number '%s': %w", sn, err)
+			}
+		}
+	}
+
+	// --- Insert transfer_dcs record ---
+	tdcResult, err := tx.Exec(
+		`INSERT INTO transfer_dcs (dc_id, hub_address_id, template_id, tax_type, reverse_charge, transporter_name, vehicle_number, eway_bill_number, docket_number, notes, num_destinations)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		dcID, params.HubAddressID, params.TemplateID, params.TaxType, params.ReverseCharge,
+		params.TransporterName, params.VehicleNumber, params.EwayBillNumber,
+		params.DocketNumber, params.Notes, len(params.ShipToAddressIDs),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert transfer_dcs record: %w", err)
+	}
+	transferDCID, err := tdcResult.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get transfer_dcs ID: %w", err)
+	}
+
+	// --- Insert transfer_dc_destinations (one per ship-to address) ---
+	for _, shipToID := range params.ShipToAddressIDs {
+		destResult, err := tx.Exec(
+			`INSERT INTO transfer_dc_destinations (transfer_dc_id, ship_to_address_id) VALUES (?, ?)`,
+			transferDCID, shipToID,
+		)
+		if err != nil {
+			return 0, fmt.Errorf("failed to insert transfer destination: %w", err)
+		}
+		destID, err := destResult.LastInsertId()
+		if err != nil {
+			return 0, fmt.Errorf("failed to get destination ID: %w", err)
+		}
+
+		// Insert transfer_dc_destination_quantities for each product at this destination
+		for _, item := range params.LineItems {
+			qty := item.QtyByDestination[shipToID]
+			if qty > 0 {
+				_, err = tx.Exec(
+					`INSERT INTO transfer_dc_destination_quantities (destination_id, product_id, quantity) VALUES (?, ?, ?)`,
+					destID, item.ProductID, qty,
+				)
+				if err != nil {
+					return 0, fmt.Errorf("failed to insert destination quantity: %w", err)
+				}
+			}
+		}
+	}
+
+	// --- Commit transaction ---
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return int(transferDCID), nil
+}
+
 // formatNumber formats a DC number using the project's configured format or legacy default.
 func formatNumber(dcNumberFormat, prefix, fy, dcType string, seq, padding int) string {
 	if dcNumberFormat != "" && dcNumberFormat != "{PREFIX}-{TYPE}-{FY}-{SEQ}" {

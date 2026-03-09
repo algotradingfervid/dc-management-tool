@@ -42,6 +42,11 @@ func dashboardStatsToMap(s *database.DashboardStats) map[string]int64 {
 		"transit_dcs_issued":      int64(s.TransitDCsIssued),
 		"official_dcs_draft":      int64(s.OfficialDCsDraft),
 		"official_dcs_issued":     int64(s.OfficialDCsIssued),
+		"transfer_dcs":            int64(s.TransferDCs),
+		"transfer_dcs_draft":      int64(s.TransferDCsDraft),
+		"transfer_dcs_issued":     int64(s.TransferDCsIssued),
+		"transfer_dcs_splitting":  int64(s.TransferDCsSplitting),
+		"transfer_dcs_split":      int64(s.TransferDCsSplit),
 		"total_serial_numbers":    int64(s.TotalSerialNumbers),
 	}
 }

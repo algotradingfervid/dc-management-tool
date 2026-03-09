@@ -126,6 +126,7 @@ templ List(
 							<option value="all" selected?={ filterValDefault(filters, "type", "all") == "all" }>All Types</option>
 							<option value="transit" selected?={ filterVal(filters, "type") == "transit" }>Transit</option>
 							<option value="official" selected?={ filterVal(filters, "type") == "official" }>Official</option>
+							<option value="transfer" selected?={ filterVal(filters, "type") == "transfer" }>Transfer</option>
 						</select>
 					</div>
 					<!-- Status Filter -->
@@ -135,6 +136,8 @@ templ List(
 							<option value="all" selected?={ filterValDefault(filters, "status", "all") == "all" }>All Status</option>
 							<option value="draft" selected?={ filterVal(filters, "status") == "draft" }>Draft</option>
 							<option value="issued" selected?={ filterVal(filters, "status") == "issued" }>Issued</option>
+							<option value="splitting" selected?={ filterVal(filters, "status") == "splitting" }>Splitting</option>
+							<option value="split" selected?={ filterVal(filters, "status") == "split" }>Split</option>
 						</select>
 					</div>
 					<!-- Date From -->
@@ -272,6 +275,8 @@ templ List(
 										<td class="px-6 py-4 whitespace-nowrap">
 											if dc.DCType == "transit" {
 												<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Transit</span>
+											} else if dc.DCType == "transfer" {
+												<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-800">Transfer</span>
 											} else {
 												<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Official</span>
 											}
@@ -285,6 +290,10 @@ templ List(
 										<td class="px-6 py-4 whitespace-nowrap">
 											if dc.Status == "draft" {
 												<span class="badge-draft inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Draft</span>
+											} else if dc.Status == "splitting" {
+												<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">Splitting</span>
+											} else if dc.Status == "split" {
+												<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Split</span>
 											} else {
 												<span class="badge-issued inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Issued</span>
 											}

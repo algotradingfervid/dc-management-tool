@@ -353,8 +353,11 @@ select:focus {
 .badge-issued   { background-color: var(--success-100); color: var(--success-700); }
 .badge-success  { background-color: var(--success-100); color: var(--success-700); }
 .badge-error    { background-color: var(--error-100);   color: var(--error-700); }
-.badge-info     { background-color: var(--primary-100); color: var(--primary-700); }
-.badge-neutral  { background-color: var(--neutral-200); color: var(--neutral-700); }
+.badge-info       { background-color: var(--primary-100); color: var(--primary-700); }
+.badge-neutral    { background-color: var(--neutral-200); color: var(--neutral-700); }
+.badge-splitting  { background-color: #fff7ed; color: #c2410c; }
+.badge-split      { background-color: #dcfce7; color: #15803d; }
+.badge-transfer   { background-color: #ede9fe; color: #6d28d9; }
 
 /* ---------- 8. Tables ---------- */
 .table-container {

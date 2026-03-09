@@ -123,98 +123,215 @@ func DCSummaryPartial(props DCSummaryPartialProps) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, " issued</p></div><div class=\"card text-center\"><p class=\"text-3xl font-bold text-amber-600\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, " issued</p></div><div class=\"card text-center\"><p class=\"text-3xl font-bold text-violet-600\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TotalItemsDispatched))
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TransferDraftDCs + props.Report.TransferIssuedDCs + props.Report.TransferSplittingDCs + props.Report.TransferSplitDCs))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 32, Col: 99}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 32, Col: 197}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</p><p class=\"text-sm text-gray-500 mt-1\">Items Dispatched</p></div></div><div class=\"card overflow-hidden p-0 mt-4\"><table class=\"min-w-full divide-y divide-gray-200\"><thead class=\"bg-gray-50\"><tr><th class=\"px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider\">Metric</th><th class=\"px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider\">Count</th></tr></thead> <tbody class=\"bg-white divide-y divide-gray-200\"><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Transit DCs (Draft)</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</p><p class=\"text-sm text-gray-500 mt-1\">Transfer DCs</p><p class=\"text-xs text-gray-400\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var9 string
-			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TransitDraftDCs))
+			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TransferDraftDCs))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 47, Col: 118}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 34, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</td></tr><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Transit DCs (Issued)</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, " draft / ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TransitIssuedDCs))
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TransferIssuedDCs))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 51, Col: 119}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 34, Col: 141}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</td></tr><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Official DCs (Draft)</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, " issued / ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 string
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.OfficialDraftDCs))
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TransferSplittingDCs))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 55, Col: 119}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 34, Col: 203}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</td></tr><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Official DCs (Issued)</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, " splitting / ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.OfficialIssuedDCs))
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TransferSplitDCs))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 59, Col: 120}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 34, Col: 264}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</td></tr><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Total Items Dispatched</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, " split</p></div><div class=\"card text-center\"><p class=\"text-3xl font-bold text-amber-600\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TotalItemsDispatched))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 63, Col: 123}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 37, Col: 99}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</td></tr><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Total Serial Numbers Used</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</p><p class=\"text-sm text-gray-500 mt-1\">Items Dispatched</p></div></div><div class=\"card overflow-hidden p-0 mt-4\"><table class=\"min-w-full divide-y divide-gray-200\"><thead class=\"bg-gray-50\"><tr><th class=\"px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider\">Metric</th><th class=\"px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider\">Count</th></tr></thead> <tbody class=\"bg-white divide-y divide-gray-200\"><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Transit DCs (Draft)</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var14 string
-			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TotalSerialsUsed))
+			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TransitDraftDCs))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 67, Col: 119}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 52, Col: 118}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</td></tr></tbody></table></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</td></tr><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Transit DCs (Issued)</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var15 string
+			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TransitIssuedDCs))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 56, Col: 119}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</td></tr><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Official DCs (Draft)</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var16 string
+			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.OfficialDraftDCs))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 60, Col: 119}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</td></tr><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Official DCs (Issued)</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var17 string
+			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.OfficialIssuedDCs))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 64, Col: 120}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</td></tr><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Transfer DCs (Draft)</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var18 string
+			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TransferDraftDCs))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 68, Col: 119}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</td></tr><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Transfer DCs (Issued)</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var19 string
+			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TransferIssuedDCs))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 72, Col: 120}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</td></tr><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Transfer DCs (Splitting)</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var20 string
+			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TransferSplittingDCs))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 76, Col: 123}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</td></tr><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Transfer DCs (Split)</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var21 string
+			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TransferSplitDCs))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 80, Col: 119}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</td></tr><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Total Items Dispatched</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var22 string
+			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TotalItemsDispatched))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 84, Col: 123}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</td></tr><tr><td class=\"px-5 py-3 text-sm text-gray-700\">Total Serial Numbers Used</td><td class=\"px-5 py-3 text-sm text-gray-900 text-right font-medium\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var23 string
+			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(dcSummaryItoa(props.Report.TotalSerialsUsed))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/htmx/reports/dc_summary_partial.templ`, Line: 88, Col: 119}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</td></tr></tbody></table></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

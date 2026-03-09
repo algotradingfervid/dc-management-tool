@@ -585,6 +585,24 @@ func UpdateOfficialDC(dcID int, shipToAddressID int, challanDate *string) error 
 	return nil
 }
 
+// UpdateDeliveryChallanAddressesAndDate updates address IDs and challan date on a delivery_challans record.
+func UpdateDeliveryChallanAddressesAndDate(dcID int, challanDate *string, billFromID, dispatchFromID, billToID, shipToID int) error {
+	_, err := DB.ExecContext(ctx(),
+		`UPDATE delivery_challans SET
+            bill_from_address_id = ?, dispatch_from_address_id = ?,
+            bill_to_address_id = ?, ship_to_address_id = ?,
+            challan_date = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+		nullInt64FromInt(billFromID), nullInt64FromInt(dispatchFromID),
+		nullInt64FromInt(billToID), shipToID,
+		nullTimeFromDateStr(challanDate), dcID,
+	)
+	if err != nil {
+		return fmt.Errorf("UpdateDeliveryChallanAddressesAndDate: %w", err)
+	}
+	return nil
+}
+
 // ReplaceLineItemsAndSerials deletes all existing line items (and their serials, via cascade)
 // for dcID, then inserts fresh ones from the provided data.
 // lineItems is []models.DCLineItem; serialsByLine[i] are the serials for lineItems[i].

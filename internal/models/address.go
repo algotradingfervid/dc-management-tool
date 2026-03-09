@@ -71,6 +71,34 @@ func (a *Address) DisplayName() string {
 	return strings.Join(parts, " | ")
 }
 
+// FormatAddressJSON parses a raw JSON address_data string into a human-readable display name.
+// This is used when only the raw JSON string is available (e.g., from JOIN queries).
+func FormatAddressJSON(jsonStr string) string {
+	if jsonStr == "" || jsonStr == "{}" {
+		return ""
+	}
+	var data map[string]string
+	if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
+		return jsonStr
+	}
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var parts []string
+	for _, k := range keys {
+		v := strings.TrimSpace(data[k])
+		if v != "" {
+			parts = append(parts, v)
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return strings.Join(parts, " | ")
+}
+
 // AddressPage represents a paginated list of addresses.
 type AddressPage struct {
 	Addresses   []*Address `json:"addresses"`

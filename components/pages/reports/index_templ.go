@@ -79,20 +79,33 @@ func Index(
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"card hover:shadow-md transition-shadow group\"><div class=\"flex items-start gap-4\"><div class=\"p-3 rounded-lg bg-amber-50 text-amber-600 group-hover:bg-amber-100\"><svg class=\"w-6 h-6\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4\"></path></svg></div><div><h3 class=\"font-semibold text-gray-900\">Product Report</h3><p class=\"text-sm text-gray-500 mt-1\">Product-wise breakdown showing total quantities dispatched, DC count, and destinations.</p></div></div></a><!-- Serial Number Report --><a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"card hover:shadow-md transition-shadow group\"><div class=\"flex items-start gap-4\"><div class=\"p-3 rounded-lg bg-amber-50 text-amber-600 group-hover:bg-amber-100\"><svg class=\"w-6 h-6\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4\"></path></svg></div><div><h3 class=\"font-semibold text-gray-900\">Product Report</h3><p class=\"text-sm text-gray-500 mt-1\">Product-wise breakdown showing total quantities dispatched, DC count, and destinations.</p></div></div></a><!-- Transfer DC Report --><a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 templ.SafeURL
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/projects/%d/reports/serial", currentProject.ID)))
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/projects/%d/reports/transfer", currentProject.ID)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/reports/index.templ`, Line: 65, Col: 89}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/reports/index.templ`, Line: 65, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" class=\"card hover:shadow-md transition-shadow group\"><div class=\"flex items-start gap-4\"><div class=\"p-3 rounded-lg bg-purple-50 text-purple-600 group-hover:bg-purple-100\"><svg class=\"w-6 h-6\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M7 20l4-16m2 16l4-16M6 9h14M4 15h14\"></path></svg></div><div><h3 class=\"font-semibold text-gray-900\">Serial Number Report</h3><p class=\"text-sm text-gray-500 mt-1\">Search and export serial numbers with product, DC, date, and vehicle details.</p></div></div></a></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" class=\"card hover:shadow-md transition-shadow group\"><div class=\"flex items-start gap-4\"><div class=\"p-3 rounded-lg bg-violet-50 text-violet-600 group-hover:bg-violet-100\"><svg class=\"w-6 h-6\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4\"></path></svg></div><div><h3 class=\"font-semibold text-gray-900\">Transfer DC Report</h3><p class=\"text-sm text-gray-500 mt-1\">View Transfer DCs with split progress and child group details.</p></div></div></a><!-- Serial Number Report --><a href=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var6 templ.SafeURL
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/projects/%d/reports/serial", currentProject.ID)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages/reports/index.templ`, Line: 79, Col: 89}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" class=\"card hover:shadow-md transition-shadow group\"><div class=\"flex items-start gap-4\"><div class=\"p-3 rounded-lg bg-purple-50 text-purple-600 group-hover:bg-purple-100\"><svg class=\"w-6 h-6\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M7 20l4-16m2 16l4-16M6 9h14M4 15h14\"></path></svg></div><div><h3 class=\"font-semibold text-gray-900\">Serial Number Report</h3><p class=\"text-sm text-gray-500 mt-1\">Search and export serial numbers with product, DC, date, and vehicle details.</p></div></div></a></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

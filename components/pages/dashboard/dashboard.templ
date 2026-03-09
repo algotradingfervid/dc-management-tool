@@ -179,13 +179,15 @@ templ DashboardStats(
 			</div>
 		</div>
 
-		<!-- Total DCs -->
+		<!-- Transfer DCs -->
 		<div class="card">
-			<p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total DCs</p>
-			<p class="text-2xl font-bold text-gray-900 mt-1">{ statsInt64(stats, "total_dcs") }</p>
-			<div class="flex gap-3 mt-1 text-xs text-gray-500">
-				<span>{ statsInt64(stats, "issued_dcs") } issued</span>
-				<span>{ statsInt64(stats, "draft_dcs") } draft</span>
+			<p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Transfer DCs</p>
+			<p class="text-2xl font-bold text-violet-600 mt-1">{ statsInt64(stats, "transfer_dcs") }</p>
+			<div class="flex flex-wrap gap-2 mt-1 text-xs text-gray-500">
+				<span>{ statsInt64(stats, "transfer_dcs_draft") } draft</span>
+				<span>{ statsInt64(stats, "transfer_dcs_issued") } issued</span>
+				<span class="text-orange-600">{ statsInt64(stats, "transfer_dcs_splitting") } splitting</span>
+				<span class="text-green-600">{ statsInt64(stats, "transfer_dcs_split") } split</span>
 			</div>
 		</div>
 
@@ -256,6 +258,15 @@ templ DashboardStats(
 						New Shipment
 					</a>
 					<a
+						href={ templ.SafeURL(projectURL(currentProject.ID, "/transfer-dcs/new")) }
+						class="btn btn-ghost flex items-center gap-3 w-full text-violet-700 hover:bg-violet-100 hover:text-violet-900"
+					>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+						</svg>
+						New Split Shipment
+					</a>
+				<a
 						href={ templ.SafeURL(projectURL(currentProject.ID, "/products")) }
 						class="btn btn-ghost flex items-center gap-3 w-full text-gray-700"
 					>

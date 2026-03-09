@@ -1,0 +1,265 @@
+package transfer_dcs
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/narendhupati/dc-management-tool/components/partials"
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+templ WizardStep3(
+	user *models.User,
+	currentProject *models.Project,
+	allProjects []*models.Project,
+	products []*models.TemplateProductRow,
+	shipToAddresses []QuantityAddress,
+	templateID int,
+	challanDate string,
+	hubAddressID int,
+	transporterName string,
+	vehicleNumber string,
+	ewayBillNumber string,
+	docketNumber string,
+	taxType string,
+	reverseCharge string,
+	billFromAddrID int,
+	dispatchFromAddrID int,
+	billToAddrID int,
+	shipToAddressIDs []int,
+	csrfToken string,
+	flashMessage string,
+	flashType string,
+	prefillQuantities map[int]map[int]int,
+	quantityErrors map[string]string,
+	tdcID int,
+) {
+	<div class="max-w-6xl mx-auto">
+		@partials.WizardSteps([]partials.WizardStep{
+			{Number: 1, Label: "Configuration"},
+			{Number: 2, Label: "Addresses"},
+			{Number: 3, Label: "Quantities"},
+			{Number: 4, Label: "Serial Numbers"},
+			{Number: 5, Label: "Review"},
+		}, 3)
+		if tdcID > 0 {
+			<h1 class="text-2xl font-bold mb-2">Edit Transfer DC — Step 3: Assign Quantities</h1>
+		} else {
+			<h1 class="text-2xl font-bold mb-2">Create Transfer DC — Step 3: Assign Quantities</h1>
+		}
+		<p class="text-sm text-gray-500 mb-4">
+			Set the quantity for each product at each destination.
+		</p>
+		<p class="text-xs text-amber-600 mb-6">
+			Destinations with all-zero quantities will be ignored.
+		</p>
+		if quantityErrors != nil && quantityErrors["global"] != "" {
+			<div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+				<p class="text-sm text-red-700">{ quantityErrors["global"] }</p>
+			</div>
+		}
+		<form
+			method="POST"
+			action={ templ.SafeURL(transferWizardURL(currentProject.ID, tdcID, "/step4")) }
+			x-data="quantityGrid()"
+			@submit.prevent="if (validate()) $el.submit()"
+		>
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			<!-- Carry forward all previous data -->
+			<input type="hidden" name="template_id" value={ strconv.Itoa(templateID) }/>
+			<input type="hidden" name="hub_address_id" value={ strconv.Itoa(hubAddressID) }/>
+			<input type="hidden" name="challan_date" value={ challanDate }/>
+			<input type="hidden" name="transporter_name" value={ transporterName }/>
+			<input type="hidden" name="vehicle_number" value={ vehicleNumber }/>
+			<input type="hidden" name="eway_bill_number" value={ ewayBillNumber }/>
+			<input type="hidden" name="docket_number" value={ docketNumber }/>
+			<input type="hidden" name="tax_type" value={ taxType }/>
+			<input type="hidden" name="reverse_charge" value={ reverseCharge }/>
+			<input type="hidden" name="bill_from_address_id" value={ strconv.Itoa(billFromAddrID) }/>
+			<input type="hidden" name="dispatch_from_address_id" value={ strconv.Itoa(dispatchFromAddrID) }/>
+			<input type="hidden" name="bill_to_address_id" value={ strconv.Itoa(billToAddrID) }/>
+			for _, id := range shipToAddressIDs {
+				<input type="hidden" name="ship_to_address_ids" value={ strconv.Itoa(id) }/>
+			}
+			<!-- Summary bar -->
+			<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+				<div class="flex items-center justify-between text-sm">
+					<span class="text-blue-700">
+						<strong>{ strconv.Itoa(len(products)) }</strong> products ×
+						<strong>{ strconv.Itoa(len(shipToAddresses)) }</strong> destinations
+					</span>
+					<span class="text-blue-900 font-semibold">
+						Grand Total: <span x-text="getGrandTotal()">0</span> units
+					</span>
+				</div>
+			</div>
+			<!-- Quantity Grid -->
+			<div class="bg-white shadow rounded-lg overflow-hidden">
+				<div class="qty-grid overflow-x-auto">
+					<table class="min-w-full divide-y divide-gray-200 border-collapse">
+						<thead class="bg-gray-50">
+							<tr>
+								<th class="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 min-w-[200px]">
+									Product
+								</th>
+								for _, addr := range shipToAddresses {
+									<th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+										{ addr.Name }
+									</th>
+								}
+								<th class="sticky right-0 z-10 bg-gray-100 px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-l border-gray-200 min-w-[100px]">
+									Row Total
+								</th>
+							</tr>
+						</thead>
+						<tbody class="bg-white divide-y divide-gray-200">
+							for _, p := range products {
+								<tr>
+									<td class="sticky left-0 z-10 bg-white px-4 py-3 border-r border-gray-200">
+										<div class="text-sm font-medium text-gray-900">{ p.ItemName }</div>
+										<div class="text-xs text-gray-500">Default qty: { strconv.Itoa(p.DefaultQuantity) }</div>
+										if quantityErrors != nil && quantityErrors[fmt.Sprintf("product_%d", p.ID)] != "" {
+											<div class="text-xs text-red-600 mt-1">{ quantityErrors[fmt.Sprintf("product_%d", p.ID)] }</div>
+										}
+									</td>
+									for _, addr := range shipToAddresses {
+										<td class="px-2 py-2 text-center">
+											<input
+												type="number"
+												name={ fmt.Sprintf("qty_%d_%d", p.ID, addr.ID) }
+												min="0"
+												step="1"
+												pattern="[0-9]*"
+												value={ qtyInputValue(prefillQuantities, p.ID, addr.ID, p.DefaultQuantity) }
+												if quantityErrors != nil && quantityErrors[fmt.Sprintf("qty_%d_%d", p.ID, addr.ID)] != "" {
+													class="w-20 mx-auto text-center rounded-md border-red-500 shadow-sm text-sm focus:border-red-500 focus:ring-red-500"
+												} else {
+													class="w-20 mx-auto text-center rounded-md border-gray-300 shadow-sm text-sm focus:border-blue-500 focus:ring-blue-500"
+												}
+												x-on:input="$nextTick(() => { $el.value = Math.max(0, Math.floor($el.value) || 0); recalc() })"
+											/>
+											if quantityErrors != nil && quantityErrors[fmt.Sprintf("qty_%d_%d", p.ID, addr.ID)] != "" {
+												<div class="text-xs text-red-600 mt-1">{ quantityErrors[fmt.Sprintf("qty_%d_%d", p.ID, addr.ID)] }</div>
+											}
+										</td>
+									}
+									<td class="sticky right-0 z-10 bg-gray-50 px-4 py-3 text-center border-l border-gray-200">
+										<span class="text-sm font-semibold text-gray-900" x-text={ fmt.Sprintf("getRowTotal(%d)", p.ID) }>
+											{ strconv.Itoa(p.DefaultQuantity * len(shipToAddresses)) }
+										</span>
+									</td>
+								</tr>
+							}
+						</tbody>
+						<tfoot class="bg-gray-50">
+							<tr>
+								<td class="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 border-r border-gray-200">
+									Column Total
+								</td>
+								for _, addr := range shipToAddresses {
+									<td class="px-4 py-3 text-center">
+										<span class="text-sm font-semibold text-gray-900" x-text={ fmt.Sprintf("getColTotal(%d)", addr.ID) }>0</span>
+									</td>
+								}
+								<td class="sticky right-0 z-10 bg-gray-100 px-4 py-3 text-center border-l border-gray-200">
+									<span class="text-sm font-bold text-blue-700" x-text="getGrandTotal()">0</span>
+								</td>
+							</tr>
+						</tfoot>
+					</table>
+				</div>
+			</div>
+			<!-- Client-side validation error -->
+			<div x-show="validationError" x-cloak class="mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
+				<p class="text-sm text-red-700" x-text="validationError"></p>
+			</div>
+			<!-- Navigation buttons -->
+			<div class="mt-6 flex justify-between">
+				<button type="submit" formaction={ string(templ.SafeURL(transferWizardURL(currentProject.ID, tdcID, "/back-to-step2"))) } class="text-gray-600 hover:text-gray-800 px-4 py-2 border border-gray-300 rounded-md">
+					← Back
+				</button>
+				<button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">
+					Next: Serial Numbers →
+				</button>
+			</div>
+		</form>
+	</div>
+	<style>
+		.qty-grid th:first-child,
+		.qty-grid td:first-child {
+			position: sticky;
+			left: 0;
+			z-index: 10;
+		}
+		.qty-grid th:last-child,
+		.qty-grid td:last-child {
+			position: sticky;
+			right: 0;
+			z-index: 10;
+		}
+	</style>
+	<script>
+		function quantityGrid() {
+			return {
+				validationError: '',
+				_tick: 0,
+				recalc() { this._tick++; },
+				getRowTotal(productId) {
+					void this._tick;
+					var total = 0;
+					document.querySelectorAll('input[name^="qty_' + productId + '_"]').forEach(function(input) {
+						total += parseInt(input.value) || 0;
+					});
+					return total;
+				},
+				getColTotal(addrId) {
+					void this._tick;
+					var total = 0;
+					document.querySelectorAll('input[name$="_' + addrId + '"]').forEach(function(input) {
+						if (input.name.startsWith('qty_')) {
+							total += parseInt(input.value) || 0;
+						}
+					});
+					return total;
+				},
+				getGrandTotal() {
+					void this._tick;
+					var total = 0;
+					document.querySelectorAll('input[name^="qty_"]').forEach(function(input) {
+						total += parseInt(input.value) || 0;
+					});
+					return total;
+				},
+				validate() {
+					this.validationError = '';
+					var hasAnyQty = false;
+					var hasNegative = false;
+					var inputs = document.querySelectorAll('input[name^="qty_"]');
+					inputs.forEach(function(input) {
+						var val = parseInt(input.value) || 0;
+						if (val < 0) {
+							input.classList.add('border-red-500');
+							input.classList.remove('border-gray-300');
+							hasNegative = true;
+						} else {
+							input.classList.remove('border-red-500');
+							input.classList.add('border-gray-300');
+						}
+						if (val > 0) hasAnyQty = true;
+						// Floor non-integer values
+						input.value = Math.max(0, Math.floor(val));
+					});
+					if (hasNegative) {
+						this.validationError = 'Quantities cannot be negative';
+						return false;
+					}
+					if (!hasAnyQty) {
+						this.validationError = 'At least one quantity must be greater than 0';
+						return false;
+					}
+					return true;
+				}
+			};
+		}
+	</script>
+}

@@ -16,6 +16,10 @@ type DCSummaryReport struct {
 	TransitIssuedDCs     int
 	OfficialDraftDCs     int
 	OfficialIssuedDCs    int
+	TransferDraftDCs     int
+	TransferIssuedDCs    int
+	TransferSplittingDCs int
+	TransferSplitDCs     int
 	TotalItemsDispatched int
 	TotalSerialsUsed     int
 }
@@ -130,6 +134,46 @@ func GetDCSummaryReport(projectID int, startDate, endDate *time.Time) (*DCSummar
 	err = DB.QueryRow(
 		"SELECT COUNT(*) FROM delivery_challans dc WHERE dc.project_id = ? AND dc.dc_type='official' AND dc.status='issued'"+dateClause4, args4...,
 	).Scan(&report.OfficialIssuedDCs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Transfer draft
+	args5t := []interface{}{projectID}
+	dateClause5t, args5t := dateFilterSQL(startDate, endDate, args5t)
+	err = DB.QueryRow(
+		"SELECT COUNT(*) FROM delivery_challans dc WHERE dc.project_id = ? AND dc.dc_type='transfer' AND dc.status='draft'"+dateClause5t, args5t...,
+	).Scan(&report.TransferDraftDCs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Transfer issued
+	args6t := []interface{}{projectID}
+	dateClause6t, args6t := dateFilterSQL(startDate, endDate, args6t)
+	err = DB.QueryRow(
+		"SELECT COUNT(*) FROM delivery_challans dc WHERE dc.project_id = ? AND dc.dc_type='transfer' AND dc.status='issued'"+dateClause6t, args6t...,
+	).Scan(&report.TransferIssuedDCs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Transfer splitting
+	args7t := []interface{}{projectID}
+	dateClause7t, args7t := dateFilterSQL(startDate, endDate, args7t)
+	err = DB.QueryRow(
+		"SELECT COUNT(*) FROM delivery_challans dc WHERE dc.project_id = ? AND dc.dc_type='transfer' AND dc.status='splitting'"+dateClause7t, args7t...,
+	).Scan(&report.TransferSplittingDCs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Transfer split
+	args8t := []interface{}{projectID}
+	dateClause8t, args8t := dateFilterSQL(startDate, endDate, args8t)
+	err = DB.QueryRow(
+		"SELECT COUNT(*) FROM delivery_challans dc WHERE dc.project_id = ? AND dc.dc_type='transfer' AND dc.status='split'"+dateClause8t, args8t...,
+	).Scan(&report.TransferSplitDCs)
 	if err != nil {
 		return nil, err
 	}
@@ -321,6 +365,54 @@ func GetSerialReport(projectID int, search string, startDate, endDate *time.Time
 	for rows.Next() {
 		var r SerialReportRow
 		if err := rows.Scan(&r.SerialNumber, &r.ProductName, &r.TransitDCNumber, &r.TransitDCID, &r.ChallanDate, &r.VehicleNumber, &r.ProjectID); err != nil {
+			return nil, err
+		}
+		results = append(results, r)
+	}
+	return results, nil
+}
+
+// TransferDCReportRow holds one row of the Transfer DC report.
+type TransferDCReportRow struct {
+	DCNumber        string
+	Status          string
+	ChallanDate     string
+	NumDestinations int
+	NumSplit        int
+	SplitCount      int
+	TransporterName string
+	VehicleNumber   string
+}
+
+// GetTransferDCReport returns Transfer DCs with split progress for reporting.
+func GetTransferDCReport(projectID int, startDate, endDate *time.Time) ([]TransferDCReportRow, error) {
+	args := []interface{}{projectID}
+	dateClause, args := dateFilterSQL(startDate, endDate, args)
+
+	rows, err := DB.Query(`
+		SELECT
+			dc.dc_number,
+			dc.status,
+			COALESCE(dc.challan_date, '') AS challan_date,
+			tdc.num_destinations,
+			tdc.num_split,
+			(SELECT COUNT(*) FROM transfer_dc_splits WHERE transfer_dc_id = tdc.id) AS split_count,
+			COALESCE(tdc.transporter_name, '') AS transporter_name,
+			COALESCE(tdc.vehicle_number, '') AS vehicle_number
+		FROM delivery_challans dc
+		JOIN transfer_dcs tdc ON tdc.dc_id = dc.id
+		WHERE dc.project_id = ? AND dc.dc_type = 'transfer'`+dateClause+`
+		ORDER BY dc.challan_date DESC
+	`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("transfer DC report query: %w", err)
+	}
+	defer rows.Close()
+
+	var results []TransferDCReportRow
+	for rows.Next() {
+		var r TransferDCReportRow
+		if err := rows.Scan(&r.DCNumber, &r.Status, &r.ChallanDate, &r.NumDestinations, &r.NumSplit, &r.SplitCount, &r.TransporterName, &r.VehicleNumber); err != nil {
 			return nil, err
 		}
 		results = append(results, r)

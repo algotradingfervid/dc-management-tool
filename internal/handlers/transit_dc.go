@@ -37,10 +37,14 @@ func ShowDCDetail(c echo.Context) error {
 		return c.Redirect(http.StatusFound, fmt.Sprintf("/projects/%d", projectID))
 	}
 
-	if dc.DCType == "official" {
+	switch dc.DCType {
+	case "official":
 		return ShowOfficialDCDetail(c)
+	case "transfer":
+		return ShowTransferDCDetail(c)
+	default:
+		return showTransitDCDetail(c)
 	}
-	return showTransitDCDetail(c)
 }
 
 // showTransitDCDetail shows a Transit DC's details.

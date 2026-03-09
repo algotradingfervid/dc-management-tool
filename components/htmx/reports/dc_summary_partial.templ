@@ -29,6 +29,11 @@ templ DCSummaryPartial(props DCSummaryPartialProps) {
 				<p class="text-xs text-gray-400">{ dcSummaryItoa(props.Report.OfficialDraftDCs) } draft / { dcSummaryItoa(props.Report.OfficialIssuedDCs) } issued</p>
 			</div>
 			<div class="card text-center">
+				<p class="text-3xl font-bold text-violet-600">{ dcSummaryItoa(props.Report.TransferDraftDCs + props.Report.TransferIssuedDCs + props.Report.TransferSplittingDCs + props.Report.TransferSplitDCs) }</p>
+				<p class="text-sm text-gray-500 mt-1">Transfer DCs</p>
+				<p class="text-xs text-gray-400">{ dcSummaryItoa(props.Report.TransferDraftDCs) } draft / { dcSummaryItoa(props.Report.TransferIssuedDCs) } issued / { dcSummaryItoa(props.Report.TransferSplittingDCs) } splitting / { dcSummaryItoa(props.Report.TransferSplitDCs) } split</p>
+			</div>
+			<div class="card text-center">
 				<p class="text-3xl font-bold text-amber-600">{ dcSummaryItoa(props.Report.TotalItemsDispatched) }</p>
 				<p class="text-sm text-gray-500 mt-1">Items Dispatched</p>
 			</div>
@@ -57,6 +62,22 @@ templ DCSummaryPartial(props DCSummaryPartialProps) {
 					<tr>
 						<td class="px-5 py-3 text-sm text-gray-700">Official DCs (Issued)</td>
 						<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ dcSummaryItoa(props.Report.OfficialIssuedDCs) }</td>
+					</tr>
+					<tr>
+						<td class="px-5 py-3 text-sm text-gray-700">Transfer DCs (Draft)</td>
+						<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ dcSummaryItoa(props.Report.TransferDraftDCs) }</td>
+					</tr>
+					<tr>
+						<td class="px-5 py-3 text-sm text-gray-700">Transfer DCs (Issued)</td>
+						<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ dcSummaryItoa(props.Report.TransferIssuedDCs) }</td>
+					</tr>
+					<tr>
+						<td class="px-5 py-3 text-sm text-gray-700">Transfer DCs (Splitting)</td>
+						<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ dcSummaryItoa(props.Report.TransferSplittingDCs) }</td>
+					</tr>
+					<tr>
+						<td class="px-5 py-3 text-sm text-gray-700">Transfer DCs (Split)</td>
+						<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ dcSummaryItoa(props.Report.TransferSplitDCs) }</td>
 					</tr>
 					<tr>
 						<td class="px-5 py-3 text-sm text-gray-700">Total Items Dispatched</td>

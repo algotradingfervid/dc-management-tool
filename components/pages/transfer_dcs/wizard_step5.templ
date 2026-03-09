@@ -1,0 +1,171 @@
+package transfer_dcs
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/narendhupati/dc-management-tool/components/partials"
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+templ WizardStep5(
+	user *models.User,
+	currentProject *models.Project,
+	allProjects []*models.Project,
+	tmpl *models.DCTemplate,
+	products []*models.TemplateProductRow,
+	challanDate string,
+	hubAddressName string,
+	transporterName string,
+	vehicleNumber string,
+	ewayBillNumber string,
+	docketNumber string,
+	taxType string,
+	reverseCharge string,
+	templateID string,
+	hubAddressID string,
+	billFromAddressID string,
+	dispatchFromAddressID string,
+	billToAddressID string,
+	shipToAddressIDs []string,
+	shipToAddresses []*models.Address,
+	serialData []TransferSerialData,
+	csrfToken string,
+	quantityHiddenFields []QuantityHiddenField,
+	productQuantityTotals map[int]int,
+	tdcID int,
+) {
+	<div class="max-w-4xl mx-auto">
+		@partials.WizardSteps([]partials.WizardStep{
+			{Number: 1, Label: "Configuration"},
+			{Number: 2, Label: "Addresses"},
+			{Number: 3, Label: "Quantities"},
+			{Number: 4, Label: "Serial Numbers"},
+			{Number: 5, Label: "Review"},
+		}, 5)
+		if tdcID > 0 {
+			<h1 class="text-2xl font-bold mb-6">Edit Transfer DC — Step 5: Review &amp; Confirm</h1>
+		} else {
+			<h1 class="text-2xl font-bold mb-6">Create Transfer DC — Step 5: Review &amp; Confirm</h1>
+		}
+		<div class="bg-white shadow rounded-lg p-6 mb-6">
+			<h2 class="text-lg font-medium mb-4">Transfer DC Summary</h2>
+			<dl class="grid grid-cols-2 gap-4 text-sm">
+				<div>
+					<dt class="text-gray-500">Template</dt>
+					<dd class="font-medium">
+						if tmpl != nil {
+							{ tmpl.Name }
+						}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-gray-500">Hub Location</dt>
+					<dd class="font-medium">{ hubAddressName }</dd>
+				</div>
+				<div>
+					<dt class="text-gray-500">Challan Date</dt>
+					<dd class="font-medium">{ challanDate }</dd>
+				</div>
+				<div>
+					<dt class="text-gray-500">Transporter</dt>
+					<dd class="font-medium">{ transporterName }</dd>
+				</div>
+				<div>
+					<dt class="text-gray-500">Vehicle</dt>
+					<dd class="font-medium">{ vehicleNumber }</dd>
+				</div>
+				<div>
+					<dt class="text-gray-500">E-Way Bill</dt>
+					<dd class="font-medium">{ ewayBillNumber }</dd>
+				</div>
+				<div>
+					<dt class="text-gray-500">Docket Number</dt>
+					<dd class="font-medium">{ docketNumber }</dd>
+				</div>
+				<div>
+					<dt class="text-gray-500">Tax Type</dt>
+					<dd class="font-medium">{ taxType }</dd>
+				</div>
+			</dl>
+		</div>
+		<div class="bg-white shadow rounded-lg p-6 mb-6">
+			<h2 class="text-lg font-medium mb-4">Products</h2>
+			<table class="min-w-full divide-y divide-gray-200">
+				<thead>
+					<tr>
+						<th class="text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+						<th class="text-left text-xs font-medium text-gray-500 uppercase">Total Qty</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, p := range products {
+						{{ qty := 0 }}
+						if productQuantityTotals != nil {
+							{{ qty = productQuantityTotals[p.ID] }}
+						}
+						if qty == 0 {
+							{{ qty = p.DefaultQuantity * len(shipToAddressIDs) }}
+						}
+						<tr>
+							<td class="py-2">{ p.ItemName }</td>
+							<td class="py-2">{ strconv.Itoa(qty) }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		<div class="bg-white shadow rounded-lg p-6 mb-6">
+			<h2 class="text-lg font-medium mb-4">Destinations</h2>
+			<ul class="list-disc pl-5 text-sm">
+				for _, a := range shipToAddresses {
+					<li>{ a.DisplayName() }</li>
+				}
+			</ul>
+		</div>
+		<form
+			method="POST"
+			action={ templ.SafeURL(transferWizardSubmitURL(currentProject.ID, tdcID)) }
+		>
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			<!-- All hidden data -->
+			<input type="hidden" name="template_id" value={ templateID }/>
+			<input type="hidden" name="hub_address_id" value={ hubAddressID }/>
+			<input type="hidden" name="challan_date" value={ challanDate }/>
+			<input type="hidden" name="transporter_name" value={ transporterName }/>
+			<input type="hidden" name="vehicle_number" value={ vehicleNumber }/>
+			<input type="hidden" name="eway_bill_number" value={ ewayBillNumber }/>
+			<input type="hidden" name="docket_number" value={ docketNumber }/>
+			<input type="hidden" name="tax_type" value={ taxType }/>
+			<input type="hidden" name="reverse_charge" value={ reverseCharge }/>
+			<input type="hidden" name="bill_from_address_id" value={ billFromAddressID }/>
+			<input type="hidden" name="dispatch_from_address_id" value={ dispatchFromAddressID }/>
+			<input type="hidden" name="bill_to_address_id" value={ billToAddressID }/>
+			for _, id := range shipToAddressIDs {
+				<input type="hidden" name="ship_to_address_ids" value={ id }/>
+			}
+			<!-- Quantity data -->
+			for _, qf := range quantityHiddenFields {
+				<input type="hidden" name={ qf.Name } value={ qf.Value }/>
+			}
+			<!-- Serial data -->
+			for _, sd := range serialData {
+				<input type="hidden" name={ fmt.Sprintf("serials_%d", sd.ProductID) } value={ joinStrings(sd.AllSerials, "\n") }/>
+			}
+			<div class="mt-6 flex justify-between">
+				<button type="submit" formaction={ string(templ.SafeURL(transferWizardURL(currentProject.ID, tdcID, "/back-to-step4"))) } class="text-gray-600 hover:text-gray-800 px-4 py-2 border border-gray-300 rounded-md">
+					← Back
+				</button>
+				if tdcID > 0 {
+					<button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700">
+						Save Changes
+					</button>
+				} else {
+					<button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700">
+						Create Transfer DC
+					</button>
+				}
+			</div>
+		</form>
+	</div>
+}

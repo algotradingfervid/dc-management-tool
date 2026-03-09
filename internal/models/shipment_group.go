@@ -15,6 +15,10 @@ type ShipmentGroup struct {
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 
+	// Transfer DC reference
+	TransferDCID *int `json:"transfer_dc_id"`
+	SplitID      *int `json:"split_id"`
+
 	// Computed/joined fields
 	TemplateName    string `json:"template_name"`
 	TransitDCID     *int   `json:"transit_dc_id"`

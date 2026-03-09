@@ -61,6 +61,11 @@ templ DCSummaryContent(report *database.DCSummaryReport) {
 			<p class="text-xs text-gray-400">{ strconv.Itoa(report.OfficialDraftDCs) } draft / { strconv.Itoa(report.OfficialIssuedDCs) } issued</p>
 		</div>
 		<div class="card text-center">
+			<p class="text-3xl font-bold text-violet-600">{ strconv.Itoa(report.TransferDraftDCs + report.TransferIssuedDCs + report.TransferSplittingDCs + report.TransferSplitDCs) }</p>
+			<p class="text-sm text-gray-500 mt-1">Transfer DCs</p>
+			<p class="text-xs text-gray-400">{ strconv.Itoa(report.TransferDraftDCs) } draft / { strconv.Itoa(report.TransferIssuedDCs) } issued / { strconv.Itoa(report.TransferSplittingDCs) } splitting / { strconv.Itoa(report.TransferSplitDCs) } split</p>
+		</div>
+		<div class="card text-center">
 			<p class="text-3xl font-bold text-amber-600">{ strconv.Itoa(report.TotalItemsDispatched) }</p>
 			<p class="text-sm text-gray-500 mt-1">Items Dispatched</p>
 		</div>
@@ -89,6 +94,22 @@ templ DCSummaryContent(report *database.DCSummaryReport) {
 				<tr>
 					<td class="px-5 py-3 text-sm text-gray-700">Official DCs (Issued)</td>
 					<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ strconv.Itoa(report.OfficialIssuedDCs) }</td>
+				</tr>
+				<tr>
+					<td class="px-5 py-3 text-sm text-gray-700">Transfer DCs (Draft)</td>
+					<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ strconv.Itoa(report.TransferDraftDCs) }</td>
+				</tr>
+				<tr>
+					<td class="px-5 py-3 text-sm text-gray-700">Transfer DCs (Issued)</td>
+					<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ strconv.Itoa(report.TransferIssuedDCs) }</td>
+				</tr>
+				<tr>
+					<td class="px-5 py-3 text-sm text-gray-700">Transfer DCs (Splitting)</td>
+					<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ strconv.Itoa(report.TransferSplittingDCs) }</td>
+				</tr>
+				<tr>
+					<td class="px-5 py-3 text-sm text-gray-700">Transfer DCs (Split)</td>
+					<td class="px-5 py-3 text-sm text-gray-900 text-right font-medium">{ strconv.Itoa(report.TransferSplitDCs) }</td>
 				</tr>
 				<tr>
 					<td class="px-5 py-3 text-sm text-gray-700">Total Items Dispatched</td>

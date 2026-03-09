@@ -1,0 +1,137 @@
+package transfer_dcs
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/narendhupati/dc-management-tool/components/partials"
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+templ SplitStep2(
+	user *models.User,
+	project *models.Project,
+	allProjects []*models.Project,
+	tdc *models.TransferDC,
+	selectedDestIDs []string,
+	selectedSummary string,
+	transporters []*models.Transporter,
+	csrfToken string,
+	validationErrors map[string]string,
+	prefillTransporter string,
+	prefillVehicle string,
+	prefillEway string,
+	prefillDocket string,
+	prefillNotes string,
+) {
+	<div class="max-w-4xl mx-auto">
+		@partials.WizardSteps([]partials.WizardStep{
+			{Number: 1, Label: "Destinations"},
+			{Number: 2, Label: "Vehicle"},
+			{Number: 3, Label: "Serials"},
+			{Number: 4, Label: "Review"},
+		}, 2)
+
+		<h1 class="text-2xl font-bold mb-2">Split Transfer DC: { tdc.DCNumber }</h1>
+		<p class="text-sm text-gray-500 mb-6">{ selectedSummary }</p>
+
+		<form
+			method="POST"
+			action={ templ.SafeURL(fmt.Sprintf("/projects/%d/transfer-dcs/%d/split/step3", project.ID, tdc.ID)) }
+			class="space-y-6"
+		>
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			<input type="hidden" name="transfer_dc_id" value={ strconv.Itoa(tdc.ID) }/>
+			<input type="hidden" name="parent_dc_id" value={ strconv.Itoa(tdc.DCID) }/>
+			for _, id := range selectedDestIDs {
+				<input type="hidden" name="destination_ids" value={ id }/>
+			}
+
+			<div class="bg-white shadow rounded-lg p-6 space-y-4">
+				<h2 class="text-lg font-medium text-gray-900">Vehicle & Transport Details</h2>
+
+				<div class="space-y-4">
+					<div>
+						<label class="block text-sm font-medium text-gray-700">Transporter Name <span class="text-red-500">*</span></label>
+						<select
+							name="transporter_name"
+							class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+						>
+							<option value="">— Select transporter —</option>
+							for _, t := range transporters {
+								<option
+									value={ t.CompanyName }
+									if t.CompanyName == prefillTransporter {
+										selected
+									}
+								>
+									{ t.CompanyName }
+								</option>
+							}
+						</select>
+						if validationErrors["transporter_name"] != "" {
+							<p class="mt-1 text-sm text-red-600">{ validationErrors["transporter_name"] }</p>
+						}
+					</div>
+
+					<div>
+						<label class="block text-sm font-medium text-gray-700">Vehicle Number</label>
+						<input
+							type="text"
+							name="vehicle_number"
+							value={ prefillVehicle }
+							class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+							placeholder="e.g. TS09-1234"
+						/>
+					</div>
+
+					<div class="grid grid-cols-2 gap-4">
+						<div>
+							<label class="block text-sm font-medium text-gray-700">E-Way Bill Number</label>
+							<input
+								type="text"
+								name="eway_bill_number"
+								value={ prefillEway }
+								class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+							/>
+						</div>
+						<div>
+							<label class="block text-sm font-medium text-gray-700">Docket Number</label>
+							<input
+								type="text"
+								name="docket_number"
+								value={ prefillDocket }
+								class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+							/>
+						</div>
+					</div>
+
+					<div>
+						<label class="block text-sm font-medium text-gray-700">Notes</label>
+						<textarea
+							name="notes"
+							rows="3"
+							class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+						>{ prefillNotes }</textarea>
+					</div>
+				</div>
+			</div>
+
+			<div class="flex justify-between">
+				<button
+					type="submit"
+					formaction={ templ.SafeURL(fmt.Sprintf("/projects/%d/transfer-dcs/%d/split/back-to-step1", project.ID, tdc.ID)) }
+					class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+				>
+					← Back
+				</button>
+				<button
+					type="submit"
+					class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+				>
+					Next: Serial Numbers →
+				</button>
+			</div>
+		</form>
+	</div>
+}

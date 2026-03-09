@@ -1,0 +1,158 @@
+package transfer_dcs
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/narendhupati/dc-management-tool/components/partials"
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+templ SplitStep4(
+	user *models.User,
+	project *models.Project,
+	allProjects []*models.Project,
+	tdc *models.TransferDC,
+	selectedDestIDs []string,
+	destinations []*models.TransferDCDestination,
+	products []SplitProductInfo,
+	expectedQty map[int]int,
+	transporterName string,
+	vehicleNumber string,
+	ewayBillNumber string,
+	docketNumber string,
+	notes string,
+	productSerials map[int][]string,
+	csrfToken string,
+) {
+	<div class="max-w-5xl mx-auto">
+		@partials.WizardSteps([]partials.WizardStep{
+			{Number: 1, Label: "Destinations"},
+			{Number: 2, Label: "Vehicle"},
+			{Number: 3, Label: "Serials"},
+			{Number: 4, Label: "Review"},
+		}, 4)
+
+		<h1 class="text-2xl font-bold mb-2">Review Split</h1>
+		<p class="text-sm text-gray-500 mb-6">Transfer DC: { tdc.DCNumber }</p>
+
+		<!-- Vehicle Info -->
+		<div class="bg-white shadow rounded-lg p-6 mb-6">
+			<h2 class="text-lg font-medium text-gray-900 mb-4">Vehicle Details</h2>
+			<div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+				<div>
+					<dt class="font-medium text-gray-500">Transporter</dt>
+					<dd class="mt-1 text-gray-900">{ transporterName }</dd>
+				</div>
+				if vehicleNumber != "" {
+					<div>
+						<dt class="font-medium text-gray-500">Vehicle</dt>
+						<dd class="mt-1 text-gray-900">{ vehicleNumber }</dd>
+					</div>
+				}
+				if ewayBillNumber != "" {
+					<div>
+						<dt class="font-medium text-gray-500">E-Way Bill</dt>
+						<dd class="mt-1 text-gray-900">{ ewayBillNumber }</dd>
+					</div>
+				}
+				if docketNumber != "" {
+					<div>
+						<dt class="font-medium text-gray-500">Docket</dt>
+						<dd class="mt-1 text-gray-900">{ docketNumber }</dd>
+					</div>
+				}
+				if notes != "" {
+					<div class="col-span-2">
+						<dt class="font-medium text-gray-500">Notes</dt>
+						<dd class="mt-1 text-gray-900">{ notes }</dd>
+					</div>
+				}
+			</div>
+		</div>
+
+		<!-- Destinations -->
+		<div class="bg-white shadow rounded-lg p-6 mb-6">
+			<h2 class="text-lg font-medium text-gray-900 mb-4">
+				Destinations ({ strconv.Itoa(len(destinations)) })
+			</h2>
+			<ul class="divide-y divide-gray-200">
+				for _, dest := range destinations {
+					<li class="py-2 flex items-center justify-between text-sm">
+						<span class="text-gray-900">{ dest.AddressName }</span>
+						<span class="text-gray-500">
+							for i, q := range dest.Quantities {
+								if i > 0 {
+									,&nbsp;
+								}
+								{ q.ProductName }: { strconv.Itoa(q.Quantity) }
+							}
+						</span>
+					</li>
+				}
+			</ul>
+		</div>
+
+		<!-- Products & Serials -->
+		<div class="bg-white shadow rounded-lg p-6 mb-6">
+			<h2 class="text-lg font-medium text-gray-900 mb-4">Products & Serial Numbers</h2>
+			for _, p := range products {
+				<div class="mb-4 last:mb-0">
+					<h3 class="text-sm font-medium text-gray-700 mb-1">
+						{ p.Name } — { strconv.Itoa(expectedQty[p.ID]) } units
+					</h3>
+					<p class="text-xs text-gray-500">
+						{ strings.Join(productSerials[p.ID], ", ") }
+					</p>
+				</div>
+			}
+		</div>
+
+		<!-- What will be created -->
+		<div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
+			<p class="text-sm text-indigo-800 font-medium">This will create:</p>
+			<ul class="mt-1 text-sm text-indigo-700 list-disc list-inside">
+				<li>1 Transit DC for this vehicle</li>
+				<li>{ strconv.Itoa(len(destinations)) } Official DC(s) — one per destination</li>
+			</ul>
+		</div>
+
+		<!-- Confirm Form -->
+		<form
+			method="POST"
+			action={ templ.SafeURL(fmt.Sprintf("/projects/%d/transfer-dcs/%d/split", project.ID, tdc.ID)) }
+		>
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			<input type="hidden" name="transfer_dc_id" value={ strconv.Itoa(tdc.ID) }/>
+			<input type="hidden" name="parent_dc_id" value={ strconv.Itoa(tdc.DCID) }/>
+			for _, id := range selectedDestIDs {
+				<input type="hidden" name="destination_ids" value={ id }/>
+			}
+			<input type="hidden" name="transporter_name" value={ transporterName }/>
+			<input type="hidden" name="vehicle_number" value={ vehicleNumber }/>
+			<input type="hidden" name="eway_bill_number" value={ ewayBillNumber }/>
+			<input type="hidden" name="docket_number" value={ docketNumber }/>
+			<input type="hidden" name="notes" value={ notes }/>
+			for _, p := range products {
+				<input type="hidden" name={ fmt.Sprintf("serials_%d", p.ID) } value={ strings.Join(productSerials[p.ID], "\n") }/>
+			}
+
+			<div class="flex justify-between">
+				<button
+					type="submit"
+					formaction={ templ.SafeURL(fmt.Sprintf("/projects/%d/transfer-dcs/%d/split/back-to-step3", project.ID, tdc.ID)) }
+					class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+				>
+					← Back
+				</button>
+				<button
+					type="submit"
+					class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+				>
+					Confirm & Create Split
+				</button>
+			</div>
+		</form>
+	</div>
+}

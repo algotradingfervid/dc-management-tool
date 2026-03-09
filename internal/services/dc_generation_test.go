@@ -41,6 +41,7 @@ func setupDCGenTestDB(t *testing.T) *sql.DB {
 			bill_from_address_id INTEGER,
 			dispatch_from_address_id INTEGER,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (project_id) REFERENCES projects(id)
 		)`,
 		`CREATE TABLE dc_transit_details (

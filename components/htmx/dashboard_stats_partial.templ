@@ -109,13 +109,15 @@ templ DashboardStatsPartial(props DashboardStatsPartialProps) {
 				<span>{ dashItoa(props.Stats.OfficialDCsDraft) } draft</span>
 			</div>
 		</div>
-		<!-- Total DCs -->
+		<!-- Transfer DCs -->
 		<div class="card">
-			<p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total DCs</p>
-			<p class="text-2xl font-bold text-gray-900 mt-1">{ dashItoa(props.Stats.TotalDCs) }</p>
-			<div class="flex gap-3 mt-1 text-xs text-gray-500">
-				<span>{ dashItoa(props.Stats.IssuedDCs) } issued</span>
-				<span>{ dashItoa(props.Stats.DraftDCs) } draft</span>
+			<p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Transfer DCs</p>
+			<p class="text-2xl font-bold text-violet-600 mt-1">{ dashItoa(props.Stats.TransferDCs) }</p>
+			<div class="flex flex-wrap gap-2 mt-1 text-xs text-gray-500">
+				<span>{ dashItoa(props.Stats.TransferDCsDraft) } draft</span>
+				<span>{ dashItoa(props.Stats.TransferDCsIssued) } issued</span>
+				<span class="text-orange-600">{ dashItoa(props.Stats.TransferDCsSplitting) } splitting</span>
+				<span class="text-green-600">{ dashItoa(props.Stats.TransferDCsSplit) } split</span>
 			</div>
 		</div>
 		<!-- Serial Numbers -->
@@ -176,7 +178,13 @@ templ DashboardStatsPartial(props DashboardStatsPartialProps) {
 						</svg>
 						New Shipment
 					</a>
-					<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/products", props.CurrentProject.ID)) } class="btn btn-ghost flex items-center gap-3 w-full text-gray-700">
+					<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/transfer-dcs/new", props.CurrentProject.ID)) } class="btn btn-ghost flex items-center gap-3 w-full text-violet-700 hover:bg-violet-100 hover:text-violet-900">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+						</svg>
+						New Split Shipment
+					</a>
+				<a href={ templ.SafeURL(fmt.Sprintf("/projects/%d/products", props.CurrentProject.ID)) } class="btn btn-ghost flex items-center gap-3 w-full text-gray-700">
 						<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
 						</svg>

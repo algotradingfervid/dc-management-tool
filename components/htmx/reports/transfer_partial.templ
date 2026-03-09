@@ -1,0 +1,19 @@
+package htmx
+
+import (
+	"github.com/narendhupati/dc-management-tool/internal/database"
+	pagesreports "github.com/narendhupati/dc-management-tool/components/pages/reports"
+)
+
+// TransferPartialProps holds props for the Transfer DC report fragment.
+type TransferPartialProps struct {
+	Rows     []*database.TransferDCReportRow
+	BasePath string
+	Range    string
+	FromDate string
+	ToDate   string
+}
+
+templ TransferPartial(props TransferPartialProps) {
+	@pagesreports.TransferContent(props.Rows, props.BasePath, props.Range, props.FromDate, props.ToDate)
+}

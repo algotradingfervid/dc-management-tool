@@ -26,6 +26,13 @@ type DashboardStats struct {
 	OfficialDCsDraft  int
 	OfficialDCsIssued int
 
+	// Transfer DC breakdown
+	TransferDCs         int
+	TransferDCsDraft    int
+	TransferDCsIssued   int
+	TransferDCsSplitting int
+	TransferDCsSplit    int
+
 	// Serial numbers
 	TotalSerialNumbers int
 }
@@ -104,6 +111,13 @@ func GetDashboardStats(projectID int, startDate, endDate *time.Time) (*Dashboard
 	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='transit' AND status='issued'"+dateFilter, buildArgs()...).Scan(&stats.TransitDCsIssued)
 	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='official' AND status='draft'"+dateFilter, buildArgs()...).Scan(&stats.OfficialDCsDraft)
 	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='official' AND status='issued'"+dateFilter, buildArgs()...).Scan(&stats.OfficialDCsIssued)
+
+	// Transfer DC breakdown
+	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='transfer'"+dateFilter, buildArgs()...).Scan(&stats.TransferDCs)
+	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='transfer' AND status='draft'"+dateFilter, buildArgs()...).Scan(&stats.TransferDCsDraft)
+	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='transfer' AND status='issued'"+dateFilter, buildArgs()...).Scan(&stats.TransferDCsIssued)
+	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='transfer' AND status='splitting'"+dateFilter, buildArgs()...).Scan(&stats.TransferDCsSplitting)
+	_ = DB.QueryRow("SELECT COUNT(*) FROM delivery_challans WHERE project_id = ? AND dc_type='transfer' AND status='split'"+dateFilter, buildArgs()...).Scan(&stats.TransferDCsSplit)
 
 	// DCs this month (bounds computed in Go)
 	now := time.Now()

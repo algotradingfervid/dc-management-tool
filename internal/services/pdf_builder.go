@@ -36,7 +36,7 @@ const (
 	marginL     = 10.0
 	marginR     = 10.0
 	marginT     = 10.0
-	marginB     = 10.0
+	marginB     = 14.0
 	contentW    = pageW - marginL - marginR // 190mm
 	lineH       = 4.0                       // default line height mm
 	cellPad     = 1.5                       // cell padding mm
@@ -69,6 +69,7 @@ type TransitDCPDFData struct {
 	HalfTax           float64
 	TotalQty          int
 	AmountInWords     string
+	TransferDCNumber  string // parent Transfer DC number (for split transit DCs)
 }
 
 // OfficialDCPDFData holds all data needed to generate an Official DC PDF.
@@ -101,11 +102,11 @@ type tableCol struct {
 
 // GenerateTransitDCPDF produces a PDF for a Transit Delivery Challan.
 func GenerateTransitDCPDF(data *TransitDCPDFData) ([]byte, error) {
-	pdf := newPDF()
+	pdf := newPDF(&pdfHeaderConfig{Project: data.Project, Company: data.Company})
 
 	drawCompanyHeader(pdf, data.Project, data.Company, false, 0)
 	drawDCTitle(pdf, "Delivery Challan", false)
-	drawDCAndPOGrid(pdf, data.DC, data.TransitDetails, data.Project)
+	drawDCAndPOGrid(pdf, data.DC, data.TransitDetails, data.Project, data.TransferDCNumber)
 	drawTransitAddressGrid(pdf, data.Company, data.BillFromAddress, data.DispatchFromAddress, data.BillToAddress, data.ShipToAddress, data.BillFromConfig, data.DispatchFromConfig, data.BillToConfig, data.ShipToConfig)
 	drawTransitProductTable(pdf, data.LineItems, data.TotalQty, data.TotalTaxable, data.TotalTax, data.GrandTotal)
 	drawTaxSummary(pdf, data.TotalTaxable, data.HalfTax, data.RoundOff, data.RoundedTotal)
@@ -116,13 +117,20 @@ func GenerateTransitDCPDF(data *TransitDCPDFData) ([]byte, error) {
 	}
 
 	drawTransitSignatures(pdf, data.Company, data.Project)
+	drawSerialNumbersAnnexure(pdf, data.LineItems, 1)
 
 	return pdfToBytes(pdf)
 }
 
 // GenerateOfficialDCPDF produces a PDF for an Official Delivery Challan.
 func GenerateOfficialDCPDF(data *OfficialDCPDFData) ([]byte, error) {
-	pdf := newPDF()
+	pdf := newPDF(&pdfHeaderConfig{
+		Project:    data.Project,
+		Company:    data.Company,
+		ShowEmail:  true,
+		QRReserved: 25,
+		QRDCNumber: data.DC.DCNumber,
+	})
 
 	drawCompanyHeader(pdf, data.Project, data.Company, true, 25)
 	drawQRCode(pdf, data.DC.DCNumber)
@@ -153,7 +161,16 @@ func GenerateOfficialDCPDF(data *OfficialDCPDFData) ([]byte, error) {
 
 // --- PDF creation and output ---
 
-func newPDF() *fpdf.Fpdf {
+// pdfHeaderConfig bundles header/footer settings for newPDF.
+type pdfHeaderConfig struct {
+	Project    *models.Project
+	Company    *models.CompanySettings
+	ShowEmail  bool
+	QRReserved float64
+	QRDCNumber string // non-empty → draw QR code on page 1 only (Official DC)
+}
+
+func newPDF(hdr *pdfHeaderConfig) *fpdf.Fpdf {
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.SetMargins(marginL, marginT, marginR)
 	pdf.SetAutoPageBreak(true, marginB)
@@ -161,6 +178,25 @@ func newPDF() *fpdf.Fpdf {
 	// Register embedded UTF-8 fonts
 	pdf.AddUTF8FontFromBytes("dejavu", "", dejaVuSansRegular)
 	pdf.AddUTF8FontFromBytes("dejavu", "B", dejaVuSansBold)
+
+	// Automatic company header on every page
+	if hdr != nil {
+		pdf.SetHeaderFunc(func() {
+			drawCompanyHeader(pdf, hdr.Project, hdr.Company, hdr.ShowEmail, hdr.QRReserved)
+			if hdr.QRDCNumber != "" && pdf.PageNo() == 1 {
+				drawQRCode(pdf, hdr.QRDCNumber)
+			}
+		})
+	}
+
+	// Page number footer on every page
+	pdf.AliasNbPages("{totalpages}")
+	pdf.SetFooterFunc(func() {
+		pdf.SetY(-marginB)
+		setFont(pdf, "", 7)
+		setColor(pdf, colorBlack)
+		pdf.CellFormat(contentW, lineH, fmt.Sprintf("Page %d of {totalpages}", pdf.PageNo()), "", 0, "C", false, 0, "")
+	})
 
 	pdf.AddPage()
 	return pdf
@@ -486,14 +522,23 @@ func drawDCTitle(pdf *fpdf.Fpdf, title string, doubleBorder bool) {
 
 // --- Section: DC Details + PO Details (side by side) ---
 
-func drawDCAndPOGrid(pdf *fpdf.Fpdf, dc *models.DeliveryChallan, td *models.DCTransitDetails, project *models.Project) {
+func drawDCAndPOGrid(pdf *fpdf.Fpdf, dc *models.DeliveryChallan, td *models.DCTransitDetails, project *models.Project, transferDCNumber ...string) {
 	y := pdf.GetY()
 	colW := contentW/2 - 2
 	gap := 4.0
 	innerW := colW - 2*cellPad
 
+	// Resolve optional Transfer DC number
+	refDCNumber := ""
+	if len(transferDCNumber) > 0 {
+		refDCNumber = transferDCNumber[0]
+	}
+
 	// Count lines for left box (DC details)
 	leftLines := 1 // DC No (always)
+	if refDCNumber != "" {
+		leftLines++
+	}
 	if dc.ChallanDate != nil {
 		leftLines++
 	}
@@ -532,6 +577,10 @@ func drawDCAndPOGrid(pdf *fpdf.Fpdf, dc *models.DeliveryChallan, td *models.DCTr
 	drawBorderedRect(pdf, marginL, y, colW, boxH)
 	pdf.SetXY(marginL+cellPad, y+cellPad)
 	kvRow(pdf, "DC No:", dc.DCNumber, 24, innerW)
+	if refDCNumber != "" {
+		pdf.SetX(marginL + cellPad)
+		kvRow(pdf, "Ref DC:", refDCNumber, 24, innerW)
+	}
 	if dc.ChallanDate != nil {
 		pdf.SetX(marginL + cellPad)
 		kvRow(pdf, "Date:", *dc.ChallanDate, 24, innerW)
@@ -688,8 +737,7 @@ func drawAddressBox(pdf *fpdf.Fpdf, x, y, w float64, title string, lines []strin
 func drawTransitProductTable(pdf *fpdf.Fpdf, items []models.DCLineItem, totalQty int, totalTaxable, totalTax, grandTotal float64) {
 	cols := []tableCol{
 		{"S.No", 9, "C"},
-		{"Description", 48, "L"},
-		{"Serials", 22, "L"},
+		{"Description", 70, "L"},
 		{"UoM", 9, "C"},
 		{"HSN", 14, "C"},
 		{"Qty", 9, "C"},
@@ -710,12 +758,10 @@ func drawTransitProductTable(pdf *fpdf.Fpdf, items []models.DCLineItem, totalQty
 		if li.ItemDescription != "" {
 			desc += "\n" + li.ItemDescription
 		}
-		serials := strings.Join(li.SerialNumbers, "\n")
 
 		values := []string{
 			fmt.Sprintf("%d", i+1),
 			desc,
-			serials,
 			li.UoM,
 			li.HSNCode,
 			fmt.Sprintf("%d", li.Quantity),
@@ -731,7 +777,7 @@ func drawTransitProductTable(pdf *fpdf.Fpdf, items []models.DCLineItem, totalQty
 
 	// Totals row
 	totals := []string{
-		"", "", "Total", "", "",
+		"", "Total", "", "",
 		fmt.Sprintf("%d", totalQty),
 		"", "Rs." + fmtINR(totalTaxable), "",
 		"Rs." + fmtINR(totalTax),
@@ -936,6 +982,64 @@ func drawTransitSignatures(pdf *fpdf.Fpdf, company *models.CompanySettings, proj
 	}
 }
 
+// --- Section: Serial Numbers Annexure ---
+
+func drawSerialNumbersAnnexure(pdf *fpdf.Fpdf, items []models.DCLineItem, annexureNumber int) {
+	// Check if any line item has serial numbers
+	hasSerials := false
+	for _, li := range items {
+		if len(li.SerialNumbers) > 0 {
+			hasSerials = true
+			break
+		}
+	}
+	if !hasSerials {
+		return
+	}
+
+	pdf.AddPage()
+
+	// Annexure title — centered, matching Annexure-1 style
+	setFont(pdf, "B", 11)
+	setColor(pdf, colorBlack)
+	pdf.CellFormat(contentW, 6, fmt.Sprintf("Annexure - %d", annexureNumber), "", 1, "C", false, 0, "")
+	spacer(pdf, 3)
+
+	// Subtitle
+	setFont(pdf, "B", 9)
+	setColor(pdf, colorBlack)
+	pdf.CellFormat(contentW, lineH+1, "SERIAL NUMBERS", "", 1, "C", false, 0, "")
+	spacer(pdf, 3)
+
+	// Table: #, Product, Serial Numbers
+	snoW := 8.0
+	productW := 60.0
+	serialsW := tblW - snoW - productW
+
+	cols := []tableCol{
+		{"#", snoW, "C"},
+		{"Product", productW, "L"},
+		{"Serial Numbers", serialsW, "L"},
+	}
+
+	drawTableHeaderRow(pdf, cols)
+
+	row := 1
+	for _, li := range items {
+		if len(li.SerialNumbers) == 0 {
+			continue
+		}
+		serialsText := strings.Join(li.SerialNumbers, ", ")
+		values := []string{
+			fmt.Sprintf("%d", row),
+			li.ItemName,
+			serialsText,
+		}
+		drawTableDataRow(pdf, cols, values, false)
+		row++
+	}
+	spacer(pdf, 4)
+}
 
 // --- Section: Official Product Table ---
 

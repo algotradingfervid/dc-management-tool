@@ -61,7 +61,7 @@ func setupTestDB(t *testing.T) *sql.DB {
 		CREATE TABLE dc_number_sequences (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			project_id INTEGER NOT NULL,
-			dc_type TEXT NOT NULL CHECK(dc_type IN ('transit', 'official')),
+			dc_type TEXT NOT NULL CHECK(dc_type IN ('transit', 'official', 'transfer')),
 			financial_year TEXT NOT NULL,
 			next_sequence INTEGER NOT NULL DEFAULT 1,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -100,6 +100,8 @@ func TestFormatDCNumber(t *testing.T) {
 		{"PWD/AP", "2526", DCTypeTransit, 5, "PWD/AP-TDC-2526-005"},
 		{"TEST", "2526", DCTypeOfficial, 999, "TEST-ODC-2526-999"},
 		{"X", "2627", DCTypeTransit, 1000, "X-TDC-2627-1000"},
+		{"SCP", "2526", DCTypeTransfer, 1, "SCP-STDC-2526-001"},
+		{"PWD/AP", "2526", DCTypeTransfer, 42, "PWD/AP-STDC-2526-042"},
 	}
 
 	for _, tt := range tests {
@@ -126,6 +128,8 @@ func TestParseDCNumber(t *testing.T) {
 		{"SCP-ODC-2425-012", "SCP", "2425", DCTypeOfficial, 12, false},
 		{"PWD/AP-TDC-2526-005", "PWD/AP", "2526", DCTypeTransit, 5, false},
 		{"X-TDC-2627-1000", "X", "2627", DCTypeTransit, 1000, false},
+		{"SCP-STDC-2526-001", "SCP", "2526", DCTypeTransfer, 1, false},
+		{"PWD/AP-STDC-2526-042", "PWD/AP", "2526", DCTypeTransfer, 42, false},
 		{"INVALID", "", "", "", 0, true},
 		{"", "", "", "", 0, true},
 		{"SCP-XDC-2425-001", "", "", "", 0, true},
@@ -154,7 +158,7 @@ func TestParseDCNumber(t *testing.T) {
 }
 
 func TestIsValidDCNumber(t *testing.T) {
-	valid := []string{"SCP-TDC-2425-001", "PWD/AP-ODC-2526-100", "X-TDC-2627-1000"}
+	valid := []string{"SCP-TDC-2425-001", "PWD/AP-ODC-2526-100", "X-TDC-2627-1000", "SCP-STDC-2526-001"}
 	invalid := []string{"", "INVALID", "SCP-XDC-2425-001", "SCP-TDC-25-001"}
 
 	for _, dc := range valid {
@@ -349,7 +353,7 @@ func TestGenerateDCNumber_Concurrent(t *testing.T) {
 	db.Exec(`CREATE TABLE dc_number_sequences (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		project_id INTEGER NOT NULL,
-		dc_type TEXT NOT NULL CHECK(dc_type IN ('transit', 'official')),
+		dc_type TEXT NOT NULL CHECK(dc_type IN ('transit', 'official', 'transfer')),
 		financial_year TEXT NOT NULL,
 		next_sequence INTEGER NOT NULL DEFAULT 1,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -452,6 +456,7 @@ func TestFormatDCNumberConfigurable(t *testing.T) {
 		{"with project code", "{PREFIX}/{PROJECT_CODE}/{FY}/{SEQ}", "FS", "GSWS", "2526", DCTypeTransit, 1, 3, "FS/GSWS/25-26/001"},
 		{"4-digit padding", "{PREFIX}-{TYPE}-{FY}-{SEQ}", "SCP", "SCP", "2526", DCTypeOfficial, 1, 4, "SCP-ODC-25-26-0001"},
 		{"empty format defaults", "", "SCP", "SCP", "2526", DCTypeTransit, 1, 3, "SCP-TDC-25-26-001"},
+		{"transfer type", "{PREFIX}-{TYPE}-{FY}-{SEQ}", "SCP", "SCP", "2526", DCTypeTransfer, 1, 3, "SCP-STDC-25-26-001"},
 	}
 
 	for _, tt := range tests {
@@ -506,6 +511,122 @@ func TestGenerateDCNumber_CustomFormat(t *testing.T) {
 		t.Fatalf("failed to generate DC: %v", err)
 	}
 	expected := "FS/25-26/TDC/0001"
+	if dc != expected {
+		t.Errorf("got %s; want %s", dc, expected)
+	}
+}
+
+func TestDCTypeTransferConstant(t *testing.T) {
+	if DCTypeTransfer != "transfer" {
+		t.Errorf("DCTypeTransfer = %s; want transfer", DCTypeTransfer)
+	}
+}
+
+func TestDCTypeCodeMapping(t *testing.T) {
+	code, ok := dcTypeCode[DCTypeTransfer]
+	if !ok {
+		t.Fatal("dcTypeCode missing transfer entry")
+	}
+	if code != "STDC" {
+		t.Errorf("dcTypeCode[transfer] = %s; want STDC", code)
+	}
+
+	typ, ok := dcCodeToType["STDC"]
+	if !ok {
+		t.Fatal("dcCodeToType missing STDC entry")
+	}
+	if typ != DCTypeTransfer {
+		t.Errorf("dcCodeToType[STDC] = %s; want transfer", typ)
+	}
+}
+
+func TestGenerateDCNumber_Transfer(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := insertTestProject(t, db, "Test Project", "SCP")
+	date := time.Date(2025, time.June, 15, 0, 0, 0, 0, time.UTC)
+
+	dc1, err := GenerateDCNumberForDate(db, projectID, DCTypeTransfer, date)
+	if err != nil {
+		t.Fatalf("failed to generate transfer DC number: %v", err)
+	}
+	if dc1 != "SCP-STDC-2526-001" {
+		t.Errorf("first transfer DC = %s; want SCP-STDC-2526-001", dc1)
+	}
+
+	dc2, err := GenerateDCNumberForDate(db, projectID, DCTypeTransfer, date)
+	if err != nil {
+		t.Fatalf("failed to generate second transfer DC number: %v", err)
+	}
+	if dc2 != "SCP-STDC-2526-002" {
+		t.Errorf("second transfer DC = %s; want SCP-STDC-2526-002", dc2)
+	}
+}
+
+func TestGenerateDCNumber_TransferSequenceIndependent(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := insertTestProject(t, db, "Test Project", "SCP")
+	date := time.Date(2025, time.June, 15, 0, 0, 0, 0, time.UTC)
+
+	transit, err := GenerateDCNumberForDate(db, projectID, DCTypeTransit, date)
+	if err != nil {
+		t.Fatalf("transit failed: %v", err)
+	}
+	official, err := GenerateDCNumberForDate(db, projectID, DCTypeOfficial, date)
+	if err != nil {
+		t.Fatalf("official failed: %v", err)
+	}
+	transfer, err := GenerateDCNumberForDate(db, projectID, DCTypeTransfer, date)
+	if err != nil {
+		t.Fatalf("transfer failed: %v", err)
+	}
+
+	if transit != "SCP-TDC-2526-001" {
+		t.Errorf("transit = %s; want SCP-TDC-2526-001", transit)
+	}
+	if official != "SCP-ODC-2526-001" {
+		t.Errorf("official = %s; want SCP-ODC-2526-001", official)
+	}
+	if transfer != "SCP-STDC-2526-001" {
+		t.Errorf("transfer = %s; want SCP-STDC-2526-001", transfer)
+	}
+}
+
+func TestPeekNextDCNumber_Transfer(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := insertTestProject(t, db, "Test Project", "SCP")
+
+	peek, err := PeekNextDCNumber(db, projectID, DCTypeTransfer)
+	if err != nil {
+		t.Fatalf("peek failed: %v", err)
+	}
+	if peek != "SCP-STDC-"+GetFinancialYear(time.Now())+"-001" {
+		t.Errorf("peek = %s; unexpected", peek)
+	}
+}
+
+func TestGenerateDCNumber_TransferCustomFormat(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	result, err := db.Exec(`INSERT INTO projects (name, dc_prefix, dc_number_format, seq_padding) VALUES ('Test', 'FS', '{PREFIX}/{FY}/{TYPE}/{SEQ}', 4)`)
+	if err != nil {
+		t.Fatalf("failed to insert project: %v", err)
+	}
+	id, _ := result.LastInsertId()
+	projectID := int(id)
+
+	date := time.Date(2025, time.June, 15, 0, 0, 0, 0, time.UTC)
+	dc, err := GenerateDCNumberForDate(db, projectID, DCTypeTransfer, date)
+	if err != nil {
+		t.Fatalf("failed to generate DC: %v", err)
+	}
+	expected := "FS/25-26/STDC/0001"
 	if dc != expected {
 		t.Errorf("got %s; want %s", dc, expected)
 	}

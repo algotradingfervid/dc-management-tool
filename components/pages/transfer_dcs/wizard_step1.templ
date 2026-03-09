@@ -1,0 +1,295 @@
+package transfer_dcs
+
+import (
+	"fmt"
+
+	"github.com/narendhupati/dc-management-tool/components/partials"
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+templ WizardStep1(
+	user *models.User,
+	currentProject *models.Project,
+	allProjects []*models.Project,
+	templates []*models.DCTemplate,
+	transporters []*models.Transporter,
+	hubAddresses []*models.Address,
+	flashType string,
+	flashMessage string,
+	csrfToken string,
+	prefill *TransferStep1Prefill,
+	tdcID int,
+) {
+	<div class="max-w-4xl mx-auto">
+		@partials.WizardSteps([]partials.WizardStep{
+			{Number: 1, Label: "Configuration"},
+			{Number: 2, Label: "Addresses"},
+			{Number: 3, Label: "Quantities"},
+			{Number: 4, Label: "Serial Numbers"},
+			{Number: 5, Label: "Review"},
+		}, 1)
+		if tdcID > 0 {
+			<h1 class="text-2xl font-bold mb-6">Edit Transfer DC — Step 1: Configuration</h1>
+		} else {
+			<h1 class="text-2xl font-bold mb-6">Create Transfer DC — Step 1: Configuration</h1>
+		}
+		<form
+			method="POST"
+			action={ templ.SafeURL(transferWizardURL(currentProject.ID, tdcID, "/step2")) }
+		>
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			<div class="bg-white shadow rounded-lg p-6 space-y-4">
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Template</label>
+					<select name="template_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+						<option value="">Select a template...</option>
+						for _, t := range templates {
+							if prefill != nil && prefill.TemplateID != nil && *prefill.TemplateID == t.ID {
+								<option value={ fmt.Sprintf("%d", t.ID) } selected>{ t.Name }</option>
+							} else {
+								<option value={ fmt.Sprintf("%d", t.ID) }>{ t.Name }</option>
+							}
+						}
+					</select>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-1">Hub / Transit Location</label>
+					<div id="hub-picker" class="relative" data-addresses={ hubAddressesJSON(hubAddresses) } data-preselected-id={ hubPreselectedJSON(prefill) }>
+						<div
+							id="hub-tags"
+							class="flex flex-wrap gap-1.5 min-h-[42px] p-2 border border-gray-300 rounded-lg bg-white cursor-text focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500"
+							onclick="document.getElementById('hub-search').focus()"
+						>
+							<input
+								type="text"
+								id="hub-search"
+								placeholder="Type to search hub locations..."
+								autocomplete="off"
+								class="flex-1 min-w-[200px] border-0 p-0 text-sm focus:ring-0 focus:outline-none placeholder-gray-400"
+							/>
+						</div>
+						<div id="hub-hidden-inputs"></div>
+						<div id="hub-dropdown" class="hidden absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"></div>
+					</div>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Challan Date</label>
+					<input type="date" name="challan_date" value={ prefillStr(prefill, func(p *TransferStep1Prefill) string { return p.ChallanDate }) } required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Transporter</label>
+					<select name="transporter_id" id="transporter-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+						<option value="">-- None --</option>
+						for _, t := range transporters {
+							if prefill != nil && prefill.TransporterID == t.ID {
+								<option value={ fmt.Sprintf("%d", t.ID) } data-vehicles={ vehiclesJSON(t.Vehicles) } selected>{ t.CompanyName }</option>
+							} else {
+								<option value={ fmt.Sprintf("%d", t.ID) } data-vehicles={ vehiclesJSON(t.Vehicles) }>{ t.CompanyName }</option>
+							}
+						}
+					</select>
+					<input type="hidden" name="transporter_name" id="transporter-name-hidden" value={ prefillStr(prefill, func(p *TransferStep1Prefill) string { return p.TransporterName }) }/>
+					<input type="hidden" id="prefill-vehicle-number" value={ prefillStr(prefill, func(p *TransferStep1Prefill) string { return p.VehicleNumber }) }/>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Vehicle</label>
+					<select name="vehicle_number" id="vehicle-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+						<option value="">-- Select transporter first --</option>
+					</select>
+					<input type="hidden" name="driver_name" id="driver-name-hidden"/>
+					<input type="hidden" name="driver_phone" id="driver-phone-hidden"/>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">E-Way Bill Number</label>
+					<input type="text" name="eway_bill_number" value={ prefillStr(prefill, func(p *TransferStep1Prefill) string { return p.EwayBillNumber }) } class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Docket Number</label>
+					<input type="text" name="docket_number" value={ prefillStr(prefill, func(p *TransferStep1Prefill) string { return p.DocketNumber }) } class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"/>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Tax Type</label>
+					<select name="tax_type" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+						<option value="cgst_sgst"
+							if prefill != nil && prefill.TaxType == "cgst_sgst" {
+								selected
+							}
+						>CGST + SGST</option>
+						<option value="igst"
+							if prefill != nil && prefill.TaxType == "igst" {
+								selected
+							}
+						>IGST</option>
+					</select>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700">Reverse Charge</label>
+					<select name="reverse_charge" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+						<option value="N"
+							if prefill != nil && prefill.ReverseCharge == "N" {
+								selected
+							}
+						>No</option>
+						<option value="Y"
+							if prefill != nil && prefill.ReverseCharge == "Y" {
+								selected
+							}
+						>Yes</option>
+					</select>
+				</div>
+			</div>
+			<div class="mt-6 flex justify-end">
+				<button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">
+					Next: Select Addresses →
+				</button>
+			</div>
+		</form>
+	</div>
+	<script>
+		// Hub location searchable picker (single-select)
+		(function() {
+			var picker = document.getElementById('hub-picker');
+			var allAddresses = JSON.parse(picker.dataset.addresses || '[]');
+			var searchInput = document.getElementById('hub-search');
+			var dropdown = document.getElementById('hub-dropdown');
+			var tagsContainer = document.getElementById('hub-tags');
+			var hiddenContainer = document.getElementById('hub-hidden-inputs');
+			var selectedAddr = null;
+
+			function escapeHtml(str) {
+				var div = document.createElement('div');
+				div.textContent = str;
+				return div.innerHTML;
+			}
+
+			function render() {
+				tagsContainer.querySelectorAll('.hub-tag').forEach(function(el) { el.remove(); });
+				hiddenContainer.innerHTML = '';
+
+				if (selectedAddr) {
+					var tag = document.createElement('span');
+					tag.className = 'hub-tag inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800';
+					tag.innerHTML = '<span>' + escapeHtml(selectedAddr.name) + '</span>' +
+						'<button type="button" class="ml-1 hover:text-blue-600 font-bold" aria-label="Remove">&times;</button>';
+					tag.querySelector('button').addEventListener('click', function(e) {
+						e.stopPropagation();
+						selectedAddr = null;
+						render();
+						searchInput.focus();
+					});
+					tagsContainer.insertBefore(tag, searchInput);
+
+					var input = document.createElement('input');
+					input.type = 'hidden';
+					input.name = 'hub_address_id';
+					input.value = selectedAddr.id;
+					hiddenContainer.appendChild(input);
+
+					searchInput.placeholder = '';
+				} else {
+					searchInput.placeholder = 'Type to search hub locations...';
+				}
+			}
+
+			function selectAddress(addr) {
+				selectedAddr = addr;
+				searchInput.value = '';
+				dropdown.classList.add('hidden');
+				render();
+				searchInput.focus();
+			}
+
+			function showDropdown(query) {
+				var filtered = allAddresses.filter(function(a) {
+					if (selectedAddr && a.id === selectedAddr.id) return false;
+					if (!query) return true;
+					return a.name.toLowerCase().indexOf(query.toLowerCase()) !== -1;
+				});
+				if (filtered.length === 0) {
+					dropdown.innerHTML = '<div class="px-3 py-2 text-sm text-gray-500">No matches found</div>';
+				} else {
+					dropdown.innerHTML = '';
+					filtered.slice(0, 20).forEach(function(addr) {
+						var item = document.createElement('div');
+						item.className = 'px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 transition-colors';
+						item.textContent = addr.name;
+						item.addEventListener('mousedown', function(e) {
+							e.preventDefault();
+							selectAddress(addr);
+						});
+						dropdown.appendChild(item);
+					});
+					if (filtered.length > 20) {
+						var more = document.createElement('div');
+						more.className = 'px-3 py-1.5 text-xs text-gray-400 border-t';
+						more.textContent = '+ ' + (filtered.length - 20) + ' more — refine your search';
+						dropdown.appendChild(more);
+					}
+				}
+				dropdown.classList.remove('hidden');
+			}
+
+			searchInput.addEventListener('focus', function() { showDropdown(this.value); });
+			searchInput.addEventListener('input', function() { showDropdown(this.value); });
+			searchInput.addEventListener('blur', function() {
+				setTimeout(function() { dropdown.classList.add('hidden'); }, 150);
+			});
+			searchInput.addEventListener('keydown', function(e) {
+				if (e.key === 'Backspace' && this.value === '' && selectedAddr) {
+					selectedAddr = null;
+					render();
+				}
+			});
+
+			render();
+			// Prefill from data attribute
+			var preselectedId = parseInt(picker.dataset.preselectedId, 10);
+			if (preselectedId) {
+				var addr = allAddresses.find(function(a) { return a.id === preselectedId; });
+				if (addr) selectAddress(addr);
+			}
+		})();
+
+		// Transporter / vehicle logic
+		document.getElementById('transporter-select').addEventListener('change', function() {
+			var opt = this.options[this.selectedIndex];
+			document.getElementById('transporter-name-hidden').value = opt.text !== '-- None --' ? opt.text : '';
+			var vehicleSelect = document.getElementById('vehicle-select');
+			vehicleSelect.innerHTML = '<option value="">-- Select vehicle --</option>';
+			document.getElementById('driver-name-hidden').value = '';
+			document.getElementById('driver-phone-hidden').value = '';
+			if (!opt.value) return;
+			try {
+				var vehicles = JSON.parse(opt.getAttribute('data-vehicles') || '[]');
+				vehicles.forEach(function(v) {
+					var o = document.createElement('option');
+					o.value = v.vehicle_number;
+					o.textContent = v.vehicle_number + (v.vehicle_type ? ' (' + v.vehicle_type + ')' : '');
+					o.setAttribute('data-driver', v.driver_name || '');
+					o.setAttribute('data-phone', v.driver_phone1 || '');
+					vehicleSelect.appendChild(o);
+				});
+			} catch(e) {}
+		});
+		document.getElementById('vehicle-select').addEventListener('change', function() {
+			var opt = this.options[this.selectedIndex];
+			document.getElementById('driver-name-hidden').value = opt.getAttribute('data-driver') || '';
+			document.getElementById('driver-phone-hidden').value = opt.getAttribute('data-phone') || '';
+		});
+		// Auto-populate vehicle dropdown and pre-select vehicle when editing
+		(function() {
+			var transporterSelect = document.getElementById('transporter-select');
+			var prefillVehicle = document.getElementById('prefill-vehicle-number');
+			if (transporterSelect.value && prefillVehicle && prefillVehicle.value) {
+				// Trigger change to populate vehicles
+				transporterSelect.dispatchEvent(new Event('change'));
+				// Select the prefilled vehicle
+				var vehicleSelect = document.getElementById('vehicle-select');
+				vehicleSelect.value = prefillVehicle.value;
+				if (vehicleSelect.value === prefillVehicle.value) {
+					vehicleSelect.dispatchEvent(new Event('change'));
+				}
+			}
+		})();
+	</script>
+}

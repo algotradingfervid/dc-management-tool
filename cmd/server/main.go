@@ -266,6 +266,51 @@ func main() {
 		projectRoutes.POST("/shipments/:gid/edit/back-to-step4", handlers.EditBackToStep4)
 		projectRoutes.POST("/shipments/:gid/edit", handlers.SaveShipmentEdit)
 
+		// Transfer DC list & detail
+		projectRoutes.GET("/transfer-dcs", handlers.ListTransferDCs)
+		projectRoutes.POST("/transfer-dcs/:dcid/issue", handlers.IssueTransferDC)
+		projectRoutes.DELETE("/transfer-dcs/:dcid", handlers.DeleteTransferDCHandler)
+
+		// Transfer DC Wizard routes
+		projectRoutes.GET("/transfer-dcs/new", handlers.ShowCreateTransferWizard)
+		projectRoutes.POST("/transfer-dcs/new/step2", handlers.TransferWizardStep2)
+		projectRoutes.POST("/transfer-dcs/new/step3", handlers.TransferWizardQuantityStep)
+		projectRoutes.POST("/transfer-dcs/new/step4", handlers.TransferWizardStep4)
+		projectRoutes.POST("/transfer-dcs/new/step5", handlers.TransferWizardStep5)
+		projectRoutes.POST("/transfer-dcs", handlers.CreateTransferDC)
+		projectRoutes.POST("/transfer-dcs/new/back-to-step1", handlers.TransferBackToStep1)
+		projectRoutes.POST("/transfer-dcs/new/back-to-step2", handlers.TransferBackToStep2)
+		projectRoutes.POST("/transfer-dcs/new/back-to-step3", handlers.TransferBackToStep3)
+		projectRoutes.POST("/transfer-dcs/new/back-to-step4", handlers.TransferBackToStep4)
+
+		// Transfer DC Edit Wizard routes
+		projectRoutes.GET("/transfer-dcs/:tdcid/edit", handlers.ShowEditTransferWizard)
+		projectRoutes.POST("/transfer-dcs/:tdcid/edit/step2", handlers.EditTransferWizardStep2)
+		projectRoutes.POST("/transfer-dcs/:tdcid/edit/step3", handlers.EditTransferWizardQuantityStep)
+		projectRoutes.POST("/transfer-dcs/:tdcid/edit/step4", handlers.EditTransferWizardStep4)
+		projectRoutes.POST("/transfer-dcs/:tdcid/edit/step5", handlers.EditTransferWizardStep5)
+		projectRoutes.POST("/transfer-dcs/:tdcid/edit", handlers.SaveTransferEdit)
+		projectRoutes.POST("/transfer-dcs/:tdcid/edit/back-to-step1", handlers.EditTransferBackToStep1)
+		projectRoutes.POST("/transfer-dcs/:tdcid/edit/back-to-step2", handlers.EditTransferBackToStep2)
+		projectRoutes.POST("/transfer-dcs/:tdcid/edit/back-to-step3", handlers.EditTransferBackToStep3)
+		projectRoutes.POST("/transfer-dcs/:tdcid/edit/back-to-step4", handlers.EditTransferBackToStep4)
+
+		// Split wizard routes
+		projectRoutes.GET("/transfer-dcs/:tdcid/split", handlers.ShowSplitWizardStep1)
+		projectRoutes.POST("/transfer-dcs/:tdcid/split/step2", handlers.SplitWizardStep2)
+		projectRoutes.POST("/transfer-dcs/:tdcid/split/step3", handlers.SplitWizardStep3)
+		projectRoutes.POST("/transfer-dcs/:tdcid/split/step4", handlers.SplitWizardStep4)
+		projectRoutes.POST("/transfer-dcs/:tdcid/split", handlers.CreateSplitShipmentHandler)
+		projectRoutes.POST("/transfer-dcs/:tdcid/split/back-to-step1", handlers.SplitWizardBackToStep1)
+		projectRoutes.POST("/transfer-dcs/:tdcid/split/back-to-step2", handlers.SplitWizardBackToStep2)
+		projectRoutes.POST("/transfer-dcs/:tdcid/split/back-to-step3", handlers.SplitWizardBackToStep3)
+
+		// Split undo (delete child group)
+		projectRoutes.POST("/transfer-dcs/:tdcid/splits/:splitid/delete", handlers.DeleteSplitHandler)
+
+		// Transfer DC print view
+		projectRoutes.GET("/transfer-dcs/:tdcid/print", handlers.ShowTransferDCPrintView)
+
 		// Template product loading (used by shipment wizard)
 		projectRoutes.GET("/templates/:tid/products", handlers.LoadTemplateProducts)
 
@@ -290,6 +335,8 @@ func main() {
 		projectRoutes.GET("/reports/product/export", handlers.ExportProductExcel)
 		projectRoutes.GET("/reports/serial", handlers.ShowSerialReport)
 		projectRoutes.GET("/reports/serial/export", handlers.ExportSerialExcel)
+		projectRoutes.GET("/reports/transfer", handlers.ShowTransferDCReport)
+		projectRoutes.GET("/reports/transfer/export", handlers.ExportTransferDCReportExcel)
 
 		// Legacy address redirects (for backward compatibility)
 		projectRoutes.GET("/bill-to", func(c echov4.Context) error {

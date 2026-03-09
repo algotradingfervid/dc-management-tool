@@ -1,0 +1,352 @@
+package transfer_dcs
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+templ Detail(
+	user *models.User,
+	project *models.Project,
+	allProjects []*models.Project,
+	dc *models.DeliveryChallan,
+	tdc *models.TransferDC,
+	hubAddress *models.Address,
+	destinations []*models.TransferDCDestination,
+	splits []*models.TransferDCSplit,
+	summary *models.TransferDCSummary,
+	flashType string,
+	flashMessage string,
+	csrfToken string,
+) {
+	<div class="space-y-6">
+		<!-- Header -->
+		<div class="flex items-center justify-between">
+			<div class="flex items-center gap-3">
+				<h1 class="text-2xl font-bold text-gray-900">{ dc.DCNumber }</h1>
+				<span class={ "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium", statusBadgeClass(dc.Status) }>
+					{ dc.Status }
+				</span>
+			</div>
+			<div class="flex items-center gap-2">
+				<!-- PDF Download -->
+				<a
+					href={ templ.SafeURL(fmt.Sprintf("/projects/%d/dcs/%d/export/pdf", project.ID, dc.ID)) }
+					class="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-sm px-4 py-2 rounded-lg font-medium"
+				>
+					<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+					</svg>
+					PDF
+				</a>
+				<!-- Excel Download -->
+				<a
+					href={ templ.SafeURL(fmt.Sprintf("/projects/%d/dcs/%d/export/excel", project.ID, dc.ID)) }
+					class="inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2 rounded-lg font-medium"
+				>
+					<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+					</svg>
+					Excel
+				</a>
+				<!-- Print View -->
+				<a
+					href={ templ.SafeURL(fmt.Sprintf("/projects/%d/transfer-dcs/%d/print", project.ID, tdc.ID)) }
+					class="inline-flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 text-sm px-4 py-2 rounded-lg font-medium hover:bg-gray-50"
+				>
+					<svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z"></path>
+					</svg>
+					Print
+				</a>
+				if dc.Status == "draft" {
+					<div
+						id="issue-data"
+						class="hidden"
+						data-issue-url={ fmt.Sprintf("/projects/%d/dcs/%d/issue", project.ID, dc.ID) }
+						data-csrf-token={ csrfToken }
+					></div>
+					<button
+						x-data
+						@click="if(confirm('Issue this Transfer DC? It will be locked for editing.')){
+							fetch(document.getElementById('issue-data').dataset.issueUrl, {
+								method: 'POST',
+								headers: {'Content-Type': 'application/json', 'X-CSRF-Token': document.getElementById('issue-data').dataset.csrfToken},
+							}).then(r => r.json()).then(d => { if(d.redirect) window.location.href = d.redirect; })
+						}"
+						class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+					>
+						Issue
+					</button>
+					<a
+						href={ templ.SafeURL(fmt.Sprintf("/projects/%d/transfer-dcs/%d/edit", project.ID, tdc.ID)) }
+						class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+					>
+						Edit
+					</a>
+					<div
+						id="delete-data"
+						class="hidden"
+						data-delete-url={ fmt.Sprintf("/projects/%d/dcs/%d", project.ID, dc.ID) }
+						data-csrf-token={ csrfToken }
+					></div>
+					<button
+						x-data
+						@click="if(confirm('Delete this Transfer DC? This cannot be undone.')){
+							fetch(document.getElementById('delete-data').dataset.deleteUrl, {
+								method: 'DELETE',
+								headers: {'Content-Type': 'application/json', 'X-CSRF-Token': document.getElementById('delete-data').dataset.csrfToken},
+							}).then(r => r.json()).then(d => { if(d.redirect) window.location.href = d.redirect; })
+						}"
+						class="inline-flex items-center px-3 py-2 border border-red-300 text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50"
+					>
+						Delete
+					</button>
+				}
+				if dc.Status == "issued" || dc.Status == "splitting" {
+					<a
+						href={ templ.SafeURL(fmt.Sprintf("/projects/%d/transfer-dcs/%d/split", project.ID, tdc.ID)) }
+						class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+					>
+						+ Create Split
+					</a>
+				}
+			</div>
+		</div>
+
+		<!-- Transfer Info Card -->
+		<div class="bg-white shadow rounded-lg p-6">
+			<h2 class="text-lg font-medium text-gray-900 mb-4">Transfer Details</h2>
+			<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+				<div>
+					<dt class="text-sm font-medium text-gray-500">Hub Location</dt>
+					<dd class="mt-1 text-sm text-gray-900">
+						if hubAddress != nil {
+							@addressBlock(hubAddress)
+						} else {
+							—
+						}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-sm font-medium text-gray-500">Challan Date</dt>
+					<dd class="mt-1 text-sm text-gray-900">
+						if dc.ChallanDate != nil {
+							{ *dc.ChallanDate }
+						} else {
+							—
+						}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-sm font-medium text-gray-500">Template</dt>
+					<dd class="mt-1 text-sm text-gray-900">
+						if tdc.TemplateName != "" {
+							{ tdc.TemplateName }
+						} else {
+							—
+						}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-sm font-medium text-gray-500">Tax Type</dt>
+					<dd class="mt-1 text-sm text-gray-900">{ tdc.TaxType }</dd>
+				</div>
+				<div>
+					<dt class="text-sm font-medium text-gray-500">Transporter</dt>
+					<dd class="mt-1 text-sm text-gray-900">
+						if tdc.TransporterName != "" {
+							{ tdc.TransporterName }
+						} else {
+							—
+						}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-sm font-medium text-gray-500">Vehicle Number</dt>
+					<dd class="mt-1 text-sm text-gray-900">
+						if tdc.VehicleNumber != "" {
+							{ tdc.VehicleNumber }
+						} else {
+							—
+						}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-sm font-medium text-gray-500">Reverse Charge</dt>
+					<dd class="mt-1 text-sm text-gray-900">{ tdc.ReverseCharge }</dd>
+				</div>
+				<div>
+					<dt class="text-sm font-medium text-gray-500">E-Way Bill</dt>
+					<dd class="mt-1 text-sm text-gray-900">
+						if tdc.EwayBillNumber != "" {
+							{ tdc.EwayBillNumber }
+						} else {
+							—
+						}
+					</dd>
+				</div>
+			</div>
+			if tdc.Notes != "" {
+				<div class="mt-4">
+					<dt class="text-sm font-medium text-gray-500">Notes</dt>
+					<dd class="mt-1 text-sm text-gray-900">{ tdc.Notes }</dd>
+				</div>
+			}
+		</div>
+
+		<!-- Destinations & Quantities -->
+		<div class="bg-white shadow rounded-lg p-6">
+			<h2 class="text-lg font-medium text-gray-900 mb-4">
+				Destinations & Quantities
+				if summary != nil {
+					<span class="text-sm font-normal text-gray-500 ml-2">
+						({ strconv.Itoa(summary.TotalDestinations) } destinations, { strconv.Itoa(summary.TotalProducts) } products, { strconv.Itoa(summary.TotalQuantity) } total units)
+					</span>
+				}
+			</h2>
+			<div class="overflow-x-auto">
+				<table class="min-w-full divide-y divide-gray-200">
+					<thead class="bg-gray-50">
+						<tr>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+							<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destination</th>
+							for _, d := range destinations {
+								if len(d.Quantities) > 0 {
+									for _, q := range d.Quantities {
+										<th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{ q.ProductName }</th>
+									}
+									break
+								}
+							}
+							<th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+						</tr>
+					</thead>
+					<tbody class="bg-white divide-y divide-gray-200">
+						for i, dest := range destinations {
+							<tr>
+								<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{ strconv.Itoa(i + 1) }</td>
+								<td class="px-4 py-3 text-sm text-gray-900">
+									if dest.Address != nil {
+										@addressBlock(dest.Address)
+									} else {
+										{ dest.AddressName }
+									}
+								</td>
+								for _, q := range dest.Quantities {
+									<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">{ strconv.Itoa(q.Quantity) }</td>
+								}
+								<td class="px-4 py-3 whitespace-nowrap text-center">
+									if dest.IsSplit {
+										<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Split</span>
+									} else {
+										<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pending</span>
+									}
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<!-- Split Progress -->
+		if summary != nil && (dc.Status == "issued" || dc.Status == "splitting" || dc.Status == "split") {
+			<div class="bg-white shadow rounded-lg p-6">
+				<h2 class="text-lg font-medium text-gray-900 mb-4">Split Progress</h2>
+				<div class="mb-4">
+					<div class="flex justify-between text-sm text-gray-600 mb-1">
+						<span>{ strconv.Itoa(summary.SplitDestinations) }/{ strconv.Itoa(summary.TotalDestinations) } destinations split</span>
+						if summary.TotalDestinations > 0 {
+							<span>{ strconv.Itoa(summary.SplitDestinations * 100 / summary.TotalDestinations) }%</span>
+						}
+					</div>
+					<div class="w-full bg-gray-200 rounded-full h-2.5">
+						if summary.TotalDestinations > 0 {
+							<div
+								class="bg-indigo-600 h-2.5 rounded-full"
+								style={ fmt.Sprintf("width: %d%%", summary.SplitDestinations*100/summary.TotalDestinations) }
+							></div>
+						}
+					</div>
+				</div>
+
+				if len(splits) > 0 {
+					<div class="space-y-3">
+						for _, s := range splits {
+							<div class="border rounded-lg p-4 flex items-center justify-between">
+								<div>
+									<span class="font-medium text-gray-900">Split #{ strconv.Itoa(s.SplitNumber) }</span>
+									<span class="text-sm text-gray-500 ml-2">→ Shipment Group #{ strconv.Itoa(s.ShipmentGroupID) }</span>
+								</div>
+								<div class="flex items-center gap-3">
+									if s.CanDelete {
+										<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/projects/%d/transfer-dcs/%d/splits/%d/delete", project.ID, tdc.ID, s.ID)) }>
+											<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+											<button
+												type="submit"
+												class="text-sm text-red-600 hover:text-red-800"
+												onclick="return confirm('Undo this split? All child DCs will be deleted.')"
+											>
+												Undo Split
+											</button>
+										</form>
+									} else {
+										<span class="text-sm text-gray-400">Issued (locked)</span>
+									}
+									<a
+										href={ templ.SafeURL(fmt.Sprintf("/projects/%d/shipments/%d", project.ID, s.ShipmentGroupID)) }
+										class="text-sm text-indigo-600 hover:text-indigo-800"
+									>
+										View →
+									</a>
+								</div>
+							</div>
+						}
+					</div>
+				}
+
+				if summary.PendingDestinations > 0 && (dc.Status == "issued" || dc.Status == "splitting") {
+					<div class="mt-4">
+						<a
+							href={ templ.SafeURL(fmt.Sprintf("/projects/%d/transfer-dcs/%d/split", project.ID, tdc.ID)) }
+							class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+						>
+							+ Create New Split ({ strconv.Itoa(summary.PendingDestinations) } remaining)
+						</a>
+					</div>
+				}
+			</div>
+		}
+	</div>
+}
+
+// addressBlock renders a formatted address from its parsed Data map.
+templ addressBlock(addr *models.Address) {
+	<div class="text-sm leading-relaxed">
+		for k, v := range addr.Data {
+			if v != "" {
+				<div>
+					<span class="font-medium text-gray-600">{ k }:</span> { v }
+				</div>
+			}
+		}
+	</div>
+}
+
+func statusBadgeClass(status string) string {
+	switch status {
+	case "draft":
+		return "bg-gray-100 text-gray-800"
+	case "issued":
+		return "bg-blue-100 text-blue-800"
+	case "splitting":
+		return "bg-orange-100 text-orange-800"
+	case "split":
+		return "bg-green-100 text-green-800"
+	default:
+		return "bg-gray-100 text-gray-800"
+	}
+}

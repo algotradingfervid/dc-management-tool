@@ -1,0 +1,107 @@
+package transfer_dcs
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/narendhupati/dc-management-tool/components/partials"
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+templ SplitStep3(
+	user *models.User,
+	project *models.Project,
+	allProjects []*models.Project,
+	tdc *models.TransferDC,
+	selectedDestIDs []string,
+	selectedSummary string,
+	products []SplitProductInfo,
+	expectedQty map[int]int,
+	availableSerials map[int][]string,
+	transporterName string,
+	vehicleNumber string,
+	ewayBillNumber string,
+	docketNumber string,
+	notes string,
+	csrfToken string,
+	serialErrors map[int]string,
+	prefillSerials map[int][]string,
+) {
+	<div class="max-w-5xl mx-auto">
+		@partials.WizardSteps([]partials.WizardStep{
+			{Number: 1, Label: "Destinations"},
+			{Number: 2, Label: "Vehicle"},
+			{Number: 3, Label: "Serials"},
+			{Number: 4, Label: "Review"},
+		}, 3)
+
+		<h1 class="text-2xl font-bold mb-2">Split Transfer DC: { tdc.DCNumber }</h1>
+		<p class="text-sm text-gray-500 mb-6">{ selectedSummary } | Enter serial numbers for this vehicle split</p>
+
+		<form
+			method="POST"
+			action={ templ.SafeURL(fmt.Sprintf("/projects/%d/transfer-dcs/%d/split/step4", project.ID, tdc.ID)) }
+			class="space-y-6"
+		>
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			<input type="hidden" name="transfer_dc_id" value={ strconv.Itoa(tdc.ID) }/>
+			<input type="hidden" name="parent_dc_id" value={ strconv.Itoa(tdc.DCID) }/>
+			for _, id := range selectedDestIDs {
+				<input type="hidden" name="destination_ids" value={ id }/>
+			}
+			<input type="hidden" name="transporter_name" value={ transporterName }/>
+			<input type="hidden" name="vehicle_number" value={ vehicleNumber }/>
+			<input type="hidden" name="eway_bill_number" value={ ewayBillNumber }/>
+			<input type="hidden" name="docket_number" value={ docketNumber }/>
+			<input type="hidden" name="notes" value={ notes }/>
+
+			for _, p := range products {
+				<div class="bg-white shadow rounded-lg p-6">
+					<div class="flex items-center justify-between mb-3">
+						<h3 class="text-lg font-medium text-gray-900">{ p.Name }</h3>
+						<span class="text-sm text-gray-500">
+							Expected: { strconv.Itoa(expectedQty[p.ID]) } serials
+						</span>
+					</div>
+
+					if len(availableSerials[p.ID]) > 0 {
+						<div class="mb-3 p-3 bg-blue-50 rounded text-sm text-blue-800">
+							<strong>Available from parent:</strong> { joinStrings(availableSerials[p.ID], ", ") }
+						</div>
+					}
+
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1">
+							Serial Numbers (one per line)
+						</label>
+						<textarea
+							name={ fmt.Sprintf("serials_%d", p.ID) }
+							rows="6"
+							class={ splitSerialTextareaClass(serialErrors, p.ID) }
+							placeholder="Enter serial numbers, one per line..."
+						>{ prefillSerialsForProduct(prefillSerials, p.ID) }</textarea>
+						if serialErrors[p.ID] != "" {
+							<p class="mt-1 text-sm text-red-600">{ serialErrors[p.ID] }</p>
+						}
+					</div>
+				</div>
+			}
+
+			<div class="flex justify-between">
+				<button
+					type="submit"
+					formaction={ templ.SafeURL(fmt.Sprintf("/projects/%d/transfer-dcs/%d/split/back-to-step2", project.ID, tdc.ID)) }
+					class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+				>
+					← Back
+				</button>
+				<button
+					type="submit"
+					class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+				>
+					Next: Review →
+				</button>
+			</div>
+		</form>
+	</div>
+}

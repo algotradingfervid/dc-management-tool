@@ -335,6 +335,50 @@ func ShowSerialReport(c echo.Context) error {
 	return components.RenderOK(c, layouts.MainWithContent("Reports", sidebar, topbar, f.flashMessage, f.flashType, pageContent))
 }
 
+// ShowTransferDCReport shows the Transfer DC report.
+func ShowTransferDCReport(c echo.Context) error {
+	f := getReportFields(c, "Transfer DC Report")
+
+	rows, err := database.GetTransferDCReport(f.currentProject.ID, f.startDate, f.endDate)
+	if err != nil {
+		slog.Error("error fetching transfer DC report", slog.String("error", err.Error()), slog.Int("projectID", f.currentProject.ID))
+		rows = nil
+	}
+
+	if c.Request().Header.Get("HX-Request") == "true" {
+		rowPtrs := make([]*database.TransferDCReportRow, len(rows))
+		for i := range rows {
+			rowPtrs[i] = &rows[i]
+		}
+		return components.RenderOK(c, htmxreports.TransferPartial(htmxreports.TransferPartialProps{
+			Rows:     rowPtrs,
+			BasePath: fmt.Sprintf("/projects/%d/reports", f.currentProject.ID),
+			Range:    f.dateRange,
+			FromDate: f.fromDate,
+			ToDate:   f.toDate,
+		}))
+	}
+
+	rowPtrs := make([]*database.TransferDCReportRow, len(rows))
+	for i := range rows {
+		rowPtrs[i] = &rows[i]
+	}
+	pageContent := pagesreports.Transfer(
+		f.user,
+		f.currentProject,
+		f.allProjects,
+		rowPtrs,
+		f.dateRange,
+		f.fromDate,
+		f.toDate,
+		f.flashType,
+		f.flashMessage,
+	)
+	sidebar := partials.Sidebar(f.user, f.currentProject, f.allProjects, c.Request().URL.Path)
+	topbar := partials.Topbar(f.user, f.currentProject, f.allProjects, f.flashType, f.flashMessage)
+	return components.RenderOK(c, layouts.MainWithContent("Reports", sidebar, topbar, f.flashMessage, f.flashType, pageContent))
+}
+
 // ExportDCSummaryExcel exports the DC summary report as Excel.
 func ExportDCSummaryExcel(c echo.Context) error {
 	project, _ := c.Get("currentProject").(*models.Project)
@@ -360,6 +404,10 @@ func ExportDCSummaryExcel(c echo.Context) error {
 		{"Transit DCs (Issued)", report.TransitIssuedDCs},
 		{"Official DCs (Draft)", report.OfficialDraftDCs},
 		{"Official DCs (Issued)", report.OfficialIssuedDCs},
+		{"Transfer DCs (Draft)", report.TransferDraftDCs},
+		{"Transfer DCs (Issued)", report.TransferIssuedDCs},
+		{"Transfer DCs (Splitting)", report.TransferSplittingDCs},
+		{"Transfer DCs (Split)", report.TransferSplitDCs},
 		{"Total Items Dispatched", report.TotalItemsDispatched},
 		{"Total Serial Numbers Used", report.TotalSerialsUsed},
 	}
@@ -479,6 +527,43 @@ func ExportSerialExcel(c echo.Context) error {
 	}
 
 	filename := fmt.Sprintf("serial-report-%s.xlsx", time.Now().Format("2006-01-02"))
+	c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Response().Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	_ = f.Write(c.Response().Writer)
+	return nil
+}
+
+// ExportTransferDCReportExcel exports the Transfer DC report as Excel.
+func ExportTransferDCReportExcel(c echo.Context) error {
+	project, _ := c.Get("currentProject").(*models.Project)
+	_, startDate, endDate := parseDateRange(c)
+
+	rows, err := database.GetTransferDCReport(project.ID, startDate, endDate)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": "Failed to generate report"})
+	}
+
+	f := excelize.NewFile()
+	sheet := "Transfer DC Report"
+	_ = f.SetSheetName("Sheet1", sheet)
+
+	headers := []string{"DC Number", "Status", "Date", "Destinations", "Splits", "Transporter", "Vehicle"}
+	for i, h := range headers {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+		_ = f.SetCellValue(sheet, cell, h)
+	}
+	for i, r := range rows {
+		row := i + 2
+		_ = f.SetCellValue(sheet, cellName(1, row), r.DCNumber)
+		_ = f.SetCellValue(sheet, cellName(2, row), r.Status)
+		_ = f.SetCellValue(sheet, cellName(3, row), r.ChallanDate)
+		_ = f.SetCellValue(sheet, cellName(4, row), r.NumDestinations)
+		_ = f.SetCellValue(sheet, cellName(5, row), r.SplitCount)
+		_ = f.SetCellValue(sheet, cellName(6, row), r.TransporterName)
+		_ = f.SetCellValue(sheet, cellName(7, row), r.VehicleNumber)
+	}
+
+	filename := fmt.Sprintf("transfer-dc-report-%s.xlsx", time.Now().Format("2006-01-02"))
 	c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Response().Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	_ = f.Write(c.Response().Writer)

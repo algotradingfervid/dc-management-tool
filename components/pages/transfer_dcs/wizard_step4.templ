@@ -1,0 +1,179 @@
+package transfer_dcs
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/narendhupati/dc-management-tool/components/partials"
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+templ WizardStep4(
+	user *models.User,
+	currentProject *models.Project,
+	allProjects []*models.Project,
+	products []*models.TemplateProductRow,
+	challanDate string,
+	templateID string,
+	hubAddressID string,
+	transporterName string,
+	vehicleNumber string,
+	ewayBillNumber string,
+	docketNumber string,
+	taxType string,
+	reverseCharge string,
+	billFromAddressID string,
+	dispatchFromAddressID string,
+	billToAddressID string,
+	shipToAddressIDs []string,
+	csrfToken string,
+	quantityHiddenFields []QuantityHiddenField,
+	productQuantityTotals map[int]int,
+	prefillSerials map[int][]string,
+	serialErrors map[int]string,
+	tdcID int,
+) {
+	<div class="max-w-4xl mx-auto">
+		@partials.WizardSteps([]partials.WizardStep{
+			{Number: 1, Label: "Configuration"},
+			{Number: 2, Label: "Addresses"},
+			{Number: 3, Label: "Quantities"},
+			{Number: 4, Label: "Serial Numbers"},
+			{Number: 5, Label: "Review"},
+		}, 4)
+		if tdcID > 0 {
+			<h1 class="text-2xl font-bold mb-2">Edit Transfer DC — Step 4: Serial Numbers</h1>
+		} else {
+			<h1 class="text-2xl font-bold mb-2">Create Transfer DC — Step 4: Serial Numbers</h1>
+		}
+		<p class="text-sm text-gray-500 mb-6">
+			Enter all serial numbers for each product. Per-destination assignment happens during split.
+		</p>
+		<form
+			method="POST"
+			action={ templ.SafeURL(transferWizardURL(currentProject.ID, tdcID, "/step5")) }
+		>
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			<!-- Carry forward all previous data -->
+			<input type="hidden" name="template_id" value={ templateID }/>
+			<input type="hidden" name="hub_address_id" value={ hubAddressID }/>
+			<input type="hidden" name="challan_date" value={ challanDate }/>
+			<input type="hidden" name="transporter_name" value={ transporterName }/>
+			<input type="hidden" name="vehicle_number" value={ vehicleNumber }/>
+			<input type="hidden" name="eway_bill_number" value={ ewayBillNumber }/>
+			<input type="hidden" name="docket_number" value={ docketNumber }/>
+			<input type="hidden" name="tax_type" value={ taxType }/>
+			<input type="hidden" name="reverse_charge" value={ reverseCharge }/>
+			<input type="hidden" name="bill_from_address_id" value={ billFromAddressID }/>
+			<input type="hidden" name="dispatch_from_address_id" value={ dispatchFromAddressID }/>
+			<input type="hidden" name="bill_to_address_id" value={ billToAddressID }/>
+			for _, id := range shipToAddressIDs {
+				<input type="hidden" name="ship_to_address_ids" value={ id }/>
+			}
+			<!-- Carry forward quantity data -->
+			for _, qf := range quantityHiddenFields {
+				<input type="hidden" name={ qf.Name } value={ qf.Value }/>
+			}
+			<div class="bg-white shadow rounded-lg p-6 space-y-6">
+				for _, p := range products {
+					{{ total := 0 }}
+					if productQuantityTotals != nil {
+						{{ total = productQuantityTotals[p.ID] }}
+					}
+					if total == 0 {
+						{{ total = p.DefaultQuantity * len(shipToAddressIDs) }}
+					}
+					<div class="border rounded-lg p-4" data-product-id={ strconv.Itoa(p.ID) } data-expected={ strconv.Itoa(total) }>
+						<h3 class="font-medium text-lg">{ p.ItemName }</h3>
+						<p class="text-sm text-gray-500">
+							Expected: <strong>{ strconv.Itoa(total) }</strong> serial numbers
+						</p>
+						<div class="mt-3">
+							<label class="block text-sm font-medium text-gray-700">Serial Numbers (one per line)</label>
+							<textarea
+								name={ fmt.Sprintf("serials_%d", p.ID) }
+								rows="4"
+								data-serial-input={ strconv.Itoa(p.ID) }
+								class={ serialTextareaClass(serialErrors, p.ID) }
+								placeholder="Enter serial numbers, one per line..."
+							>{ prefillSerialsForProduct(prefillSerials, p.ID) }</textarea>
+							if serialErrors[p.ID] != "" {
+								<p class="text-xs mt-1 text-red-600 font-medium">{ serialErrors[p.ID] }</p>
+							}
+							<p class="text-xs mt-1" data-serial-count={ strconv.Itoa(p.ID) }>
+								<span class="serial-entered">0</span> / { strconv.Itoa(total) } serial numbers entered
+							</p>
+						</div>
+					</div>
+				}
+			</div>
+			<div id="serial-errors" class="hidden mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"></div>
+			<div class="mt-6 flex justify-between">
+				<button type="submit" formaction={ string(templ.SafeURL(transferWizardURL(currentProject.ID, tdcID, "/back-to-step3"))) } class="text-gray-600 hover:text-gray-800 px-4 py-2 border border-gray-300 rounded-md">
+					← Back
+				</button>
+				<button type="submit" id="step4-submit" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">
+					Next: Review →
+				</button>
+			</div>
+		</form>
+	</div>
+	<script>
+		(function() {
+			// Live serial count feedback
+			document.querySelectorAll('[data-serial-input]').forEach(function(textarea) {
+				var productId = textarea.getAttribute('data-serial-input');
+				var countEl = document.querySelector('[data-serial-count="' + productId + '"]');
+				var container = textarea.closest('[data-product-id]');
+				var expected = parseInt(container.getAttribute('data-expected'));
+
+				function updateCount() {
+					var lines = textarea.value.split('\n').filter(function(l) { return l.trim() !== ''; });
+					var enteredSpan = countEl.querySelector('.serial-entered');
+					enteredSpan.textContent = lines.length;
+
+					if (lines.length === expected) {
+						countEl.className = 'text-xs mt-1 text-green-600 font-medium';
+					} else if (lines.length > expected) {
+						countEl.className = 'text-xs mt-1 text-red-600 font-medium';
+					} else {
+						countEl.className = 'text-xs mt-1 text-gray-500';
+					}
+				}
+
+				textarea.addEventListener('input', updateCount);
+				// Initialize count on page load
+				updateCount();
+			});
+
+			// Validate on submit
+			document.getElementById('step4-submit').addEventListener('click', function(e) {
+				var errors = [];
+				document.querySelectorAll('[data-product-id]').forEach(function(block) {
+					var expected = parseInt(block.getAttribute('data-expected'));
+					var productName = block.querySelector('h3').textContent;
+					var textarea = block.querySelector('[data-serial-input]');
+					var lines = textarea.value.split('\n').filter(function(l) { return l.trim() !== ''; });
+
+					if (lines.length !== expected) {
+						errors.push(productName + ': expected ' + expected + ' serials, got ' + lines.length);
+						textarea.classList.add('border-red-500');
+					} else {
+						textarea.classList.remove('border-red-500');
+					}
+				});
+
+				var errorDiv = document.getElementById('serial-errors');
+				if (errors.length > 0) {
+					e.preventDefault();
+					errorDiv.innerHTML = '<strong>Please fix serial number counts:</strong><ul class="list-disc ml-4 mt-1">' +
+						errors.map(function(err) { return '<li>' + err + '</li>'; }).join('') + '</ul>';
+					errorDiv.classList.remove('hidden');
+					errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				} else {
+					errorDiv.classList.add('hidden');
+				}
+			});
+		})();
+	</script>
+}

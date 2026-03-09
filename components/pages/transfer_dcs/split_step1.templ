@@ -1,0 +1,102 @@
+package transfer_dcs
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/narendhupati/dc-management-tool/components/partials"
+	"github.com/narendhupati/dc-management-tool/internal/models"
+)
+
+templ SplitStep1(
+	user *models.User,
+	project *models.Project,
+	allProjects []*models.Project,
+	tdc *models.TransferDC,
+	destinations []*models.TransferDCDestination,
+	products []SplitProductInfo,
+	flashType string,
+	flashMessage string,
+	csrfToken string,
+) {
+	<div class="max-w-5xl mx-auto">
+		@partials.WizardSteps([]partials.WizardStep{
+			{Number: 1, Label: "Destinations"},
+			{Number: 2, Label: "Vehicle"},
+			{Number: 3, Label: "Serials"},
+			{Number: 4, Label: "Review"},
+		}, 1)
+
+		<h1 class="text-2xl font-bold mb-2">Split Transfer DC: { tdc.DCNumber }</h1>
+		<p class="text-sm text-gray-500 mb-6">Hub: { tdc.HubAddressName } | Select destinations for this vehicle</p>
+
+		<form
+			method="POST"
+			action={ templ.SafeURL(fmt.Sprintf("/projects/%d/transfer-dcs/%d/split/step2", project.ID, tdc.ID)) }
+			class="space-y-6"
+		>
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			<input type="hidden" name="transfer_dc_id" value={ strconv.Itoa(tdc.ID) }/>
+			<input type="hidden" name="parent_dc_id" value={ strconv.Itoa(tdc.DCID) }/>
+
+			<div class="bg-white shadow rounded-lg overflow-hidden">
+				<div class="px-4 py-3 bg-gray-50 border-b flex items-center justify-between">
+					<span class="text-sm font-medium text-gray-700">
+						{ strconv.Itoa(len(destinations)) } destinations remaining
+					</span>
+					<label class="flex items-center gap-2 text-sm text-gray-600">
+						<input
+							type="checkbox"
+							x-data="{ get checked() { return document.querySelectorAll('input[name=destination_ids]:checked').length === document.querySelectorAll('input[name=destination_ids]').length } }"
+							@click="document.querySelectorAll('input[name=destination_ids]').forEach(cb => cb.checked = $el.checked)"
+							class="rounded border-gray-300 text-indigo-600"
+						/>
+						Select All
+					</label>
+				</div>
+				<div class="overflow-x-auto">
+					<table class="min-w-full divide-y divide-gray-200">
+						<thead class="bg-gray-50">
+							<tr>
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-10"></th>
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+								<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Destination</th>
+								for _, p := range products {
+									<th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{ p.Name }</th>
+								}
+							</tr>
+						</thead>
+						<tbody class="bg-white divide-y divide-gray-200">
+							for i, dest := range destinations {
+								<tr class="hover:bg-gray-50">
+									<td class="px-4 py-3">
+										<input
+											type="checkbox"
+											name="destination_ids"
+											value={ strconv.Itoa(dest.ID) }
+											class="rounded border-gray-300 text-indigo-600"
+										/>
+									</td>
+									<td class="px-4 py-3 text-sm text-gray-500">{ strconv.Itoa(i + 1) }</td>
+									<td class="px-4 py-3 text-sm text-gray-900">{ dest.AddressName }</td>
+									for _, q := range dest.Quantities {
+										<td class="px-4 py-3 text-sm text-gray-900 text-right">{ strconv.Itoa(q.Quantity) }</td>
+									}
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<div class="flex justify-end">
+				<button
+					type="submit"
+					class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+				>
+					Next: Vehicle Details →
+				</button>
+			</div>
+		</form>
+	</div>
+}
